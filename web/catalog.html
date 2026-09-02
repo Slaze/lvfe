@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Lvfe — Catalog</title>
+  <link rel="stylesheet" href="css/lvfe.css" />
+</head>
+<body>
+  <div class="nav">
+    <h1>Lvfe · Catalog</h1>
+    <span class="bal">NairaCoin <strong id="ncBal">0 NairaCoin</strong></span>
+    <span class="sub" id="ncNote">demo faucet</span>
+    <div class="links">
+      <a href="index.html">Map</a>
+      <a href="ar.html">AR</a>
+    </div>
+  </div>
+  <div class="wrap">
+    <p class="sub">Places you put NairaCoin into on this phone. Highest backer owns. Banks and ATMs cannot be owned.</p>
+    <div class="filters">
+      <label>Search<input type="search" id="qSearch" placeholder="Name, type, neighbourhood" /></label>
+      <label>Show<select id="qView">
+        <option value="mine">My places</option>
+        <option value="all">All places</option>
+      </select></label>
+      <label>Type<select id="qType"></select></label>
+      <label>Quality<select id="qQuality">
+        <option value="">All</option>
+        <option value="A">A — photo</option>
+        <option value="B">B — named</option>
+        <option value="C">C — needs a name</option>
+        <option value="D">D — unknown building</option>
+      </select></label>
+      <label>Neighbourhood<select id="qTerr"></select></label>
+      <label>Owned<select id="qClaimed">
+        <option value="">All</option>
+        <option value="no">Not owned</option>
+        <option value="yes">Owned</option>
+      </select></label>
+    </div>
+    <p class="meta" id="meta">Loading catalog…</p>
+    <div style="overflow:auto">
+      <table class="cat">
+        <thead>
+          <tr>
+            <th data-sort="name">Name</th>
+            <th data-sort="type">Type</th>
+            <th data-sort="quality">Quality</th>
+            <th data-sort="territory">Neighbourhood</th>
+            <th data-sort="stake">Cost to back</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="catBody"></tbody>
+      </table>
+    </div>
+    <div class="pager">
+      <button type="button" class="ghost" id="prev">Prev</button>
+      <span id="pageLabel" class="sub">Page 1</span>
+      <button type="button" class="ghost" id="next">Next</button>
+    </div>
+  </div>
+  <div id="toast" hidden></div>
+  <script src="js/claim-rules.js"></script>
+  <script src="nairacoin/protocol.js"></script>
+  <script src="nairacoin/iou-ledger.js"></script>
+  <script src="nairacoin/rpc-stub.js"></script>
+  <script src="js/nairacoin.js"></script>
+  <script src="js/catalog.js"></script>
+</body>
+</html>

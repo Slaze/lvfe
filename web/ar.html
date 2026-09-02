@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Lvfe — AR</title>
+  <link rel="stylesheet" href="css/lvfe.css" />
+  <style>
+    html, body { height: 100%; overflow: hidden; }
+    #stage { position: fixed; inset: 0; background: #05070a; }
+    #cam { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #000; }
+    #overlay { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+    .ar-hud {
+      position: absolute; z-index: 3; left: 10px; right: 10px; bottom: 12px;
+      max-height: 38vh; overflow: auto;
+      background: color-mix(in srgb, var(--panel) 90%, transparent);
+      border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px;
+    }
+    .near-item { padding: 8px 0; border-top: 1px solid var(--line); }
+    .near-item strong { display: block; }
+    .banner {
+      position: absolute; z-index: 3; left: 10px; right: 10px; top: 56px;
+      background: color-mix(in srgb, var(--panel) 90%, transparent);
+      border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px;
+      font-size: 12px; color: var(--muted);
+    }
+    .banner[hidden] { display: none; }
+    .nav { position: relative; z-index: 4; }
+  </style>
+</head>
+<body>
+  <div class="nav">
+    <h1>Lvfe · AR</h1>
+    <span class="bal">NairaCoin <strong id="ncBal">0 NairaCoin</strong></span>
+    <span class="sub" id="ncNote">demo faucet</span>
+    <div class="links">
+      <a href="index.html">Map</a>
+      <a href="catalog.html">Catalog</a>
+      <a href="index.html?ar=1">Map overlay</a>
+    </div>
+  </div>
+  <div id="stage">
+    <video id="cam" autoplay playsinline muted></video>
+    <canvas id="overlay"></canvas>
+    <div class="banner" id="banner">Starting camera… On a phone, use HTTPS or http://127.0.0.1 if the camera is blocked.</div>
+    <div class="ar-hud" id="hud">
+      <div class="hud-top">
+        <strong>Nearby</strong>
+        <span id="gpsLabel" class="sub">Location off</span>
+      </div>
+      <div id="nearbyList">Turn on camera and location. AR is for a phone; the map still works on a computer.</div>
+    </div>
+  </div>
+  <div id="toast" hidden></div>
+  <script src="js/claim-rules.js"></script>
+  <script src="nairacoin/protocol.js"></script>
+  <script src="nairacoin/iou-ledger.js"></script>
+  <script src="nairacoin/rpc-stub.js"></script>
+  <script src="js/nairacoin.js"></script>
+  <script src="js/ar.js"></script>
+</body>
+</html>

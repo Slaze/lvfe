@@ -1,0 +1,28 @@
+Protocol constants copied from https://github.com/Slaze/nairacoin
+src/CryptoNoteConfig.h (master 6ac59523227a03414e6af60a979fd31577dd15d0,
+2026-08-29).
+
+Copyright (c) 2011-2016 The Cryptonote developers
+MIT/X11 — http://www.opensource.org/licenses/mit-license.php
+Upstream has no COPYING file; license is the header on CryptoNoteConfig.h.
+
+Verified on that commit:
+  CRYPTONOTE_NAME = "nairacoin"
+  CRYPTONOTE_DISPLAY_DECIMAL_POINT = 8
+  CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX = 0x2  // addresses start with "f"
+  MINIMUM_FEE = 100000
+  P2P_DEFAULT_PORT = 17356
+  RPC_DEFAULT_PORT = 18357
+  Daemon OUTPUT_NAME = nairacoind
+  GENESIS_COINBASE_TX_HEX = ""
+  SEED_NODES on GitHub master = commented placeholders only
+  Operator tree ~/nairacoin SEED_NODES = nairacoin.iconiaglobal.com:17356 + 127.0.0.1:17356
+  DNS grey-cloud A 198.54.120.94 — TCP 17356 not listening (Apache on 80/443)
+
+This directory is an adapter, not a compiled daemon. There is no live chain
+to talk to from Lvfe. Spend keys never belong in the browser.
+
+A private protocol tree may exist elsewhere; GitHub master is empty genesis.
+Lvfe CHAIN_LAUNCHED stays false until this vendored hex is non-empty.
+
+See docs/nairacoin.md.

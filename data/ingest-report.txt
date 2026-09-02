@@ -1,0 +1,38 @@
+places=1044 osm_objects=1060 fused_clusters=16
+
+quality × type
+type                 A     B     C     D     n
+atm                  0     5     1     0     6
+bank                 0    84     2     0    86
+civic                0   227     0     0   227
+civic_unknown        0     0     0     2     2
+food                 0    86     0     0    86
+fuel                 0    10     2     0    12
+hospital             0    62     1     0    63
+hotel                0   122     1     0   123
+landmark             0     8     3     0    11
+mall                 0     4     0     0     4
+market               0    18     0     0    18
+park                 0    15    19     0    34
+pharmacy             0    42     0     0    42
+pitch                0     9    19     0    28
+school               0    77     2     0    79
+shop                 0   136     0     0   136
+transit              0    28     0     0    28
+worship              0    51     8     0    59
+
+territory × quality
+territory                    A     B     C     D     n
+abakpa                       0    14     0     0    14
+coal_camp                    0    21     0     0    21
+emene                        0    14     1     1    16
+independence_layout          0   186    11     0   197
+new_haven                    0   315     3     0   318
+new_haven_extension          0     2     0     0     2
+ogbete                       0     9     0     0     9
+ogui                         0    48     5     1    54
+thinkers_corner              0    11     0     0    11
+trans_ekulu                  0    30     3     0    33
+trans_ekulu_extension        0     3     0     0     3
+unclaimed                    0   282    30     0   312
+uwani                        0    49     5     0    54

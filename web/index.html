@@ -1,0 +1,1265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Lvfe — Enugu catalog</title>
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.1/dist/maplibre-gl.css" />
+  <link rel="stylesheet" href="map-3d.css" />
+  <style>
+    :root {
+      --bg: #0e1116;
+      --panel: #161b22;
+      --ink: #e8edf4;
+      --muted: #8b98a8;
+    }
+    html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); font: 14px/1.4 system-ui, sans-serif; }
+    #map { position: absolute; inset: 0; }
+    .panel {
+      position: absolute; z-index: 3; top: 12px; left: 12px;
+      background: color-mix(in srgb, var(--panel) 92%, transparent);
+      backdrop-filter: blur(8px);
+      border: 1px solid #2a3340;
+      border-radius: 10px;
+      padding: 12px 14px;
+      max-width: 280px;
+    }
+    h1 { font-size: 15px; margin: 0 0 4px; font-weight: 650; }
+    .sub { color: var(--muted); font-size: 12px; margin-bottom: 10px; }
+    .panel a { color: #9ecbff; }
+    .who { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+    .who button.link {
+      background: none; border: 0; color: #9ecbff; cursor: pointer;
+      font: inherit; padding: 0;
+    }
+    .score {
+      display: flex; justify-content: space-between; gap: 8px;
+      margin: 0 0 2px; font-variant-numeric: tabular-nums;
+    }
+    .score strong { color: #2ecc71; }
+    .iou-note { font-size: 11px; color: var(--muted); margin: 0 0 8px; }
+    details.filters { margin: 6px 0; }
+    details.filters summary { cursor: pointer; color: var(--muted); font-size: 12px; }
+    label { display: flex; align-items: center; gap: 8px; margin: 4px 0; cursor: pointer; }
+    .swatch { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+    .poly { width: 12px; height: 8px; border-radius: 2px; border: 2px solid; background: transparent; }
+    .count { margin-left: auto; color: var(--muted); font-variant-numeric: tabular-nums; }
+    .row { display: flex; align-items: center; gap: 8px; }
+    .hud {
+      position: absolute; z-index: 3; left: 12px; bottom: 36px;
+      width: min(320px, calc(100% - 24px));
+      background: color-mix(in srgb, var(--panel) 92%, transparent);
+      backdrop-filter: blur(8px);
+      border: 1px solid #2a3340;
+      border-radius: 10px;
+      padding: 10px 12px;
+      max-height: 46vh;
+      overflow: auto;
+    }
+    .hud-wallet { margin-bottom: 8px; }
+    #arCam, #arCanvas {
+      position: absolute; inset: 0; z-index: 1;
+      width: 100%; height: 100%; object-fit: cover;
+      background: #000;
+    }
+    #arCanvas { z-index: 2; pointer-events: none; }
+    #arLayer {
+      position: absolute; z-index: 3; top: 12px; right: 12px;
+      width: min(220px, calc(100% - 24px));
+      max-height: 40vh; overflow: auto;
+      background: color-mix(in srgb, var(--panel) 88%, transparent);
+      border: 1px solid #2a3340; border-radius: 10px; padding: 8px 10px;
+    }
+    body.ar-on #map { opacity: 0; pointer-events: none; }
+    .ar-pin {
+      display: block; width: 100%; text-align: left;
+      background: none; border: 0; border-top: 1px solid #2a3340;
+      color: inherit; padding: 8px 0; cursor: pointer; font: inherit;
+    }
+    .ar-pin strong { display: block; font-size: 13px; }
+    .ar-pin span { color: var(--muted); font-size: 12px; }
+    .assets { font-size: 12px; }
+    .assets li { margin: 4px 0; }
+    .assets a { color: #9ecbff; }
+    .hud-top {
+      display: flex; justify-content: space-between; gap: 8px;
+      font-size: 12px; color: var(--muted); margin-bottom: 8px;
+    }
+    .near-item {
+      display: flex; flex-direction: column; gap: 6px;
+      padding: 8px 0;
+      border-top: 1px solid #2a3340;
+    }
+    .near-jump {
+      background: none; border: 0; color: inherit; text-align: left;
+      padding: 0; cursor: pointer; font: inherit;
+    }
+    .near-jump strong { display: block; font-size: 13px; }
+    .near-jump span { color: var(--muted); font-size: 12px; }
+    button.claim {
+      background: #2ecc71; color: #0e1116; border: 0;
+      border-radius: 6px; padding: 8px 10px; font-weight: 650;
+      cursor: pointer; font: inherit;
+    }
+    button.claim:disabled, button.claimed {
+      background: #2a3340; color: #8b98a8; cursor: not-allowed;
+    }
+    .attrib {
+      position: absolute; z-index: 2; bottom: 8px; left: 12px;
+      font-size: 11px; color: #c5ced8;
+      background: #161b22cc; padding: 4px 8px; border-radius: 4px;
+    }
+    .attrib a { color: #9ecbff; }
+    .maplibregl-popup-content { background: #161b22; color: #e8edf4; border-radius: 8px; }
+    .maplibregl-popup-tip { border-top-color: #161b22; }
+    .popup h2 { margin: 0 0 2px; font-size: 14px; }
+    .popup .pts { color: #2ecc71; font-size: 16px; font-weight: 650; margin: 4px 0 6px; }
+    .popup p { margin: 0; color: #8b98a8; font-size: 12px; }
+    .popup .warn { color: #f39c12; margin-top: 8px; }
+    .popup .ok { color: #2ecc71; margin-top: 8px; }
+    .popup button.claim { margin-top: 8px; width: 100%; }
+    .popup .own { color: #e8edf4; margin-top: 4px; }
+    .visit-form { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+    .visit-form .photo-in { font-size: 12px; color: var(--muted); width: 100%; }
+    .stake-row { display: flex; gap: 6px; align-items: stretch; }
+    .stake-row input[type="number"] {
+      width: 92px; background: #0e1116; color: inherit;
+      border: 1px solid #2a3340; border-radius: 6px; padding: 8px; font: inherit;
+    }
+    .stake-row button.claim { flex: 1; margin-top: 0; }
+    .meta { font-size: 12px; color: var(--muted); }
+    #identityGate {
+      position: absolute; inset: 0; z-index: 4;
+      background: #0e1116cc;
+      display: flex; align-items: center; justify-content: center;
+    }
+    #identityGate[hidden] { display: none; }
+    #identityGate .card {
+      background: var(--panel); border: 1px solid #2a3340; border-radius: 10px;
+      padding: 16px; width: min(320px, calc(100% - 32px));
+    }
+    #identityGate h2 { font-size: 16px; margin: 0 0 6px; }
+    #identityGate p { color: var(--muted); font-size: 12px; margin: 0 0 12px; }
+    #identityGate label { display: flex; flex-direction: column; align-items: stretch; gap: 4px; margin: 0 0 10px; cursor: default; }
+    #identityGate input, #identityGate select {
+      background: #0e1116; color: inherit; border: 1px solid #2a3340;
+      border-radius: 6px; padding: 8px; font: inherit;
+    }
+    #identityGate button.claim { width: 100%; }
+    #toast {
+      position: absolute; z-index: 3; left: 50%; bottom: 28px;
+      transform: translateX(-50%);
+      background: #1e2833; color: var(--ink);
+      border: 1px solid #2a3340; border-radius: 8px;
+      padding: 8px 12px; font-size: 13px; max-width: 80%;
+      pointer-events: none;
+    }
+    #toast[hidden] { display: none; }
+    #arCam[hidden], #arLayer[hidden], #arCanvas[hidden] { display: none; }
+    #mapFail {
+      position: absolute; z-index: 5; left: 50%; top: 42%;
+      transform: translate(-50%, -50%);
+      background: #161b22; color: var(--ink);
+      border: 1px solid #2a3340; border-radius: 10px;
+      padding: 12px 16px; max-width: 280px; text-align: center;
+      font-size: 13px; line-height: 1.4;
+    }
+    #mapFail[hidden] { display: none; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <video id="arCam" playsinline autoplay muted hidden></video>
+  <canvas id="arCanvas" hidden></canvas>
+  <div id="arLayer" hidden>
+    <strong>Nearby places</strong>
+    <div id="arPins">Point the camera at Enugu.</div>
+  </div>
+  <div class="panel">
+    <h1>Lvfe · Enugu</h1>
+    <div class="sub">Walk up. Photo + put NairaCoin into the place.</div>
+    <details class="filters">
+      <summary>Filters</summary>
+      <label class="row"><input type="checkbox" id="qA" checked /><span class="swatch" style="background:#2ecc71"></span> A — photo <span class="count" id="nA">0</span></label>
+      <label class="row"><input type="checkbox" id="qB" checked /><span class="swatch" style="background:#3498db"></span> B — named <span class="count" id="nB">0</span></label>
+      <label class="row"><input type="checkbox" id="qC" checked /><span class="swatch" style="background:#f39c12"></span> C — needs a name <span class="count" id="nC">0</span></label>
+      <label class="row"><input type="checkbox" id="qD" checked /><span class="swatch" style="background:#e74c3c"></span> D — unknown building <span class="count" id="nD">0</span></label>
+      <label class="row"><input type="checkbox" id="qOut" checked /><span class="swatch" style="background:#7f8c8d"></span> Unclaimed <span class="count" id="nOut">0</span></label>
+      <label class="row"><input type="checkbox" id="showPoly" checked /><span class="poly" style="border-color:#2ecc71"></span> Neighbourhoods</label>
+    </details>
+    <label class="row"><input type="checkbox" id="toggleAr" /><span class="swatch" style="background:#e67e22"></span> AR overlay</label>
+    <label class="row"><input type="checkbox" id="toggle3d" checked /><span class="cube"></span> 3D</label>
+    <div class="sub"><a href="catalog.html">Catalog</a> · <a href="ar.html">AR</a></div>
+  </div>
+  <div class="hud" id="hud">
+    <div class="hud-wallet">
+      <div class="who" id="whoLine">Name needed to back a place.</div>
+      <div class="score">NairaCoin <strong id="ncTotal">0</strong></div>
+      <p class="iou-note" id="ncNote">demo faucet</p>
+      <p class="iou-note" id="factionLine" hidden></p>
+    </div>
+    <details class="filters" id="myPlacesWrap">
+      <summary>My places</summary>
+      <ul class="assets" id="myPlaces">None yet.</ul>
+      <p class="iou-note"><a href="catalog.html">World catalog</a> · on this phone</p>
+    </details>
+    <div class="hud-top">
+      <strong>Nearby</strong>
+      <span id="gpsLabel">Location off</span>
+    </div>
+    <div id="nearbyList">Turn on location to back nearby places.</div>
+  </div>
+  <div id="identityGate" hidden>
+    <form class="card" id="identityForm">
+      <h2>Who’s walking?</h2>
+      <p>Pick a unique name. Faction is optional — without one, places you own stay Unclaimed.</p>
+      <label>Name <input id="idName" name="playerName" required maxlength="32" autocomplete="username" /></label>
+      <label>Faction
+        <select id="idFaction" name="factionId">
+          <option value="">None yet</option>
+          <option value="independence_layout">Independence Layout</option>
+          <option value="coal_camp">Coal Camp</option>
+          <option value="abakpa">Abakpa</option>
+          <option value="emene">Emene</option>
+        </select>
+      </label>
+      <button type="submit" class="claim">Enter Enugu</button>
+    </form>
+  </div>
+  <div class="attrib">
+    © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>
+    · tiles <a href="https://openfreemap.org/">OpenFreeMap</a>
+  </div>
+  <div id="mapFail" hidden></div>
+  <div id="toast" hidden></div>
+  <script src="https://unpkg.com/maplibre-gl@5.6.1/dist/maplibre-gl.js"></script>
+  <script src="map-3d.js"></script>
+  <script src="js/claim-rules.js"></script>
+  <script src="nairacoin/protocol.js"></script>
+  <script src="nairacoin/iou-ledger.js"></script>
+  <script src="nairacoin/rpc-stub.js"></script>
+  <script src="js/nairacoin.js"></script>
+  <script src="js/place-ledger.js"></script>
+  <script src="ar-overlay.js"></script>
+  <script>
+    const QUALITY_COLOR = {
+      A: "#2ecc71",
+      B: "#3498db",
+      C: "#f39c12",
+      D: "#e74c3c",
+    };
+    const ROLE_FILL = {
+      playable_faction: 0.12,
+      prize_zone: 0.22,
+      unclaimed: 0.06,
+    };
+    const CLAIM_RADIUS_M = 80;
+    const PLACES_KEY = "lvfe.places.v1";
+    const FACTION_POOL_KEY = "lvfe.factionpool.v1";
+    const W = window.LvfeCatalogWallet;
+    const Ledger = window.LvfePlaceLedger;
+    const YIELD_RATE = Ledger.YIELD_RATE;
+    const FACTION_CUT = Ledger.FACTION_CUT;
+    const FACTION_NAMES = {
+      independence_layout: "Independence Layout",
+      coal_camp: "Coal Camp",
+      abakpa: "Abakpa",
+      emene: "Emene",
+    };
+    const EMPTY_FC = { type: "FeatureCollection", features: [] };
+
+    const params = new URLSearchParams(location.search);
+    const qLat = parseFloat(params.get("lat"));
+    const qLon = parseFloat(params.get("lon"));
+    const forcedPos = Number.isFinite(qLat) && Number.isFinite(qLon)
+      ? { lat: qLat, lon: qLon, acc: Number.isFinite(parseFloat(params.get("acc"))) ? parseFloat(params.get("acc")) : 12 }
+      : null;
+    const PLAYER_KEY = ((params.get("player") || "").trim() || "default").slice(0, 32);
+
+    let map = null;
+    let geo = null;
+    let placesFc = EMPTY_FC;
+    let userPos = forcedPos;
+    window.lvfeUserPos = userPos;
+    let activePopup = null;
+    let activePlaceId = null;
+    let toastTimer = 0;
+
+    function esc(s) {
+      return String(s).replace(/[&<>"']/g, (c) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+      }[c]));
+    }
+
+    function qualityLabel(q) {
+      return window.LvfeRules.qualityLabel(q);
+    }
+
+    function areaLabel(p) {
+      return window.LvfeRules.areaLabel(p);
+    }
+
+    function roleLabel(role) {
+      return window.LvfeRules.roleLabel(role);
+    }
+
+    function haversineM(lat1, lon1, lat2, lon2) {
+      const r = 6371000;
+      const p1 = lat1 * Math.PI / 180;
+      const p2 = lat2 * Math.PI / 180;
+      const dphi = (lat2 - lat1) * Math.PI / 180;
+      const dl = (lon2 - lon1) * Math.PI / 180;
+      const a = Math.sin(dphi / 2) ** 2 + Math.cos(p1) * Math.cos(p2) * Math.sin(dl / 2) ** 2;
+      return 2 * r * Math.asin(Math.sqrt(a));
+    }
+
+    function accuracyRing(lon, lat, radiusM, n) {
+      const coords = [];
+      const latR = radiusM / 111320;
+      const lonR = radiusM / (111320 * Math.cos(lat * Math.PI / 180) || 1);
+      const steps = n || 64;
+      for (let i = 0; i <= steps; i++) {
+        const t = (i / steps) * 2 * Math.PI;
+        coords.push([lon + lonR * Math.cos(t), lat + latR * Math.sin(t)]);
+      }
+      return { type: "Polygon", coordinates: [coords] };
+    }
+
+    function lsGet(key, fallback) {
+      try {
+        const raw = localStorage.getItem(key);
+        if (!raw) return fallback;
+        return JSON.parse(raw);
+      } catch (err) {
+        return fallback;
+      }
+    }
+
+    function lsSet(key, val) {
+      localStorage.setItem(key, JSON.stringify(val));
+    }
+
+    function identityKey(pk) { return "lvfe.identity." + (pk || PLAYER_KEY); }
+
+    function loadIdentity(pk) {
+      const o = lsGet(identityKey(pk), null);
+      if (!o || !o.playerName) return null;
+      const factionId = FACTION_NAMES[o.factionId] ? o.factionId : "";
+      return { playerName: String(o.playerName).slice(0, 32), factionId };
+    }
+
+    function saveIdentity(idn, pk) {
+      lsSet(identityKey(pk), { playerName: idn.playerName, factionId: idn.factionId || "" });
+    }
+
+    function loadWallet(pk) {
+      W.getBalance(pk || PLAYER_KEY);
+    }
+
+    function walletWhole(pk) {
+      return W.getBalance(pk || PLAYER_KEY);
+    }
+
+    function creditWallet(pk, amount) {
+      W.credit(pk, amount);
+    }
+
+    function loadPlaces() {
+      const o = lsGet(PLACES_KEY, {});
+      return o && typeof o === "object" ? o : {};
+    }
+
+    function savePlaces(all) {
+      lsSet(PLACES_KEY, all);
+    }
+
+    function emptyRec() {
+      return { value: 0, ownerId: "", ownerName: "", factionId: "", hasPhoto: false, quality: "", stakes: {} };
+    }
+
+    function placeRec(id) {
+      const all = loadPlaces();
+      const rec = all[id];
+      if (!rec || typeof rec !== "object") return emptyRec();
+      return {
+        value: Number(rec.value) || 0,
+        ownerId: rec.ownerId || "",
+        ownerName: rec.ownerName || "",
+        factionId: rec.factionId || "",
+        hasPhoto: Boolean(rec.hasPhoto),
+        quality: rec.quality || "",
+        stakes: rec.stakes && typeof rec.stakes === "object" ? rec.stakes : {},
+      };
+    }
+
+    function creditFaction(factionId, amount) {
+      if (!FACTION_NAMES[factionId] || !(amount > 0)) return;
+      const pool = lsGet(FACTION_POOL_KEY, {});
+      pool[factionId] = (Number(pool[factionId]) || 0) + amount;
+      lsSet(FACTION_POOL_KEY, pool);
+    }
+
+    function recomputeOwner(rec) {
+      let best = null;
+      for (const pid of Object.keys(rec.stakes || {})) {
+        const st = rec.stakes[pid];
+        if (!st || !(Number(st.amount) > 0)) continue;
+        const amt = Number(st.amount) || 0;
+        const firstAt = String(st.firstAt || "");
+        if (
+          !best ||
+          amt > best.amt ||
+          (amt === best.amt && firstAt < best.firstAt)
+        ) {
+          best = { pid, amt, firstAt, st };
+        }
+      }
+      if (!best) {
+        rec.ownerId = "";
+        rec.ownerName = "";
+        rec.factionId = "";
+        Ledger.syncValue(rec);
+        return rec;
+      }
+      rec.ownerId = best.pid;
+      const idn = loadIdentity(best.pid);
+      rec.ownerName = (idn && idn.playerName) || best.st.playerName || best.pid;
+      rec.factionId = (idn && idn.factionId) || "";
+      Ledger.syncValue(rec);
+      return rec;
+    }
+
+    function placeById(id) {
+      return placesFc.features.find((f) => f.properties.id === id);
+    }
+
+    function isOwnable(p) {
+      return W.ownable(p.catalog_type);
+    }
+
+    function photoRequired(p, rec) {
+      if (!isOwnable(p)) return false;
+      const mine = rec.stakes[PLAYER_KEY];
+      if (mine && mine.photo) return false;
+      return true;
+    }
+
+    function minStake(p) {
+      return W.minStake(p.claim_points, p.catalog_type);
+    }
+
+    function yieldOnStake(amount) {
+      return Ledger.yieldFromIncoming(amount);
+    }
+
+    function factionLabel(id) {
+      return FACTION_NAMES[id] || "Unclaimed";
+    }
+
+    function propertyLabel(rec) {
+      if (rec && rec.ownerId) {
+        if (rec.factionId && FACTION_NAMES[rec.factionId]) return "Property of " + FACTION_NAMES[rec.factionId];
+        return "Unclaimed";
+      }
+      return "Unclaimed";
+    }
+
+    function farmMsg() {
+      return window.LvfeRules.farmMsg();
+    }
+
+    function validPhoto(file) {
+      if (!file || !(file.size > 0)) return false;
+      if (file.type && !/^image\//.test(file.type)) return false;
+      return true;
+    }
+
+    function photoRef(file) {
+      return { name: file.name || "photo", size: file.size || 0, type: file.type || "image/*", at: new Date().toISOString() };
+    }
+
+    function toast(msg) {
+      const el = document.getElementById("toast");
+      el.textContent = msg;
+      el.hidden = false;
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => { el.hidden = true; }, 3200);
+    }
+
+    function showIdentityGate() {
+      const gate = document.getElementById("identityGate");
+      const idn = loadIdentity();
+      document.getElementById("idName").value = (idn && idn.playerName) || (PLAYER_KEY !== "default" ? PLAYER_KEY : "");
+      document.getElementById("idFaction").value = (idn && idn.factionId) || "";
+      gate.hidden = false;
+    }
+
+    function hideIdentityGate() {
+      document.getElementById("identityGate").hidden = true;
+    }
+
+    function factionPool(factionId) {
+      if (!factionId) return 0;
+      const pool = lsGet(FACTION_POOL_KEY, {});
+      return Number(pool[factionId]) || 0;
+    }
+
+    function myAssetRows() {
+      const all = loadPlaces();
+      const rows = [];
+      for (const f of placesFc.features) {
+        const rec = all[f.properties.id];
+        if (!rec || !rec.stakes) continue;
+        const st = rec.stakes[PLAYER_KEY];
+        const owned = rec.ownerId === PLAYER_KEY;
+        if (!owned && !(st && Number(st.amount) > 0)) continue;
+        rows.push({
+          id: f.properties.id,
+          name: f.properties.name,
+          owned,
+          stake: st ? Number(st.amount) || 0 : 0,
+          value: Number(rec.value) || 0,
+        });
+      }
+      rows.sort((a, b) => (b.owned - a.owned) || (b.stake - a.stake) || a.name.localeCompare(b.name));
+      return rows;
+    }
+
+    function renderHud() {
+      loadWallet();
+      const whole = walletWhole();
+      const idn = loadIdentity();
+      document.getElementById("ncTotal").textContent = String(whole);
+      const note = document.getElementById("ncNote");
+      note.textContent = W.faucetNote();
+      const facLine = document.getElementById("factionLine");
+      if (idn && idn.factionId) {
+        facLine.hidden = false;
+        facLine.textContent = FACTION_NAMES[idn.factionId] + " earns from visits · " +
+          factionPool(idn.factionId) + " NairaCoin";
+      } else {
+        facLine.hidden = true;
+      }
+      const who = document.getElementById("whoLine");
+      if (!idn) {
+        who.innerHTML = `Name needed to back a place. <button type="button" class="link" data-id-edit="1">Set name</button>`;
+      } else {
+        const fac = idn.factionId ? FACTION_NAMES[idn.factionId] : "no faction";
+        who.innerHTML = `Playing as <strong>${esc(idn.playerName)}</strong> · ${esc(fac)} · <button type="button" class="link" data-id-edit="1">edit</button>`;
+      }
+      const list = document.getElementById("myPlaces");
+      const assets = myAssetRows();
+      if (!assets.length) {
+        list.textContent = "None yet. Walk up and back a place.";
+      } else {
+        list.innerHTML = assets.map((a) =>
+          `<li><button type="button" class="near-jump" data-jump="${esc(a.id)}">` +
+          `<strong>${esc(a.name)}</strong> ${a.owned ? "owner" : "backed"} · you put in ${a.stake} · ${a.value} in this place` +
+          `</button></li>`
+        ).join("");
+      }
+    }
+
+    function setGpsLabel() {
+      const el = document.getElementById("gpsLabel");
+      if (!userPos) {
+        el.textContent = "Location off";
+        return;
+      }
+      const acc = Math.round(userPos.acc || 0);
+      el.textContent = forcedPos ? `Test location ±${acc} m` : `Location ±${acc} m`;
+    }
+
+    function placeVisible(p) {
+      const qEl = document.getElementById("q" + p.quality);
+      if (!qEl || !qEl.checked) return false;
+      if (p.territory_id === "unclaimed" && !document.getElementById("qOut").checked) return false;
+      return true;
+    }
+
+    function nearbyFeatures() {
+      if (!userPos) return [];
+      const out = [];
+      for (const f of placesFc.features) {
+        const p = f.properties;
+        if (!placeVisible(p)) continue;
+        const [lon, lat] = f.geometry.coordinates;
+        const dist = haversineM(userPos.lat, userPos.lon, lat, lon);
+        if (dist <= CLAIM_RADIUS_M) out.push({ f, dist });
+      }
+      out.sort((a, b) => a.dist - b.dist);
+      return out;
+    }
+
+    function setYouSource() {
+      if (!map || !map.getSource("you")) return;
+      if (!forcedPos || !userPos) {
+        map.getSource("you").setData(EMPTY_FC);
+        return;
+      }
+      map.getSource("you").setData({
+        type: "FeatureCollection",
+        features: [
+          {
+            type: "Feature",
+            properties: { kind: "accuracy" },
+            geometry: accuracyRing(userPos.lon, userPos.lat, userPos.acc || 12),
+          },
+          {
+            type: "Feature",
+            properties: { kind: "dot" },
+            geometry: { type: "Point", coordinates: [userPos.lon, userPos.lat] },
+          },
+        ],
+      });
+    }
+
+    function ownerLine(rec) {
+      if (rec.ownerId) {
+        return `Owner ${esc(rec.ownerName || rec.ownerId)} · ${esc(factionLabel(rec.factionId))}`;
+      }
+      return "No owner · Unclaimed";
+    }
+
+    function placeValueLine(rec, p) {
+      if (!isOwnable(p)) return "0 NairaCoin · cannot be owned";
+      return `${rec.value} NairaCoin in this place`;
+    }
+
+    function visitFormHtml(p, rec, distOk, withMeta) {
+      if (!isOwnable(p)) {
+        return `<p class="meta">${esc(farmMsg(p))}</p>`;
+      }
+      const mine = rec.stakes[PLAYER_KEY];
+      const first = !(mine && mine.amount > 0);
+      const need = first ? minStake(p) : 1;
+      const needPhoto = photoRequired(p, rec);
+      const bits = [];
+      if (withMeta) {
+        bits.push(
+          `<p class="meta">${ownerLine(rec)}<br>${esc(propertyLabel(rec))}` +
+          `<br>Cost to back this place: ${minStake(p)} NairaCoin · ${rec.value} NairaCoin in this place` +
+          (rec.ownerId && rec.ownerId !== PLAYER_KEY
+            ? `<br>Owner earns from visits` +
+              (rec.factionId ? ` · ${esc(factionLabel(rec.factionId))} gets a cut` : "")
+            : "") +
+          (mine && mine.amount ? `<br>You put in ${mine.amount}` : "") +
+          `</p>`
+        );
+      } else if (mine && mine.amount) {
+        bits.push(`<p class="meta">You put in ${mine.amount}</p>`);
+      }
+      if (!distOk) return bits.join("");
+      bits.push(`<form class="visit-form" data-place="${esc(p.id)}" data-kind="stake">`);
+      if (needPhoto) {
+        bits.push(`<input type="file" accept="image/*" capture="environment" class="photo-in" name="photo" />`);
+      } else if (mine && mine.photo) {
+        bits.push(`<span class="meta">Photo already in</span>`);
+      }
+      bits.push(`<div class="stake-row">` +
+        `<input type="number" name="amount" min="${need}" step="1" value="${first ? minStake(p) : need}" />` +
+        `<button type="submit" class="claim">${first ? "Back this place" : "Put more coins"}</button>` +
+        `</div></form>`);
+      return bits.join("");
+    }
+
+    function refreshNearby() {
+      window.lvfeUserPos = userPos;
+      setGpsLabel();
+      const near = nearbyFeatures();
+      if (map && map.getSource("nearby")) {
+        map.getSource("nearby").setData({
+          type: "FeatureCollection",
+          features: near.map((n) => n.f),
+        });
+      }
+      const box = document.getElementById("nearbyList");
+      if (!userPos) {
+        box.textContent = "Turn on location (top right) to back nearby places.";
+        return;
+      }
+      if (!near.length) {
+        box.textContent = "Walk closer.";
+        return;
+      }
+      box.innerHTML = near.map(({ f, dist }) => {
+        const p = f.properties;
+        const rec = recomputeOwner(placeRec(p.id));
+        return `<div class="near-item">` +
+          `<button type="button" class="near-jump" data-jump="${esc(p.id)}">` +
+          `<strong>${esc(p.name)}</strong>` +
+          `<span>${Math.round(dist)} m · ${esc(p.catalog_type)} · ${esc(qualityLabel(p.quality))} · ${esc(placeValueLine(rec, p))}` +
+          `<br>${esc(areaLabel(p))}</span>` +
+          `</button>${visitFormHtml(p, rec, true, true)}</div>`;
+      }).join("");
+    }
+
+    function popupBody(p, dist) {
+      const rec = recomputeOwner(placeRec(p.id));
+      const distOk = Boolean(userPos) && dist <= CLAIM_RADIUS_M;
+      const bits = [
+        `<div class="popup"><h2>${esc(p.name)}</h2>`,
+        `<div class="pts">${esc(placeValueLine(rec, p))}</div>`,
+        `<p class="own">${ownerLine(rec)}<br>${esc(propertyLabel(rec))}</p>`,
+      ];
+      if (isOwnable(p) && rec.ownerId && rec.ownerId !== PLAYER_KEY) {
+        bits.push(`<p>Owner earns from visits` +
+          (rec.factionId ? ` · ${esc(factionLabel(rec.factionId))} gets a cut` : "") +
+          `</p>`);
+      } else if (isOwnable(p)) {
+        bits.push(`<p>Cost to back this place: ${minStake(p)} NairaCoin</p>`);
+      }
+      bits.push(`<p>${esc(p.catalog_type)} · ${esc(qualityLabel(p.quality))}<br>`);
+      bits.push(`${esc(areaLabel(p))}</p>`);
+      if (!userPos) {
+        bits.push(`<p class="warn">Turn on location to visit</p>`);
+      } else if (dist > CLAIM_RADIUS_M) {
+        bits.push(`<p class="warn">${Math.round(dist)} m away — walk closer</p>`);
+        bits.push(visitFormHtml(p, rec, false, false));
+      } else {
+        bits.push(visitFormHtml(p, rec, distOk, false));
+      }
+      bits.push("</div>");
+      return bits.join("");
+    }
+
+    function openPlacePopup(feat) {
+      if (!map) return;
+      const p = feat.properties;
+      const [lon, lat] = feat.geometry.coordinates;
+      const dist = userPos ? haversineM(userPos.lat, userPos.lon, lat, lon) : Infinity;
+      if (activePopup) activePopup.remove();
+      activePlaceId = p.id;
+      activePopup = new maplibregl.Popup({ closeButton: true, maxWidth: "280px" })
+        .setLngLat([lon, lat])
+        .setHTML(popupBody(p, dist))
+        .addTo(map);
+      activePopup.on("close", () => {
+        if (activePlaceId === p.id) {
+          activePopup = null;
+          activePlaceId = null;
+        }
+      });
+    }
+
+    function applyLocalQuality(feat, rec) {
+      if (!feat || !rec) return;
+      if (rec.quality) feat.properties.quality = rec.quality;
+      if (rec.hasPhoto) feat.properties.has_photo = 1;
+    }
+
+    function paintCounts() {
+      const counts = { A: 0, B: 0, C: 0, D: 0, Out: 0 };
+      for (const f of placesFc.features) {
+        const q = f.properties.quality;
+        if (counts[q] != null) counts[q] += 1;
+        if (f.properties.territory_id === "unclaimed") counts.Out += 1;
+      }
+      document.getElementById("nA").textContent = counts.A;
+      document.getElementById("nB").textContent = counts.B;
+      document.getElementById("nC").textContent = counts.C;
+      document.getElementById("nD").textContent = counts.D;
+      document.getElementById("nOut").textContent = counts.Out;
+    }
+
+    function refreshPlaceSource() {
+      if (map && map.getSource("places")) map.getSource("places").setData(placesFc);
+    }
+
+    function visitPlace(id, opts) {
+      const feat = placeById(id);
+      if (!feat) return;
+      const p = feat.properties;
+      const [lon, lat] = feat.geometry.coordinates;
+      const idn = loadIdentity();
+      if (!idn) {
+        showIdentityGate();
+        toast("Set your name first.");
+        return;
+      }
+      if (!userPos) {
+        toast("Turn on location to visit.");
+        return;
+      }
+      const dist = haversineM(userPos.lat, userPos.lon, lat, lon);
+      if (dist > CLAIM_RADIUS_M) {
+        toast(`${Math.round(dist)} m away — walk closer`);
+        return;
+      }
+
+      if (!isOwnable(p)) {
+        toast(farmMsg(p));
+        refreshNearby();
+        if (activePlaceId === id) openPlacePopup(feat);
+        return;
+      }
+
+      const rec = placeRec(id);
+      const mine = rec.stakes[PLAYER_KEY] || null;
+      const first = !(mine && mine.amount > 0);
+      const needPhoto = photoRequired(p, rec);
+      const file = opts && opts.file;
+      if (needPhoto && !validPhoto(file)) {
+        toast("Take a photo of this place.");
+        return;
+      }
+      const amount = Math.floor(Number(opts && opts.amount));
+      const need = first ? minStake(p) : 1;
+      if (!Number.isFinite(amount) || amount < need) {
+        toast(`Need ${need} NairaCoin to back this place.`);
+        return;
+      }
+      loadWallet();
+      if (walletWhole() < amount) {
+        toast(`Need ${amount} NairaCoin · you have ${walletWhole()}.`);
+        return;
+      }
+
+      if (!W.debit(PLAYER_KEY, amount)) {
+        toast(`Need ${amount} NairaCoin · you have ${walletWhole()}.`);
+        return;
+      }
+
+      const split = Ledger.applyIncomingStake(rec, {
+        visitorId: PLAYER_KEY,
+        visitorName: idn.playerName,
+        amount,
+        photo: validPhoto(file) ? photoRef(file) : null,
+      });
+      if (split.ownerPaid) creditWallet(split.prevOwner, split.ownerPaid);
+      if (split.factionPaid) {
+        if (split.factionId && FACTION_NAMES[split.factionId]) {
+          creditFaction(split.factionId, split.factionPaid);
+        } else if (split.prevOwner) {
+          creditWallet(split.prevOwner, split.factionPaid);
+        }
+      }
+
+      let promoted = false;
+      if (validPhoto(file)) {
+        rec.hasPhoto = true;
+        if (p.quality === "B") {
+          rec.quality = "A";
+          p.quality = "A";
+          promoted = true;
+        }
+        p.has_photo = 1;
+      }
+
+      recomputeOwner(rec);
+      const all = loadPlaces();
+      all[id] = rec;
+      savePlaces(all);
+
+      paintCounts();
+      refreshPlaceSource();
+      renderHud();
+      refreshNearby();
+      openPlacePopup(feat);
+
+      const youOwn = rec.ownerId === PLAYER_KEY;
+      const parts = [`Put ${split.intoPlace} NairaCoin into this place`];
+      if (youOwn) parts.push(first || split.prevOwner !== PLAYER_KEY ? "you own this place" : "still yours");
+      else parts.push(`owner ${rec.ownerName}`);
+      if (split.yieldPaid) {
+        parts.push(`owner earns ${split.ownerPaid}`);
+        if (split.factionPaid) parts.push(`${split.factionPaid} to neighbourhood`);
+      }
+      if (promoted) parts.push("photo");
+      toast(parts.join(" · ") + " · " + p.name);
+    }
+
+    function setFilter() {
+      if (!map || !layersReady) {
+        refreshNearby();
+        return;
+      }
+      const qs = ["A", "B", "C", "D"].filter((q) => document.getElementById("q" + q).checked);
+      const includeOut = document.getElementById("qOut").checked;
+      const visPoly = document.getElementById("showPoly").checked;
+      map.setLayoutProperty("territories-fill", "visibility", visPoly ? "visible" : "none");
+      map.setLayoutProperty("territories-line", "visibility", visPoly ? "visible" : "none");
+      map.setLayoutProperty("territories-label", "visibility", visPoly ? "visible" : "none");
+      const parts = ["all", ["in", ["get", "quality"], ["literal", qs.length ? qs : ["__none__"]]]];
+      if (!includeOut) parts.push(["!=", ["get", "territory_id"], "unclaimed"]);
+      map.setFilter("places-circles", parts);
+      refreshNearby();
+    }
+
+    document.addEventListener("click", (e) => {
+      const edit = e.target.closest("[data-id-edit]");
+      if (edit) {
+        e.preventDefault();
+        showIdentityGate();
+        return;
+      }
+      const jump = e.target.closest("[data-jump]");
+      if (jump) {
+        const arBox = document.getElementById("toggleAr");
+        if (arBox && arBox.checked) {
+          arBox.checked = false;
+          if (typeof lvfeArStop === "function") lvfeArStop();
+        }
+        const feat = placeById(jump.getAttribute("data-jump"));
+        if (!feat) return;
+        if (map) map.flyTo({ center: feat.geometry.coordinates, zoom: Math.max(map.getZoom(), 16.2) });
+        openPlacePopup(feat);
+      }
+    });
+
+    document.addEventListener("submit", (e) => {
+      const ident = e.target.closest("#identityForm");
+      if (ident) {
+        e.preventDefault();
+        const name = document.getElementById("idName").value.trim().slice(0, 32);
+        const factionId = document.getElementById("idFaction").value;
+        if (!name) {
+          toast("A unique name is required.");
+          return;
+        }
+        saveIdentity({ playerName: name, factionId: FACTION_NAMES[factionId] ? factionId : "" });
+        hideIdentityGate();
+        renderHud();
+        refreshNearby();
+        if (activePlaceId) {
+          const feat = placeById(activePlaceId);
+          if (feat) openPlacePopup(feat);
+        }
+        return;
+      }
+      const form = e.target.closest(".visit-form");
+      if (!form) return;
+      e.preventDefault();
+      const id = form.getAttribute("data-place");
+      const fileInput = form.querySelector('input[type="file"]');
+      const amtInput = form.querySelector('input[name="amount"]');
+      visitPlace(id, {
+        amount: amtInput ? amtInput.value : 0,
+        file: fileInput && fileInput.files && fileInput.files[0] ? fileInput.files[0] : null,
+      });
+    });
+
+    let territoriesFc = null;
+    let layersReady = false;
+    let mapFailTimer = 0;
+
+    function showMapFail(msg) {
+      const el = document.getElementById("mapFail");
+      if (!el) return;
+      el.hidden = false;
+      el.textContent = msg;
+    }
+
+    function clearMapFail() {
+      if (mapFailTimer) {
+        clearTimeout(mapFailTimer);
+        mapFailTimer = 0;
+      }
+      const el = document.getElementById("mapFail");
+      if (el) el.hidden = true;
+    }
+
+    function basemapReady() {
+      try {
+        const s = map && map.getStyle && map.getStyle();
+        return Boolean(s && Array.isArray(s.layers) && s.layers.length);
+      } catch (err) {
+        return false;
+      }
+    }
+
+    /** Drop Liberty POI/amenity labels so catalog pins are the only shops/food/banks. Keep road names. */
+    function isOsmPoiLabelLayer(id) {
+      return id.indexOf("poi_") === 0 || id === "label_other" || id === "label_village";
+    }
+
+    function stripOsmPoiLayers(prev, next) {
+      if (!next || !Array.isArray(next.layers)) return next;
+      next.layers = next.layers.filter((layer) => {
+        const id = layer && layer.id ? layer.id : "";
+        return !isOsmPoiLabelLayer(id);
+      });
+      return next;
+    }
+
+    function hideOsmPoiLabels() {
+      if (!map || !map.getStyle) return;
+      const layers = map.getStyle().layers || [];
+      for (let i = 0; i < layers.length; i++) {
+        const layer = layers[i];
+        if (!layer || layer.type !== "symbol") continue;
+        if (!isOsmPoiLabelLayer(layer.id || "")) continue;
+        try { map.setLayoutProperty(layer.id, "visibility", "none"); } catch (err) { /* gone */ }
+      }
+    }
+
+    function bootstrapIdentity() {
+      const qName = (params.get("player") || "").trim();
+      const qFac = (params.get("faction") || "").trim();
+      let idn = loadIdentity();
+      if (!idn && qName) {
+        idn = {
+          playerName: qName.slice(0, 32),
+          factionId: FACTION_NAMES[qFac] ? qFac : "",
+        };
+        saveIdentity(idn);
+      } else if (idn && qFac && FACTION_NAMES[qFac] && !idn.factionId) {
+        idn.factionId = qFac;
+        saveIdentity(idn);
+      }
+      if (!idn) showIdentityGate();
+      else hideIdentityGate();
+      loadWallet();
+      renderHud();
+    }
+
+    bootstrapIdentity();
+    setGpsLabel();
+    if (userPos) {
+      document.getElementById("nearbyList").textContent = "Loading catalog…";
+    }
+    ["qA", "qB", "qC", "qD", "qOut", "showPoly"].forEach((id) => {
+      document.getElementById(id).addEventListener("change", setFilter);
+    });
+
+    const dataReady = Promise.all([
+      fetch("/geojson/enugu-factions.geojson").then((r) => r.json()),
+      fetch("/data/places.geojson").then((r) => r.json()),
+    ]).then(([territories, places]) => {
+      territoriesFc = territories;
+      placesFc = places;
+      const stored = loadPlaces();
+      for (const f of places.features) {
+        const rec = stored[f.properties.id];
+        if (rec) applyLocalQuality(f, rec);
+      }
+      paintCounts();
+      refreshNearby();
+      ensureLayers();
+    }).catch(() => {
+      document.getElementById("nearbyList").textContent =
+        "Places didn’t load. Open this from the Lvfe site.";
+    });
+
+    function ensureLayers() {
+      if (!map || layersReady || !territoriesFc || !basemapReady()) return;
+      const territories = territoriesFc;
+      const places = placesFc;
+      layersReady = true;
+
+      map.addSource("territories", { type: "geojson", data: territories });
+      map.addSource("places", { type: "geojson", data: places });
+      map.addSource("nearby", { type: "geojson", data: EMPTY_FC });
+      map.addSource("you", { type: "geojson", data: EMPTY_FC });
+
+      map.addLayer({
+        id: "territories-fill",
+        type: "fill",
+        source: "territories",
+        paint: {
+          "fill-color": ["get", "color"],
+          "fill-opacity": [
+            "match",
+            ["get", "role"],
+            "playable_faction", 0.14,
+            "prize_zone", 0.24,
+            "unclaimed", 0.07,
+            0.08,
+          ],
+        },
+      });
+      map.addLayer({
+        id: "territories-line",
+        type: "line",
+        source: "territories",
+        paint: {
+          "line-color": ["get", "color"],
+          "line-width": [
+            "match",
+            ["get", "role"],
+            "prize_zone", 2.5,
+            "playable_faction", 1.8,
+            1.1,
+          ],
+        },
+      });
+      map.addLayer({
+        id: "territories-label",
+        type: "symbol",
+        source: "territories",
+        layout: {
+          "text-field": ["get", "name"],
+          "text-size": 12,
+          "text-font": ["Noto Sans Regular"],
+        },
+        paint: { "text-color": "#1a1a1a", "text-halo-color": "#fff", "text-halo-width": 1.2 },
+      });
+      map.addLayer({
+        id: "you-accuracy",
+        type: "fill",
+        source: "you",
+        filter: ["==", ["get", "kind"], "accuracy"],
+        paint: { "fill-color": "#1d8cff", "fill-opacity": 0.18 },
+      });
+      map.addLayer({
+        id: "places-circles",
+        type: "circle",
+        source: "places",
+        paint: {
+          "circle-radius": [
+            "interpolate", ["linear"], ["zoom"],
+            11, 2.2,
+            14, 5,
+            16, 8,
+          ],
+          "circle-color": [
+            "case",
+            ["==", ["get", "territory_id"], "unclaimed"], "#7f8c8d",
+            [
+              "match",
+              ["get", "quality"],
+              "A", QUALITY_COLOR.A,
+              "B", QUALITY_COLOR.B,
+              "C", QUALITY_COLOR.C,
+              "D", QUALITY_COLOR.D,
+              "#7f8c8d",
+            ],
+          ],
+          "circle-stroke-width": 0.6,
+          "circle-stroke-color": "#0e1116",
+          "circle-opacity": 0.9,
+        },
+      });
+      map.addLayer({
+        id: "places-nearby",
+        type: "circle",
+        source: "nearby",
+        paint: {
+          "circle-radius": 12,
+          "circle-color": "#5dade2",
+          "circle-opacity": 0.12,
+          "circle-stroke-width": 2,
+          "circle-stroke-color": "#5dade2",
+        },
+      });
+      map.addLayer({
+        id: "you-dot",
+        type: "circle",
+        source: "you",
+        filter: ["==", ["get", "kind"], "dot"],
+        paint: {
+          "circle-radius": 7,
+          "circle-color": "#1d8cff",
+          "circle-stroke-width": 2,
+          "circle-stroke-color": "#ffffff",
+        },
+      });
+
+      map.on("click", "places-circles", (e) => {
+        const id = e.features[0].properties.id;
+        const feat = placeById(id);
+        if (feat) openPlacePopup(feat);
+      });
+      map.on("mouseenter", "places-circles", () => { map.getCanvas().style.cursor = "pointer"; });
+      map.on("mouseleave", "places-circles", () => { map.getCanvas().style.cursor = ""; });
+
+      setFilter();
+      setYouSource();
+      refreshNearby();
+      hideOsmPoiLabels();
+      clearMapFail();
+      if (!forcedPos) {
+        try { geo.trigger(); } catch (err) { /* GeolocateControl not ready is non-fatal */ }
+      }
+    }
+
+    function attachWhenStyleReady() {
+      dataReady.then(() => ensureLayers());
+    }
+
+    if (typeof maplibregl === "undefined") {
+      showMapFail("Map library didn’t load. Check the network and reload.");
+    } else try {
+      map = new maplibregl.Map({
+        container: "map",
+        style: "https://tiles.openfreemap.org/styles/liberty",
+        transformStyle: stripOsmPoiLayers,
+        center: forcedPos ? [forcedPos.lon, forcedPos.lat] : [7.515, 6.45],
+        zoom: forcedPos ? 16.4 : 12.2,
+        pitch: 52,
+        maxPitch: 85,
+        bearing: -16,
+        dragRotate: true,
+        touchPitch: true,
+        pitchWithRotate: true,
+        canvasContextAttributes: { antialias: true },
+        attributionControl: false,
+      });
+      map.on("styleimagemissing", (e) => {
+        if (!e || !e.id || map.hasImage(e.id)) return;
+        try {
+          map.addImage(e.id, { width: 1, height: 1, data: new Uint8Array(4) });
+        } catch (err) { /* already added */ }
+      });
+      if (typeof lvfeEnable3d === "function") lvfeEnable3d(map);
+      if (typeof lvfeEnableAr === "function") {
+        lvfeEnableAr({
+          getNearby: nearbyFeatures,
+          onFail: (msg) => toast(msg),
+        });
+      }
+      window.lvfeMap = map;
+      window.openPlacePopup = openPlacePopup;
+      window.placeById = placeById;
+      window.visitPlace = visitPlace;
+      map.addControl(new maplibregl.NavigationControl(), "top-right");
+      geo = new maplibregl.GeolocateControl({
+        positionOptions: { enableHighAccuracy: true, timeout: 12000 },
+        trackUserLocation: true,
+        showAccuracyCircle: true,
+        showUserLocation: true,
+      });
+      map.addControl(geo, "top-right");
+      geo.on("geolocate", (e) => {
+        if (forcedPos) return;
+        userPos = {
+          lat: e.coords.latitude,
+          lon: e.coords.longitude,
+          acc: e.coords.accuracy || 0,
+        };
+        window.lvfeUserPos = userPos;
+        refreshNearby();
+      });
+      geo.on("error", () => {
+        if (!forcedPos) {
+          userPos = null;
+          window.lvfeUserPos = null;
+          setGpsLabel();
+          document.getElementById("nearbyList").textContent =
+            "Location blocked. Allow location, or walk with a phone.";
+        }
+      });
+      map.on("style.load", attachWhenStyleReady);
+      map.on("load", attachWhenStyleReady);
+      map.on("error", (e) => {
+        const msg = (e && e.error && (e.error.message || String(e.error))) || "";
+        if (/Could not load image|styleimagemissing|AbortError/i.test(msg)) return;
+        if (!basemapReady() && /fetch|network|Failed|style|openfreemap/i.test(msg)) {
+          showMapFail("Basemap didn’t load. Check the network and reload.");
+        }
+        if (placesFc.features.length && userPos) refreshNearby();
+      });
+      mapFailTimer = setTimeout(() => {
+        if (!basemapReady()) {
+          showMapFail("Basemap didn’t load. Check the network and reload.");
+          return;
+        }
+        attachWhenStyleReady();
+      }, 8000);
+    } catch (err) {
+      showMapFail("Map failed to start. Reload.");
+      if (userPos) refreshNearby();
+    }
+  </script>
+</body>
+</html>
