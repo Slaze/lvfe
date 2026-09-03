@@ -104,8 +104,33 @@ Location-based territorial game. World data from OpenStreetMap (no paid Google M
 - 2026-09-03: Critic/builder — skipped-request audit; splash + main menu; Nord dark-glass chrome; Google signed-in hides Sign-in CTA; catalog/rules/assets remodeled so gold-seal destinations no longer dump into old flat UI.
 - 2026-09-03: Nord reinstall ships `lvfe-mark-512.png` in www bundle; menu screencap confirms gold/green seal (`lastUpdateTime=2026-09-03 10:03:05`).
 - 2026-09-03: Game activity notifications + Wallet/Earn/Rankings/Analytics hub; Bid to overturn; NCN copy; sibling map chrome kept.
+- 2026-09-03: Overlay/layout audit — `box-sizing:border-box`, menu clip, dossier peek/expand px heights, FAB/toast chrome bottom; Nord CDP + screencaps.
 
 ## Sessions
+
+### 2026-09-03 — Overlay / layout audit + fix (Nord)
+
+**Goal:** Fix overlay/box/text layout across splash/menu, account, dossier 34/70, map FABs, track chip, nord-shell pages; merge sibling map+hub work; verify on Nord `bea6919f`.
+
+**P0s found → fixed:**
+1. **Menu button width overflow** — `width:100%` + padding without `box-sizing` made rows spill past `.menu-panel` (ghost edges). Global `box-sizing:border-box` in `nord-shell.css` / `index.html` / `lvfe.css`; menu panel `overflow:hidden`.
+2. **Dossier expand stuck at peek height** — class swap to `.doc-exp` kept used ~34vh. `setSheet` now sets **pixel** height/min/max (`0.34` / `0.70 * innerHeight`, floor 160); CSS `#sheet.doc` / `#sheet.doc-exp` `!important` + drop height transitions.
+3. **Hit targets & secondary chrome** — nav/nord pills and catalog dossier bar → **≥44px**; filters/pager min-height 44.
+4. **Toast vs gold/FABs** — `#toast` uses `--lvfe-chrome-bottom` from `layoutFabs` (gold + FABs share bottom).
+5. **Dossier/account text** — flex `min-height:0`, `overflow-wrap`, tab row scroll; account sheet scroll flex; track chip wrap + padding.
+
+**Preserved siblings:** gold hang bottom-left, search magnifier, bus/OSRM alts/NCN (`2a93a78`); Wallet/Earn/Rankings/Analytics + notify (`f9cf927`). No game-logic rewrite.
+
+**How verified (Nord `bea6919f`, CSS ~424×882):**
+- CDP: `menuFit:true`, `boxSizing:border-box`, peek **300** / expand **617**, `fabsAbove:true`, idle sheet `display:none`, map full-bleed, `lvfeFitMap` function, gold≠fabs collision, account open h≈635 rows 48px, tabs 44px, `bodyOW:false`.
+- Screencaps: `_state/layout-audit/60-splash.png` … `66-idle.png`.
+- `assembleDebug` + `adb install -r` + force-stop; **`lastUpdateTime=2026-09-03 10:16:10`**.
+
+**Current state:** Layout P0s closed on installed APK. Pocket-mode OS overlay can blank screencaps if proximity trips — dismiss circles / keep device awake for visual QA.
+
+**Next steps:** Optional track-chip copy shorten; rename local “The Architect”; Android OAuth if fresh Gmail fails.
+
+**Blockers / risks:** Device Pocket Mode / sleep can make `innerHeight` 0 mid-CDP (px heights mitigate).
 
 ### 2026-09-03 — Game notifications, Wallet/Earn, rankings, analytics (P0)
 
