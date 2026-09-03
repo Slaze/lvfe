@@ -221,10 +221,10 @@ Location-based territorial game. World data from OpenStreetMap (no paid Google M
 **How verified:**
 - `node scripts/test_game_economy.js`, `test_pass_toll_marks.js`, `test_track_layers.js` ok.
 - Dossier smoke: Place file / Money desk / Field wallet / Property Asset sighted present.
-- Nord `bea6919f` reinstall **`lastUpdateTime=2026-09-03 12:05:48`** (later notify-voice ship **12:08:44**).
+- Nord `bea6919f` reinstall **`lastUpdateTime=2026-09-03 12:13:03`**.
 - CDP screencaps `_state/voice-audit/01-place-tab.png`, `02-money-tab.png`, `03-wallet-hub.png`.
 - PWA FTP deploy; live `game-voice.js` / “Asset sighted”; `sw.js` CACHE v6.
-- Landed with notify cleanup in commit **`09735fd`** (plus recap **`308c86c`**).
+- Feature body in **`09735fd`**; follow-up titles/Mission CSS/recap **`91d5674`**.
 
 **Current state:** Voice pass live on Nord + PWA. Mission briefing coexists. Map/sync/thumbs/username lock untouched intentionally.
 
