@@ -76,5 +76,6 @@ Path `/lvfe/` is **not** part of the origin. See `docs/PWA.md`.
 
 - PWA: `https://iconiaglobal.com/lvfe/` — `docs/PWA.md`
 - Save API: `https://iconiaglobal.com/lvfe-save`
+- **Username permanence + location factions:** `docs/ACCOUNT.md`
 - Cookie policy (site footer, not required for this OAuth row): `https://iconiaglobal.com/pages/cookie-policy`
 - App package: `com.lvfe.xperience`

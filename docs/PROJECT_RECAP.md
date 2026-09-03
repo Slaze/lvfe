@@ -54,9 +54,8 @@ Location-based territorial game. World data from OpenStreetMap (no paid Google M
 - `web/map-3d.js` / `web/map-3d.css` — **one** `#btn3d` switch (green only when live 3D: pitch ~52 + terrain). Tap 3D from idle 12.2 → pitch 52 **and zoom ≥ 14.2**. Every OSM footprint is a box (tagged height/levels; untagged **OMT 5 m**; cap 80). **SAT-off opacity 1** (solid box city). **SAT+3D opacity 0.35** (ghost walls so draped Esri roofs read). SAT restacks above Liberty beige, under extrusion, under pins. 2D `building` fill hidden while extruded. No skip-filter. Terrain **1.0×** + sky; DEM fail → banner, switch off, stay flat. Labels `text-pitch-alignment: viewport`. Pins billboard (X/circle); no −16 px; no chimney poles. NavigationControl `visualizePitch` off. No Google 3D SKU. No Three.js.
 - `data/places.geojson` — typed pins. Place value/owner live in `lvfe.places.v1`.
 - `web/js/lvfe-assets.js` — URL helper for repo-root python (`/data`), APK `appassets…/www/`, and HTTPS PWA under `/lvfe/`.
-- `web/manifest.webmanifest` + `web/sw.js` + `web/js/pwa-register.js` + `web/js/pwa-install.js` + `web/install.html` — installable PWA (Nord dark theme, standalone). In-app install banner (Chromium `beforeinstallprompt` / iOS Share guide); SW caches shell; network-first for HTML/CSS/JS + `lvfe-save` / tiles / GIS. **SW skipped** when `LvfeNative` or appassets WebView. Cache id **`lvfe-shell-v4`**. Theme CSS: `web/css/nord-shell-v2.css` (cache-bust rename).
+- `web/manifest.webmanifest` + `web/sw.js` + `web/js/pwa-register.js` + `web/js/pwa-install.js` + `web/install.html` — installable PWA (Nord dark theme, standalone). In-app install banner (Chromium `beforeinstallprompt` / iOS Share guide); SW caches shell; network-first for HTML/CSS/JS + `lvfe-save` / tiles / GIS. **SW skipped** when `LvfeNative` or appassets WebView. Cache id **`lvfe-shell-v5`**. Theme CSS: `web/css/nord-shell-v2.css` (cache-bust rename).
 - `hosting/lvfe/` + `scripts/stage_pwa.sh` / `deploy_pwa.sh` — deploy tree to **`https://iconiaglobal.com/lvfe/`** (FTP Iconia). Apex `.htaccess` pass-through includes `lvfe`. Docs: `docs/PWA.md`.
-- `docs/OAUTH_CONSENT.md` — consent + **Authorized JavaScript origins** for GIS (`https://iconiaglobal.com`, …).
 - `android/` — debug WebView APK (`com.lvfe.xperience`, minSdk 24). `sync-www.sh` bundles `web/` + `data/places.geojson` + `data/catalog.json` + `geojson/enugu-factions.geojson` + MapLibre JS/CSS. OpenFreeMap tiles still need the network. No Google Maps SDK. Not the Don Maseratte shop.
 
 ## Inception → now timeline
@@ -126,8 +125,34 @@ Location-based territorial game. World data from OpenStreetMap (no paid Google M
 - 2026-09-03: PWA deployed live to **`https://iconiaglobal.com/lvfe/`** (FTP; apex `lvfe` pass-through; GIS origins documented).
 - 2026-09-03: PWA install prompt + `install.html` guide; co-landed iOS menu/Nord translucent fixes (sibling); SW **`lvfe-shell-v4`**.
 - 2026-09-03: Place dossier layout overlap fixed (flex head + 2-line clamp); place snapshot thumbs via **Esri World Imagery** + Wikipedia geosearch upgrade (`place-thumb.js`).
+- 2026-09-03: **Username permanent** (Google-bound on save API) + **location-based factions** (OSM local build outside Enugu; Enugu four canonical); SW **`lvfe-shell-v5`**.
 
 ## Sessions
+
+### 2026-09-03 — P0 username lock + location factions
+
+**Goal:** (1) Username permanent and bound to Google `sub` forever (server + client). (2) Factions from device GPS / local OSM “build map” like Enugu; keep Enugu four + 1044 catalog as canonical in bbox. Redeploy PWA + PHP save; Nord reinstall; commit+push. Merge carefully with dossier thumbs / iOS PWA / install guide siblings.
+
+**What changed:**
+- Client: `account.js` `nameLocked` / `assertCanSetName`; identity gate read-only name; account UI lock; migrate existing names.
+- Server: `server/username-lock.js` + Node PUT enforcement; PHP `hosting/lvfe-save/index.php` same `username-map.json` rules (`username_locked` / `username_taken`).
+- Factions: `web/js/local-factions.js` — Enugu canonical four; Lagos/elsewhere Overpass place/suburb/neighbourhood (3–6, prize_zone analog); travel keeps chapter; fail soft generic quarters + hinterland.
+- `index.html` faction picker filled from GPS region; SW **`lvfe-shell-v5`**.
+- Docs: `docs/ACCOUNT.md`; OAUTH + this recap.
+- Tests: `scripts/test_username_lock.js`, `scripts/test_local_factions.js`; account test updated for wired OAuth + lock.
+
+**Why:** Product rules — usernames are forever identity once chosen; factions must follow the player’s city, not only Enugu developer start.
+
+**How verified:**
+- `node scripts/test_username_lock.js` — client rename reject + server `username_locked` / `username_taken`.
+- `node scripts/test_local_factions.js` — Enugu four; Lagos mock OSM → local list; travel chapter kept.
+- `node scripts/test_account_photo_field.js` + `node server/test.js` + `php -l hosting/lvfe-save/index.php`.
+
+**Current state:** See commit hash after push; PWA/PHP/Nord deploy status in How verified / blockers.
+
+**Next steps:** Confirm live PWA `?lat=6.52&lon=3.38` shows local factions; Enugu GPS shows original four; Google sync rejects rename.
+
+**Blockers / risks:** Overpass rate limits; sparse OSM → generic quarters; guest names not cloud-locked until Google + sync.
 
 ### 2026-09-03 — Place dossier overlap + place snapshot thumbs (P0)
 

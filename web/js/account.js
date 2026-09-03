@@ -48,6 +48,129 @@
     return ("g" + (s || "user")).slice(0, 32);
   }
 
+  /** True when playerName was invented from the Google playerKey (boot bug). */
+  function isPlaceholderGoogleName(name, playerKey) {
+    const n = String(name || "").trim();
+    const pk = String(playerKey || "").trim();
+    if (!n || !pk) return false;
+    return n === pk && /^g[0-9]{8,}$/.test(n);
+  }
+
+  function looksLikeGooglePlayerKey(pk) {
+    return /^g[0-9]{8,}$/.test(String(pk || "").trim());
+  }
+
+  /** Guest/default/slug progress worth merging into g{sub}. */
+  function hasLocalProgress(playerKey) {
+    const pk = String(playerKey || "").slice(0, 32);
+    if (!pk) return false;
+    const idn = lsGet(IDENTITY_PREFIX + pk, null);
+    if (idn && idn.playerName && !isPlaceholderGoogleName(idn.playerName, pk)) return true;
+    const places = lsGet(PLACES_KEY, {});
+    const ids = places && typeof places === "object" ? Object.keys(places) : [];
+    for (let i = 0; i < ids.length; i++) {
+      const rec = places[ids[i]];
+      if (!rec || typeof rec !== "object") continue;
+      if (rec.ownerId === pk) return true;
+      if (rec.stakes && rec.stakes[pk]) return true;
+    }
+    const wallet = lsGet(walletKeys(pk), null);
+    if (wallet && typeof wallet === "object") {
+      const atomic = Number(wallet.atomic);
+      if (Number.isFinite(atomic) && atomic > 0) {
+        /* Demo faucet alone is weak signal; still migrate if identity or stakes exist.
+           Faucet-only guest → allow migrate so NCN follows the Google key. */
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * One-shot move of local guest/slug progress onto canonical g{sub}.
+   * Rewrites identity (if target empty/placeholder), wallet (max atomic), place stakes/ownerId.
+   */
+  function migrateLocalPlayer(fromPk, toPk, opts) {
+    const from = String(fromPk || "").slice(0, 32);
+    const to = String(toPk || "").slice(0, 32);
+    const o = opts || {};
+    if (!from || !to || from === to) return { ok: true, skipped: true };
+
+    const fromId = lsGet(IDENTITY_PREFIX + from, null);
+    let toId = lsGet(IDENTITY_PREFIX + to, null);
+    const googleSub = String(o.googleSub || (fromId && fromId.googleSub) || (toId && toId.googleSub) || "").trim();
+    const email = String(o.email || (fromId && fromId.email) || (toId && toId.email) || "").slice(0, 128);
+
+    if (fromId && fromId.playerName && !isPlaceholderGoogleName(fromId.playerName, from)) {
+      if (!toId || !toId.playerName || isPlaceholderGoogleName(toId.playerName, to)) {
+        toId = lockIdentityFields(Object.assign({}, toId || {}, fromId, {
+          googleSub: googleSub || fromId.googleSub || "",
+          email: email || fromId.email || "",
+        }));
+        lsSet(IDENTITY_PREFIX + to, toId);
+      } else if (googleSub || email) {
+        toId = lockIdentityFields(Object.assign({}, toId, {
+          googleSub: googleSub || toId.googleSub || "",
+          email: email || toId.email || "",
+        }));
+        lsSet(IDENTITY_PREFIX + to, toId);
+      }
+    } else if (toId && (googleSub || email)) {
+      lsSet(IDENTITY_PREFIX + to, lockIdentityFields(Object.assign({}, toId, {
+        googleSub: googleSub || toId.googleSub || "",
+        email: email || toId.email || "",
+        playerName: isPlaceholderGoogleName(toId.playerName, to) ? (toId.playerName || "") : toId.playerName,
+      })));
+    }
+
+    const fromW = lsGet(walletKeys(from), null);
+    const toW = lsGet(walletKeys(to), null);
+    if (fromW && typeof fromW === "object") {
+      if (!toW) {
+        lsSet(walletKeys(to), fromW);
+      } else {
+        const fa = Number(fromW.atomic) || 0;
+        const ta = Number(toW.atomic) || 0;
+        lsSet(walletKeys(to), Object.assign({}, toW, {
+          atomic: Math.max(fa, ta),
+          faucetGranted: Boolean(toW.faucetGranted || fromW.faucetGranted),
+        }));
+      }
+    }
+
+    const places = lsGet(PLACES_KEY, {});
+    let placesChanged = false;
+    if (places && typeof places === "object") {
+      Object.keys(places).forEach(function (id) {
+        const rec = places[id];
+        if (!rec || typeof rec !== "object") return;
+        if (rec.ownerId === from) {
+          rec.ownerId = to;
+          placesChanged = true;
+        }
+        if (rec.stakes && rec.stakes[from]) {
+          const moved = rec.stakes[from];
+          if (rec.stakes[to]) {
+            rec.stakes[to] = Object.assign({}, rec.stakes[to], {
+              amount: (Number(rec.stakes[to].amount) || 0) + (Number(moved.amount) || 0),
+            });
+          } else {
+            rec.stakes[to] = moved;
+          }
+          delete rec.stakes[from];
+          placesChanged = true;
+        }
+      });
+      if (placesChanged) lsSet(PLACES_KEY, places);
+    }
+
+    if (googleSub) {
+      bindGoogle(googleSub, email, to, o.photoUrl || "");
+    }
+
+    return { ok: true, from: from, to: to, migrated: true, placesChanged: placesChanged };
+  }
+
   function normalizeName(name) {
     return String(name || "").trim().slice(0, 32);
   }
@@ -86,6 +209,53 @@
       if (nameKey(rows[i].playerName) === want) return true;
     }
     return false;
+  }
+
+  /** Once a username is set it is permanent (migrate: any existing name → locked). */
+  function isNameLocked(idn) {
+    if (!idn || !normalizeName(idn.playerName)) return false;
+    if (idn.nameLocked === false) return false;
+    return true;
+  }
+
+  /**
+   * Fail loud if renaming a locked profile.
+   * Guest: still unique on device. Cloud permanence requires Google + save API.
+   */
+  function assertCanSetName(pk, newName, opts) {
+    const o = opts || {};
+    const next = normalizeName(newName);
+    if (!next) {
+      return { ok: false, code: "name_required", error: "A unique name is required." };
+    }
+    const cur = lsGet(IDENTITY_PREFIX + String(pk || "").slice(0, 32), null);
+    if (cur && isNameLocked(cur)) {
+      if (nameKey(cur.playerName) !== nameKey(next)) {
+        return {
+          ok: false,
+          code: "username_locked",
+          error: "Username is permanent and cannot be changed" +
+            (cur.googleSub || o.googleSub
+              ? " (bound to your Google account)."
+              : ". Link Google + cloud save to lock it across devices."),
+          lockedName: cur.playerName,
+        };
+      }
+    }
+    const except = o.creating ? "" : String(pk || "").slice(0, 32);
+    if (nameTaken(next, except || undefined)) {
+      return { ok: false, code: "username_taken", error: "That name is taken on this phone. Pick another." };
+    }
+    return { ok: true, name: next, locked: true };
+  }
+
+  function lockIdentityFields(idn) {
+    const row = idn && typeof idn === "object" ? Object.assign({}, idn) : {};
+    if (normalizeName(row.playerName)) {
+      row.nameLocked = true;
+      row.nameLockedAt = row.nameLockedAt || new Date().toISOString();
+    }
+    return row;
   }
 
   function slugFromName(name) {
@@ -238,7 +408,7 @@
     const ident = pack.identity && typeof pack.identity === "object" ? pack.identity : {};
     Object.keys(ident).forEach(function (k) {
       if (k.indexOf(IDENTITY_PREFIX) !== 0) return;
-      lsSet(k, ident[k]);
+      lsSet(k, lockIdentityFields(ident[k]));
     });
     if (pack.places && typeof pack.places === "object") lsSet(PLACES_KEY, pack.places);
     if (pack.factionPool && typeof pack.factionPool === "object") lsSet(FACTION_POOL_KEY, pack.factionPool);
@@ -272,8 +442,16 @@
     ACTIVITY_KEY,
     PACK_KIND,
     playerKeyFromSub,
+    isPlaceholderGoogleName,
+    looksLikeGooglePlayerKey,
+    hasLocalProgress,
+    migrateLocalPlayer,
     normalizeName,
+    nameKey,
     nameTaken,
+    isNameLocked,
+    assertCanSetName,
+    lockIdentityFields,
     slugFromName,
     uniquePlayerKey,
     listIdentities,

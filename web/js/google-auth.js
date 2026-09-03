@@ -69,6 +69,11 @@
     if (idToken) {
       lastToken = idToken;
       try { global.__lvfeGoogleIdToken = idToken; } catch (err) { /* */ }
+      try {
+        if (typeof sessionStorage !== "undefined") {
+          sessionStorage.setItem("lvfe.googleIdToken", idToken);
+        }
+      } catch (err) { /* */ }
     }
     if (photoUrl) lastPhotoUrl = photoUrl;
     const Acc = global.LvfeAccount;
@@ -260,7 +265,23 @@
     loadGis,
     renderButtons,
     okPayload,
-    lastIdToken: function () { return lastToken || global.__lvfeGoogleIdToken || ""; },
+    lastIdToken: function () {
+      if (lastToken) return lastToken;
+      if (global.__lvfeGoogleIdToken) return global.__lvfeGoogleIdToken;
+      try {
+        if (typeof sessionStorage !== "undefined") {
+          return sessionStorage.getItem("lvfe.googleIdToken") || "";
+        }
+      } catch (err) { /* */ }
+      return "";
+    },
+    clearIdToken: function () {
+      lastToken = "";
+      try { delete global.__lvfeGoogleIdToken; } catch (err) { /* */ }
+      try {
+        if (typeof sessionStorage !== "undefined") sessionStorage.removeItem("lvfe.googleIdToken");
+      } catch (err) { /* */ }
+    },
     lastPhotoUrl: function () { return lastPhotoUrl; },
     failLoud: function (cb) { return fail(cb); },
   };

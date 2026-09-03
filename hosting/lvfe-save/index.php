@@ -157,6 +157,16 @@ if ($method === 'PUT') {
         }
     }
 
+    $lock = enforce_username_lock($pack, $key, $auth, $saveDir);
+    if (!($lock['ok'] ?? false)) {
+        json_out((int)($lock['status'] ?? 409), [
+            'ok' => false,
+            'code' => $lock['code'] ?? 'username_locked',
+            'error' => $lock['error'] ?? 'Username lock rejected',
+            'lockedName' => $lock['lockedName'] ?? null,
+        ]);
+    }
+
     $doc = [
         'accountKey' => $key,
         'updatedAt' => $updatedAt,
@@ -164,7 +174,12 @@ if ($method === 'PUT') {
         'savedAt' => gmdate('c'),
     ];
     write_doc($saveDir, $key, $doc);
-    json_out(200, ['ok' => true, 'accountKey' => $key, 'updatedAt' => $updatedAt]);
+    json_out(200, [
+        'ok' => true,
+        'accountKey' => $key,
+        'updatedAt' => $updatedAt,
+        'usernameLocked' => !empty($lock['locked']),
+    ]);
 }
 
 json_out(405, ['ok' => false, 'error' => 'GET, PUT, or POST /v1/buy/*']);
@@ -275,7 +290,21 @@ function authorize(array $cfg, string $accountKey): array
         if (($info['aud'] ?? '') !== $googleAud) {
             return ['ok' => false, 'code' => 'aud_mismatch', 'status' => 401];
         }
-        return ['ok' => true, 'sub' => $info['sub'] ?? null];
+        $sub = trim((string)($info['sub'] ?? ''));
+        if ($sub === '') {
+            return ['ok' => false, 'code' => 'no_sub', 'status' => 401, 'error' => 'id_token missing sub'];
+        }
+        /* Same canonical key as web/js/account.js playerKeyFromSub */
+        $pk = substr('g' . preg_replace('/[^a-zA-Z0-9]/', '', $sub), 0, 32);
+        if ($accountKey !== '' && $accountKey !== $pk && $accountKey !== $sub) {
+            return [
+                'ok' => false,
+                'code' => 'key_mismatch',
+                'status' => 401,
+                'error' => 'Google sub does not match account key. Use playerKey g{sub}.',
+            ];
+        }
+        return ['ok' => true, 'sub' => $sub, 'email' => $info['email'] ?? null];
     }
     if ($googleAud === '' && $secret === '') {
         return [
@@ -364,4 +393,120 @@ function write_doc(string $dir, string $key, array $doc): void
         @unlink($tmp);
         json_out(500, ['ok' => false, 'error' => 'Rename failed']);
     }
+}
+
+/** Permanent username ↔ Google sub map (same rules as server/username-lock.js). */
+function username_map_path(string $saveDir): string
+{
+    return dirname($saveDir) . '/username-map.json';
+}
+
+function load_username_map(string $saveDir): array
+{
+    $path = username_map_path($saveDir);
+    if (!is_file($path)) {
+        return ['byName' => [], 'bySub' => []];
+    }
+    $raw = file_get_contents($path);
+    $o = json_decode($raw === false ? '' : $raw, true);
+    if (!is_array($o)) {
+        return ['byName' => [], 'bySub' => []];
+    }
+    return [
+        'byName' => is_array($o['byName'] ?? null) ? $o['byName'] : [],
+        'bySub' => is_array($o['bySub'] ?? null) ? $o['bySub'] : [],
+    ];
+}
+
+function save_username_map(string $saveDir, array $map): void
+{
+    $path = username_map_path($saveDir);
+    $tmp = $path . '.tmp';
+    $json = json_encode($map, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+    if ($json === false) {
+        return;
+    }
+    file_put_contents($tmp, $json);
+    rename($tmp, $path);
+}
+
+function extract_username_claim(array $pack, string $accountKey): ?array
+{
+    $ident = is_array($pack['identity'] ?? null) ? $pack['identity'] : [];
+    $want = 'lvfe.identity.' . $accountKey;
+    $row = is_array($ident[$want] ?? null) ? $ident[$want] : null;
+    $packSub = trim((string)($pack['googleSub'] ?? ''));
+    if ($row === null && $packSub !== '') {
+        foreach ($ident as $r) {
+            if (!is_array($r)) {
+                continue;
+            }
+            if (trim((string)($r['googleSub'] ?? '')) === $packSub && !empty($r['playerName'])) {
+                $row = $r;
+                break;
+            }
+        }
+    }
+    if ($row === null || empty($row['playerName'])) {
+        return null;
+    }
+    $name = substr(trim((string)$row['playerName']), 0, 32);
+    if ($name === '') {
+        return null;
+    }
+    $googleSub = trim((string)($row['googleSub'] ?? $pack['googleSub'] ?? ''));
+    return [
+        'name' => $name,
+        'nameKey' => strtolower($name),
+        'googleSub' => $googleSub,
+        'playerKey' => substr($accountKey, 0, 32),
+    ];
+}
+
+function enforce_username_lock(array $pack, string $accountKey, array $auth, string $saveDir): array
+{
+    $claim = extract_username_claim($pack, $accountKey);
+    $authSub = trim((string)($auth['sub'] ?? ''));
+    $googleSub = $authSub !== '' ? $authSub : (string)($claim['googleSub'] ?? '');
+    if ($googleSub === '') {
+        return ['ok' => true, 'skipped' => true, 'reason' => 'no_google_sub'];
+    }
+    if ($claim === null || ($claim['name'] ?? '') === '') {
+        return ['ok' => true, 'skipped' => true, 'reason' => 'no_username_yet'];
+    }
+    $map = load_username_map($saveDir);
+    $bySub = $map['bySub'][$googleSub] ?? null;
+    $byName = $map['byName'][$claim['nameKey']] ?? null;
+    if (is_array($bySub) && !empty($bySub['nameKey']) && $bySub['nameKey'] !== $claim['nameKey']) {
+        return [
+            'ok' => false,
+            'status' => 409,
+            'code' => 'username_locked',
+            'error' => 'Username is permanent for this Google account and cannot be changed.',
+            'lockedName' => $bySub['name'] ?? $bySub['nameKey'],
+        ];
+    }
+    if (is_array($byName) && !empty($byName['googleSub']) && $byName['googleSub'] !== $googleSub) {
+        return [
+            'ok' => false,
+            'status' => 409,
+            'code' => 'username_taken',
+            'error' => 'That username is permanently bound to another Google account.',
+        ];
+    }
+    $now = gmdate('c');
+    $map['byName'][$claim['nameKey']] = [
+        'googleSub' => $googleSub,
+        'playerKey' => $claim['playerKey'],
+        'name' => $claim['name'],
+        'lockedAt' => is_array($byName) && !empty($byName['lockedAt']) ? $byName['lockedAt'] : $now,
+    ];
+    $map['bySub'][$googleSub] = [
+        'nameKey' => $claim['nameKey'],
+        'name' => $claim['name'],
+        'playerKey' => $claim['playerKey'],
+        'lockedAt' => is_array($bySub) && !empty($bySub['lockedAt']) ? $bySub['lockedAt'] : $now,
+    ];
+    save_username_map($saveDir, $map);
+    return ['ok' => true, 'locked' => true, 'name' => $claim['name'], 'googleSub' => $googleSub];
 }

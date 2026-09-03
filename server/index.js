@@ -15,6 +15,7 @@ const fs = require("fs");
 const path = require("path");
 const { URL } = require("url");
 const { createBuyHandlers } = require("./buy.js");
+const usernameLock = require("./username-lock.js");
 
 const ROOT = __dirname;
 loadEnv(path.join(ROOT, ".env"));
@@ -164,7 +165,7 @@ async function authorize(req, accountKey) {
     if (accountKey && accountKey !== pk && accountKey !== v.sub) {
       return { ok: false, code: "key_mismatch", error: "Google sub does not match account key." };
     }
-    return { ok: true, accountKey: accountKey || pk, via: "google", email: v.email };
+    return { ok: true, accountKey: accountKey || pk, via: "google", email: v.email, sub: v.sub };
   }
 
   if (token.startsWith("lvfe-dev:")) {
@@ -341,6 +342,17 @@ async function handle(req, res) {
         return;
       }
 
+      const lock = usernameLock.enforceUsernameLock(pack, accountKey, auth, SAVE_DIR);
+      if (!lock.ok) {
+        send(res, lock.status || 409, {
+          ok: false,
+          code: lock.code,
+          error: lock.error,
+          lockedName: lock.lockedName || undefined,
+        });
+        return;
+      }
+
       const doc = {
         accountKey,
         updatedAt,
@@ -349,7 +361,13 @@ async function handle(req, res) {
         pack,
       };
       writeSave(accountKey, doc);
-      send(res, 200, { ok: true, accountKey, updatedAt, photos: (pack.photos || []).length });
+      send(res, 200, {
+        ok: true,
+        accountKey,
+        updatedAt,
+        photos: (pack.photos || []).length,
+        usernameLocked: Boolean(lock.locked),
+      });
       return;
     }
   }
@@ -391,4 +409,5 @@ module.exports = {
   readSave,
   writeSave,
   authorize,
+  usernameLock,
 };

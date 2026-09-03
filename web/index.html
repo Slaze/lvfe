@@ -1066,7 +1066,7 @@
       <p id="acctGoogleNote" hidden></p>
       <section class="acct-sec" aria-labelledby="acctYou">
         <h3 id="acctYou">You</h3>
-        <button type="button" class="acct-row" data-id-edit="1"><span class="mark">✎</span> Name and neighbourhood<span class="go">›</span></button>
+        <button type="button" class="acct-row" data-id-edit="1" id="btnNameFaction"><span class="mark">✎</span> <span id="btnNameFactionLabel">Name and neighbourhood</span><span class="go">›</span></button>
         <button type="button" class="acct-row" id="btnNewProfile"><span class="mark">+</span> Add another name<span class="go">›</span></button>
         <button type="button" class="acct-row" id="btnMainMenu"><span class="mark">☰</span> Main menu<span class="go">›</span></button>
         <div class="acct-switch" id="menuSwitch" hidden>
@@ -1164,9 +1164,12 @@
     <form class="card" id="identityForm">
       <button type="button" class="sheet-close" id="identityClose" aria-label="Close">×</button>
       <h2>Who’s walking?</h2>
-      <p>Pick a unique name. Faction is optional — without one, places you own stay Unclaimed. Gmail is only a sign-in key, not your name.</p>
-      <label>Name <input id="idName" name="playerName" required maxlength="32" autocomplete="username" /></label>
-      <label>Faction
+      <p id="idGateIntro">Pick a unique name once — it becomes permanent. Faction follows your current map/GPS region. Gmail is only a sign-in key, not your name.</p>
+      <label>Name
+        <input id="idName" name="playerName" required maxlength="32" autocomplete="username" />
+      </label>
+      <p id="idNameLockNote" class="iou-note" hidden>Username locked forever (bound to Google when signed in + synced).</p>
+      <label>Faction <span id="idFactionRegion" class="iou-note" style="display:inline;font-weight:400"></span>
         <select id="idFaction" name="factionId">
           <option value="">None yet</option>
           <option value="independence_layout">Independence Layout</option>
@@ -1175,7 +1178,8 @@
           <option value="emene">Emene</option>
         </select>
       </label>
-      <button type="submit" class="claim">Enter Enugu</button>
+      <p id="idFactionNote" class="iou-note" hidden></p>
+      <button type="submit" class="claim" id="idEnterBtn">Enter</button>
       <button type="button" class="google-btn" id="btnGoogleSignIn">Sign in with Google</button>
       <div data-gis-btn id="gisBtnHostGate" hidden style="margin-top:8px;min-height:44px"></div>
       <p id="gateGoogleSigned" class="iou-note" hidden></p>
@@ -1259,6 +1263,7 @@
   <script src="js/google-auth.js"></script>
   <script src="js/photo-store.js"></script>
   <script src="js/field-claim.js"></script>
+  <script src="js/local-factions.js"></script>
   <script src="js/world-catalog.js"></script>
   <script src="js/save-api.config.js"></script>
   <script src="js/save-sync.js"></script>
@@ -1290,22 +1295,62 @@
       abakpa: "Abakpa",
       emene: "Emene",
     };
+    let localFactionList = (window.LvfeLocalFactions && window.LvfeLocalFactions.ENUGU_FACTIONS)
+      ? window.LvfeLocalFactions.ENUGU_FACTIONS.slice()
+      : [];
+    let localFactionRegion = { city: "Enugu", canonical: true, message: "" };
+
+    function mergeFactionNames(list) {
+      (list || []).forEach(function (f) {
+        if (f && f.id && f.name) FACTION_NAMES[f.id] = f.name;
+      });
+    }
+    mergeFactionNames(localFactionList);
+
+    function knownFactionId(id) {
+      const s = String(id || "");
+      if (!s) return "";
+      if (FACTION_NAMES[s]) return s;
+      return "";
+    }
     const EMPTY_FC = { type: "FeatureCollection", features: [] };
     let factionColors = {};
 
     const params = new URLSearchParams(location.search);
+    const ACTIVE_PLAYER_LS = "lvfe.activePlayer.v1";
     const qLat = parseFloat(params.get("lat"));
     const qLon = parseFloat(params.get("lon"));
     const forcedPos = Number.isFinite(qLat) && Number.isFinite(qLon)
       ? { lat: qLat, lon: qLon, acc: Number.isFinite(parseFloat(params.get("acc"))) ? parseFloat(params.get("acc")) : 12 }
       : null;
-    let PLAYER_KEY = ((params.get("player") || "").trim() || "default").slice(0, 32);
+
+    /** Cold start: URL → persisted active → Google-bound g{sub} → default.
+        APK loads index.html with no ?player=; without this, sync wrongly uses `default`. */
+    function resolveBootPlayerKey() {
+      const q = ((params.get("player") || "").trim()).slice(0, 32);
+      if (q) return q;
+      try {
+        const stored = (localStorage.getItem(ACTIVE_PLAYER_LS) || "").trim().slice(0, 32);
+        if (stored) return stored;
+      } catch (err) { /* */ }
+      const Acc = window.LvfeAccount;
+      if (Acc && Acc.googleSessionFor) {
+        const row = Acc.googleSessionFor("");
+        if (row && row.playerKey) return String(row.playerKey).slice(0, 32);
+      }
+      return "default";
+    }
+
+    let PLAYER_KEY = resolveBootPlayerKey();
     let creatingProfile = false;
     let pendingGoogle = null;
     let fieldAwayTold = false;
     if (window.LvfeCatalogWallet && window.LvfeCatalogWallet.setPlayerKey) {
       window.LvfeCatalogWallet.setPlayerKey(PLAYER_KEY);
     }
+    try {
+      if (PLAYER_KEY && PLAYER_KEY !== "default") localStorage.setItem(ACTIVE_PLAYER_LS, PLAYER_KEY);
+    } catch (err) { /* */ }
 
     let map = null;
     let geo = null;
@@ -2033,6 +2078,9 @@
         window.LvfeCatalogWallet.setPlayerKey(PLAYER_KEY);
       }
       try {
+        localStorage.setItem(ACTIVE_PLAYER_LS, PLAYER_KEY);
+      } catch (err) { /* */ }
+      try {
         const url = new URL(location.href);
         if (PLAYER_KEY && PLAYER_KEY !== "default") url.searchParams.set("player", PLAYER_KEY);
         else url.searchParams.delete("player");
@@ -2044,6 +2092,19 @@
       refreshPlaceSource();
       refreshOpenDossier();
       paintProfileMenu();
+    }
+
+    /** Cloud sync must use g{sub} when Google is linked — never leftover `default`. */
+    function syncAccountKey() {
+      const Acc = window.LvfeAccount;
+      const g = googleSignedState();
+      if (g && g.sub && !g.mock) {
+        const want = (g.playerKey && String(g.playerKey).slice(0, 32))
+          || (Acc ? Acc.playerKeyFromSub(g.sub) : "");
+        if (want && want !== PLAYER_KEY) switchPlayer(want);
+        return want || PLAYER_KEY;
+      }
+      return PLAYER_KEY;
     }
 
     function googleSignedState() {
@@ -2103,6 +2164,8 @@
 
     function paintProfileMenu() {
       const idn = loadIdentity();
+      const Acc = window.LvfeAccount;
+      const locked = idn && Acc && Acc.isNameLocked ? Acc.isNameLocked(idn) : Boolean(idn && idn.playerName);
       const whole = walletWhole();
       const sealGlyph = idn && idn.playerName
         ? idn.playerName.trim().charAt(0).toUpperCase()
@@ -2112,16 +2175,26 @@
       const seal = document.getElementById("acctSeal");
       if (seal) seal.textContent = sealGlyph;
       const nameEl = document.getElementById("acctName");
-      if (nameEl) nameEl.textContent = (idn && idn.playerName) || "No name yet";
+      if (nameEl) {
+        nameEl.textContent = (idn && idn.playerName)
+          ? (idn.playerName + (locked ? " 🔒" : ""))
+          : "No name yet";
+      }
       const meta = document.getElementById("acctMeta");
       if (meta) {
         const fac = idn && idn.factionId ? (FACTION_NAMES[idn.factionId] || idn.factionId) : "no neighbourhood";
         meta.innerHTML = idn
-          ? esc(fac) + " · <span class=\"coin\" id=\"acctCoin\">" + whole + "</span> NCN"
+          ? esc(fac) + (locked ? " · username locked" : "") + " · <span class=\"coin\" id=\"acctCoin\">" + whole + "</span> NCN"
           : "Set a name to back places · <span class=\"coin\" id=\"acctCoin\">" + whole + "</span> NCN";
       } else {
         const coin = document.getElementById("acctCoin");
         if (coin) coin.textContent = String(whole);
+      }
+      const nfl = document.getElementById("btnNameFactionLabel");
+      if (nfl) {
+        nfl.textContent = locked
+          ? (idn && idn.factionId ? "Neighbourhood / chapter" : "Pick neighbourhood")
+          : "Name and neighbourhood";
       }
       paintFabProfile();
       paintGoogleAuthUi();
@@ -2222,6 +2295,9 @@
       try {
         if (g && g.mock) localStorage.removeItem("lvfe.mockGoogle");
       } catch (err) { /* */ }
+      if (window.LvfeGoogleAuth && window.LvfeGoogleAuth.clearIdToken) {
+        window.LvfeGoogleAuth.clearIdToken();
+      }
       pendingGoogle = null;
       const idn = loadIdentity();
       if (idn) {
@@ -2407,24 +2483,72 @@
     function loadIdentity(pk) {
       const o = lsGet(identityKey(pk), null);
       if (!o || !o.playerName) return null;
-      const factionId = FACTION_NAMES[o.factionId] ? o.factionId : "";
-      return {
+      const Acc = window.LvfeAccount;
+      const factionId = knownFactionId(o.factionId) || (o.factionId ? String(o.factionId) : "");
+      if (factionId && o.factionId && !FACTION_NAMES[factionId] && o.factionName) {
+        FACTION_NAMES[factionId] = String(o.factionName).slice(0, 48);
+      } else if (factionId && !FACTION_NAMES[factionId]) {
+        FACTION_NAMES[factionId] = factionId;
+      }
+      const row = {
         playerName: String(o.playerName).slice(0, 32),
-        factionId,
+        factionId: factionId,
+        factionName: o.factionName || FACTION_NAMES[factionId] || "",
         googleSub: o.googleSub || "",
         email: o.email || "",
+        nameLocked: Acc && Acc.isNameLocked ? Acc.isNameLocked(o) : Boolean(o.playerName),
+        nameLockedAt: o.nameLockedAt || "",
       };
+      /* Migrate: existing name → locked on read */
+      if (row.playerName && !o.nameLocked) {
+        lsSet(identityKey(pk), Acc && Acc.lockIdentityFields
+          ? Acc.lockIdentityFields(Object.assign({}, o, row))
+          : Object.assign({}, o, { nameLocked: true, nameLockedAt: o.nameLockedAt || new Date().toISOString() }));
+      }
+      return row;
     }
 
     function saveIdentity(idn, pk) {
+      const curRaw = lsGet(identityKey(pk), null) || {};
       const cur = loadIdentity(pk) || {};
-      lsSet(identityKey(pk), {
-        playerName: idn.playerName,
-        factionId: idn.factionId || "",
+      const Acc = window.LvfeAccount;
+      let playerName = idn.playerName;
+      let nameLocked = true;
+      if (cur.playerName && Acc && Acc.isNameLocked && Acc.isNameLocked(cur)) {
+        if (Acc.nameKey(playerName) !== Acc.nameKey(cur.playerName)) {
+          toast("Username is permanent and cannot be changed" +
+            (cur.googleSub ? " (bound to your Google account)." : "."));
+          return false;
+        }
+        playerName = cur.playerName;
+        nameLocked = true;
+      } else if (Acc && Acc.assertCanSetName && playerName) {
+        const check = Acc.assertCanSetName(pk || PLAYER_KEY, playerName, {
+          creating: creatingProfile || Boolean(pendingGoogle),
+          googleSub: idn.googleSub || cur.googleSub,
+        });
+        if (!check.ok) {
+          toast(check.error || "Username locked.");
+          return false;
+        }
+        playerName = check.name;
+      }
+      const factionId = idn.factionId ? String(idn.factionId) : "";
+      if (factionId && !FACTION_NAMES[factionId]) {
+        FACTION_NAMES[factionId] = String(idn.factionName || factionId).slice(0, 48);
+      }
+      const row = {
+        playerName: playerName,
+        factionId: factionId,
+        factionName: FACTION_NAMES[factionId] || idn.factionName || "",
         googleSub: idn.googleSub || cur.googleSub || (pendingGoogle && pendingGoogle.sub) || "",
         email: idn.email || cur.email || (pendingGoogle && pendingGoogle.email) || "",
-      });
+        nameLocked: nameLocked,
+        nameLockedAt: curRaw.nameLockedAt || cur.nameLockedAt || new Date().toISOString(),
+      };
+      lsSet(identityKey(pk), Acc && Acc.lockIdentityFields ? Acc.lockIdentityFields(row) : row);
       scheduleSavePush();
+      return true;
     }
 
     function showGoogleBlocker(err) {
@@ -2444,30 +2568,79 @@
       }
     }
 
-    function pullCloudAfterGoogle(pk) {
+    function pullCloudAfterGoogle(pk, migrateFrom) {
       const Sync = window.LvfeSaveSync;
-      if (!Sync || !Sync.enabled()) return;
-      toast("Loading cloud save…");
-      Sync.pullAndMerge(pk, {
-        packOpts: syncPackOpts(),
-        afterImport: function (res) {
-          if (res && res.playerKey) switchPlayer(res.playerKey);
-          renderHud();
-          stampPlaceMarks();
-          refreshPlaceSource();
-          refreshNearby();
-        },
-      }).then(function (res) {
-        if (res && res.pulled) toast("Cloud save loaded for this Google account.");
-        else if (res && res.empty) {
-          return Sync.push(pk, syncPackOpts()).then(function (p) {
-            toast(p && p.ok ? "First cloud save uploaded." : ("Cloud save: " + ((p && p.error) || "push failed")));
-            paintProfileMenu();
-          });
-        } else if (res && res.ok === false && !res.skipped && !res.offline) {
-          toast("Cloud save: " + (res.error || "failed — sign-in token or server auth."));
-        }
+      const Acc = window.LvfeAccount;
+      const fromPk = migrateFrom && migrateFrom !== pk ? String(migrateFrom).slice(0, 32) : "";
+      const packOpts = function () {
+        return Object.assign({}, syncPackOpts(), {
+          googleSub: (pendingGoogle && pendingGoogle.sub) || syncPackOpts().googleSub || "",
+          email: (pendingGoogle && pendingGoogle.email) || syncPackOpts().email || "",
+        });
+      };
+      const runMigrate = function () {
+        if (!fromPk || !Acc || !Acc.migrateLocalPlayer) return { skipped: true };
+        return Acc.migrateLocalPlayer(fromPk, pk, {
+          googleSub: pendingGoogle && pendingGoogle.sub,
+          email: pendingGoogle && pendingGoogle.email,
+          photoUrl: pendingGoogle && pendingGoogle.photoUrl,
+        });
+      };
+      if (!Sync || !Sync.enabled()) {
+        runMigrate();
         paintProfileMenu();
+        return;
+      }
+      toast("Loading cloud save…");
+      Sync.pull(pk).then(function (res) {
+        const localProg = Boolean(fromPk && Acc && Acc.hasLocalProgress && Acc.hasLocalProgress(fromPk));
+        if (res && res.empty) {
+          const mig = runMigrate();
+          return Sync.push(pk, packOpts()).then(function (p) {
+            toast(p && p.ok
+              ? (mig && mig.migrated ? "Local progress linked to Google and uploaded." : "First cloud save uploaded.")
+              : ("Cloud save: " + ((p && p.error) || "push failed")));
+            renderHud();
+            paintProfileMenu();
+            paintGoogleAuthUi();
+            paintFabProfile();
+          });
+        }
+        if (!res || !res.ok) {
+          if (localProg) runMigrate();
+          toast("Cloud save: " + ((res && res.error) || "failed — sign-in token or server auth."));
+          paintProfileMenu();
+          return;
+        }
+        let mergeLocal = false;
+        if (localProg) {
+          mergeLocal = window.confirm(
+            "This Google account already has a cloud save. Merge this phone’s local progress into it?\n\nOK = merge then upload. Cancel = keep cloud only."
+          );
+        }
+        Sync.applyPack(res.pack, {
+          afterImport: function (applied) {
+            if (applied && applied.playerKey) switchPlayer(applied.playerKey);
+            renderHud();
+            stampPlaceMarks();
+            refreshPlaceSource();
+            refreshNearby();
+          },
+        });
+        if (mergeLocal) {
+          runMigrate();
+          return Sync.push(pk, packOpts()).then(function (p) {
+            toast(p && p.ok ? "Merged local progress into Google cloud save." : ("Cloud save: " + ((p && p.error) || "push failed")));
+            renderHud();
+            paintProfileMenu();
+            paintGoogleAuthUi();
+            paintFabProfile();
+          });
+        }
+        toast("Cloud save loaded for this Google account.");
+        paintProfileMenu();
+        paintGoogleAuthUi();
+        paintFabProfile();
       });
     }
 
@@ -2481,13 +2654,29 @@
         return;
       }
       hideGoogleBlocker();
-      pendingGoogle = { sub: result.sub, email: result.email, playerKey: result.playerKey, photoUrl: result.photoUrl || "" };
       const Acc = window.LvfeAccount;
-      const mapped = Acc && Acc.lookupGoogle(result.sub);
-      const pk = (mapped && mapped.playerKey) || result.playerKey;
-      const existing = loadIdentity(pk);
+      const oldPk = PLAYER_KEY;
+      /* Always canonical g{sub} — ignore any stale slug binding in lvfe.google.v1 */
+      const pk = Acc ? Acc.playerKeyFromSub(result.sub) : result.playerKey;
+      const staleMap = Acc && Acc.lookupGoogle ? Acc.lookupGoogle(result.sub) : null;
+      const migrateCandidates = [];
+      if (oldPk && oldPk !== pk) migrateCandidates.push(oldPk);
+      if (staleMap && staleMap.playerKey && staleMap.playerKey !== pk) {
+        migrateCandidates.push(String(staleMap.playerKey).slice(0, 32));
+      }
+      if (Acc) Acc.bindGoogle(result.sub, result.email, pk, result.photoUrl || "");
+      pendingGoogle = { sub: result.sub, email: result.email, playerKey: pk, photoUrl: result.photoUrl || "" };
       switchPlayer(pk);
-      if (existing && existing.playerName) {
+
+      const existing = loadIdentity(pk);
+      const placeholder = existing && Acc && Acc.isPlaceholderGoogleName
+        ? Acc.isPlaceholderGoogleName(existing.playerName, pk)
+        : false;
+      const migrateFrom = migrateCandidates.find(function (cand) {
+        return Acc && Acc.hasLocalProgress && Acc.hasLocalProgress(cand);
+      }) || (migrateCandidates[0] || "");
+
+      if (existing && existing.playerName && !placeholder) {
         pendingGoogle = { sub: result.sub, email: result.email, playerKey: pk, photoUrl: result.photoUrl || "" };
         saveIdentity({
           playerName: existing.playerName,
@@ -2495,21 +2684,22 @@
           googleSub: result.sub,
           email: result.email,
         }, pk);
-        if (Acc && result.photoUrl) Acc.bindGoogle(result.sub, result.email, pk, result.photoUrl);
         hideIdentityGate();
         toast("Signed in. Playing as " + existing.playerName + ".");
         renderHud();
         paintGoogleAuthUi();
         paintFabProfile();
-        pullCloudAfterGoogle(pk);
+        pullCloudAfterGoogle(pk, migrateFrom);
         return;
       }
       creatingProfile = false;
       document.getElementById("idName").value = "";
       showIdentityGate();
       paintGoogleAuthUi();
-      toast("Signed into Google. Pick a unique name — not your email.");
-      pullCloudAfterGoogle(pk);
+      toast(placeholder
+        ? "Signed into Google. Pick a unique display name (not your email)."
+        : "Signed into Google. Pick a unique name — not your email.");
+      pullCloudAfterGoogle(pk, migrateFrom);
     }
 
     function requireGoogleForCloudSync() {
@@ -2752,6 +2942,7 @@
       const Field = window.LvfeField;
       const far = !Field || Field.shouldFly(map, pos, 400);
       function after() {
+        refreshLocalFactions(pos);
         if (!Field) return;
         const res = Field.onLocated(map, pos, placesFc);
         applyFieldResult(res);
@@ -2927,7 +3118,8 @@
     }
 
     function creditFaction(factionId, amount) {
-      if (!FACTION_NAMES[factionId] || !(amount > 0)) return;
+      if (!factionId || !(amount > 0)) return;
+      if (!FACTION_NAMES[factionId]) FACTION_NAMES[factionId] = String(factionId);
       const pool = lsGet(FACTION_POOL_KEY, {});
       pool[factionId] = (Number(pool[factionId]) || 0) + amount;
       lsSet(FACTION_POOL_KEY, pool);
@@ -3693,11 +3885,120 @@
       else openPlayHub("wallet");
     };
 
+    function fillFactionSelect(list, chapter) {
+      const sel = document.getElementById("idFaction");
+      if (!sel) return;
+      const idn = loadIdentity();
+      const keep = (chapter && chapter.factionId) || (idn && idn.factionId) || sel.value || "";
+      const rows = list && list.length ? list : localFactionList;
+      mergeFactionNames(rows);
+      let html = "<option value=\"\">None yet</option>";
+      const seen = {};
+      for (let i = 0; i < rows.length; i++) {
+        const f = rows[i];
+        if (!f || !f.id || seen[f.id]) continue;
+        seen[f.id] = true;
+        const prize = f.role === "prize_zone" ? " · prize zone" : "";
+        html += "<option value=\"" + esc(f.id) + "\">" + esc(f.name) + prize + "</option>";
+      }
+      if (keep && !seen[keep]) {
+        const label = FACTION_NAMES[keep] || keep;
+        html += "<option value=\"" + esc(keep) + "\">" + esc(label) + " (your chapter)</option>";
+      }
+      sel.innerHTML = html;
+      if (chapter && chapter.lockedChapter && keep) {
+        sel.value = keep;
+        sel.disabled = true;
+      } else {
+        sel.disabled = false;
+        sel.value = keep && (seen[keep] || keep) ? keep : "";
+      }
+      const note = document.getElementById("idFactionNote");
+      if (note) {
+        if (chapter && chapter.note) {
+          note.hidden = false;
+          note.textContent = chapter.note;
+        } else {
+          note.hidden = true;
+          note.textContent = "";
+        }
+      }
+      const region = document.getElementById("idFactionRegion");
+      if (region) {
+        const city = localFactionRegion.city || (localFactionRegion.canonical ? "Enugu" : "local map");
+        region.textContent = "(" + city + ")";
+      }
+    }
+
+    function applyLocalFactionResult(res) {
+      if (!res || !Array.isArray(res.factions)) return;
+      localFactionList = res.factions;
+      localFactionRegion = {
+        city: res.city || "",
+        canonical: Boolean(res.canonical),
+        message: res.message || "",
+        region: res.region || "",
+      };
+      mergeFactionNames(res.factions);
+      (res.factions || []).forEach(function (f) {
+        if (f && f.id && f.color) factionColors[f.id] = f.color;
+      });
+      const LF = window.LvfeLocalFactions;
+      const chapter = LF && LF.resolveChapter
+        ? LF.resolveChapter(loadIdentity(), res)
+        : { factionId: "", canPick: true, localList: res.factions, note: "" };
+      fillFactionSelect(res.factions, chapter);
+    }
+
+    function refreshLocalFactions(pos) {
+      const LF = window.LvfeLocalFactions;
+      if (!LF) return;
+      const lat = pos && Number.isFinite(pos.lat) ? pos.lat : (userPos && userPos.lat);
+      const lon = pos && Number.isFinite(pos.lon) ? pos.lon : (userPos && userPos.lon);
+      const sync = LF.forPositionSync(lat, lon);
+      applyLocalFactionResult(sync);
+      if (sync.canonical || sync.cached) return;
+      if (typeof LF.fetchNear !== "function" || !Number.isFinite(lat) || !Number.isFinite(lon)) return;
+      LF.fetchNear(lat, lon).then(function (res) {
+        applyLocalFactionResult(res);
+      }).catch(function () { /* soft fallback already applied */ });
+    }
+
     function showIdentityGate() {
       const gate = document.getElementById("identityGate");
       const idn = loadIdentity();
-      document.getElementById("idName").value = (idn && idn.playerName) || (PLAYER_KEY !== "default" ? PLAYER_KEY : "");
-      document.getElementById("idFaction").value = (idn && idn.factionId) || "";
+      const Acc = window.LvfeAccount;
+      const locked = idn && Acc && Acc.isNameLocked ? Acc.isNameLocked(idn) : Boolean(idn && idn.playerName);
+      const nameInp = document.getElementById("idName");
+      nameInp.value = (idn && idn.playerName) || (PLAYER_KEY !== "default" ? PLAYER_KEY : "");
+      nameInp.readOnly = Boolean(locked);
+      nameInp.disabled = Boolean(locked);
+      const lockNote = document.getElementById("idNameLockNote");
+      if (lockNote) {
+        lockNote.hidden = !locked;
+        lockNote.textContent = locked
+          ? ("Username locked" + (idn.googleSub
+            ? " and bound to your Google account."
+            : ". Cloud permanence applies when you Sign in with Google + Sync."))
+          : "";
+      }
+      const intro = document.getElementById("idGateIntro");
+      if (intro) {
+        intro.textContent = locked
+          ? "Your name is permanent. Neighbourhood follows the map region you are in; travel keeps your chapter."
+          : "Pick a unique name once — it becomes permanent. Faction follows your current map/GPS region. Gmail is only a sign-in key, not your name.";
+      }
+      const enter = document.getElementById("idEnterBtn");
+      if (enter) enter.textContent = locked ? "Save neighbourhood" : "Enter";
+      refreshLocalFactions(userPos);
+      const LF = window.LvfeLocalFactions;
+      const chapter = LF && LF.resolveChapter
+        ? LF.resolveChapter(idn, { factions: localFactionList })
+        : null;
+      fillFactionSelect(localFactionList, chapter);
+      if (idn && idn.factionId) {
+        document.getElementById("idFaction").value = idn.factionId;
+      }
       gate.hidden = false;
     }
 
@@ -3755,8 +4056,13 @@
       if (!idn) {
         who.innerHTML = `Name needed to back a place. <button type="button" class="link" data-id-edit="1">Set name</button>`;
       } else {
-        const fac = idn.factionId ? FACTION_NAMES[idn.factionId] : "no faction";
-        who.innerHTML = `Playing as <strong>${esc(idn.playerName)}</strong> · ${esc(fac)} · <button type="button" class="link" data-id-edit="1">edit</button>`;
+        const Acc = window.LvfeAccount;
+        const locked = Acc && Acc.isNameLocked ? Acc.isNameLocked(idn) : true;
+        const fac = idn.factionId ? (FACTION_NAMES[idn.factionId] || idn.factionId) : "no faction";
+        const editLabel = locked
+          ? (idn.factionId ? "neighbourhood" : "pick neighbourhood")
+          : "edit";
+        who.innerHTML = `Playing as <strong>${esc(idn.playerName)}</strong>${locked ? " 🔒" : ""} · ${esc(fac)} · <button type="button" class="link" data-id-edit="1">${editLabel}</button>`;
       }
       const list = document.getElementById("myPlaces");
       const assets = myAssetRows();
@@ -4451,16 +4757,41 @@
       const ident = e.target.closest("#identityForm");
       if (ident) {
         e.preventDefault();
-        const name = document.getElementById("idName").value.trim().slice(0, 32);
+        const Acc = window.LvfeAccount;
+        const existing = loadIdentity();
+        const locked = existing && Acc && Acc.isNameLocked ? Acc.isNameLocked(existing) : false;
+        let name = document.getElementById("idName").value.trim().slice(0, 32);
         const factionId = document.getElementById("idFaction").value;
+        if (locked) {
+          name = existing.playerName;
+        }
         if (!name) {
           toast("A unique name is required.");
           return;
         }
-        const Acc = window.LvfeAccount;
-        if (Acc && Acc.nameTaken(name, creatingProfile || pendingGoogle ? "" : PLAYER_KEY)) {
-          toast("That name is taken on this phone. Pick another.");
-          return;
+        if (!locked) {
+          const check = Acc && Acc.assertCanSetName
+            ? Acc.assertCanSetName(PLAYER_KEY, name, {
+              creating: creatingProfile || Boolean(pendingGoogle),
+              googleSub: pendingGoogle && pendingGoogle.sub,
+            })
+            : { ok: true };
+          if (!check.ok) {
+            toast(check.error || "That name cannot be used.");
+            return;
+          }
+          name = check.name || name;
+        }
+        const LF = window.LvfeLocalFactions;
+        const chapter = LF && LF.resolveChapter
+          ? LF.resolveChapter(existing, { factions: localFactionList })
+          : { canPick: !existing || !existing.factionId };
+        let nextFaction = factionId;
+        if (chapter.lockedChapter && existing && existing.factionId) {
+          nextFaction = existing.factionId;
+        } else if (nextFaction && !FACTION_NAMES[nextFaction]) {
+          const hit = localFactionList.find(function (f) { return f.id === nextFaction; });
+          if (hit) FACTION_NAMES[nextFaction] = hit.name;
         }
         if (pendingGoogle && pendingGoogle.playerKey) {
           PLAYER_KEY = pendingGoogle.playerKey;
@@ -4486,12 +4817,14 @@
           } catch (err) { /* */ }
           creatingProfile = false;
         }
-        saveIdentity({
+        const saved = saveIdentity({
           playerName: name,
-          factionId: FACTION_NAMES[factionId] ? factionId : "",
+          factionId: nextFaction || "",
+          factionName: FACTION_NAMES[nextFaction] || "",
           googleSub: pendingGoogle && pendingGoogle.sub,
           email: pendingGoogle && pendingGoogle.email,
         });
+        if (saved === false) return;
         if (pendingGoogle && pendingGoogle.sub && Acc) {
           Acc.bindGoogle(pendingGoogle.sub, pendingGoogle.email, PLAYER_KEY);
         }
@@ -4596,13 +4929,17 @@
       if (!idn && qName) {
         idn = {
           playerName: qName.slice(0, 32),
-          factionId: FACTION_NAMES[qFac] ? qFac : "",
+          factionId: qFac || "",
+          nameLocked: true,
         };
+        if (qFac && !FACTION_NAMES[qFac]) FACTION_NAMES[qFac] = qFac;
         saveIdentity(idn);
-      } else if (idn && qFac && FACTION_NAMES[qFac] && !idn.factionId) {
+      } else if (idn && qFac && !idn.factionId) {
         idn.factionId = qFac;
+        if (!FACTION_NAMES[qFac]) FACTION_NAMES[qFac] = qFac;
         saveIdentity(idn);
       }
+      refreshLocalFactions(userPos || forcedPos);
       hideIdentityGate();
       loadWallet();
       renderHud();

@@ -17,17 +17,20 @@ const G = global.LvfeGoogleAuth;
 const P = global.LvfePhotoStore;
 const F = global.LvfeField;
 
-assert(C && !C.isConfigured(), "placeholder Web client ID is not configured");
-assert(C.ANDROID_PACKAGE === "com.lvfe.xperience", "Android package");
+assert(C && C.ANDROID_PACKAGE === "com.lvfe.xperience", "Android package");
 assert(C.BLOCKER_CODE === "oauth_not_configured", "blocker code");
 assert(C.blockerMessage().indexOf("Web application") >= 0, "blocker names Web client");
 assert(C.blockerMessage().indexOf("com.lvfe.xperience") >= 0, "blocker names package");
-assert(!/Maps SDK|maps\.googleapis/i.test(C.blockerMessage()) || /Do not add Maps/.test(C.blockerMessage()), "blocker forbids Maps SKUs");
-assert(/Do not add Maps SDK/.test(C.BLOCKER_STEPS.join(" ")), "explicit no Maps");
+assert(!/maps\.googleapis/i.test(C.blockerMessage()) || /do not enable Maps/i.test(C.blockerMessage()), "blocker forbids Maps SKUs");
+assert(/do not enable Maps SDK/i.test(C.BLOCKER_STEPS.join(" ")), "explicit no Maps");
 
-assert(!G.configured(), "auth reports not configured");
-const loud = G.failLoud();
-assert(loud.ok === false && loud.code === "oauth_not_configured", "fail loud");
+if (!C.isConfigured()) {
+  assert(!G.configured(), "auth reports not configured");
+  const loud = G.failLoud();
+  assert(loud.ok === false && loud.code === "oauth_not_configured", "fail loud");
+} else {
+  assert(G.configured(), "Web client ID is wired");
+}
 
 global.__lvfeAccountMem = {};
 assert(Acc.playerKeyFromSub("1234567890") === "g1234567890", "stable sub key");
@@ -43,9 +46,12 @@ Acc.unpackSave({
 });
 assert(Acc.nameTaken("ada"), "unique name is case-insensitive");
 assert(Acc.nameTaken("Ada", "ada") === false, "same profile can keep its name");
+assert(Acc.isNameLocked({ playerName: "Ada" }), "migrate: name set → locked");
+assert(Acc.assertCanSetName("ada", "Chidi").ok === false, "locked rename rejected");
 const pack = Acc.packSave({ playerKey: "ada" });
 assert(pack.kind === Acc.PACK_KIND && pack.places.p1.value === 5, "pack includes stakes");
 assert(pack.identity["lvfe.identity.ada"].playerName === "Ada", "pack includes username");
+assert(pack.identity["lvfe.identity.ada"].nameLocked === true, "unpack migrates nameLocked");
 assert(pack.wallets["lvfe.nc.iou.v1.ada"].atomic === 100, "pack includes IOU wallet");
 assert(/Export\/Import|cloud sync|backup/i.test(pack.note), "pack mentions backup path");
 assert(pack.updatedAt, "pack has updatedAt for LWW sync");
@@ -91,6 +97,8 @@ const html = fs.readFileSync(path.join(__dirname, "../web/index.html"), "utf8");
   assert(/js\/google-auth\.js/.test(html), "google-auth script");
   assert(/js\/photo-store\.js/.test(html), "photo-store script");
   assert(/js\/field-claim\.js/.test(html), "field-claim script");
+  assert(/js\/local-factions\.js/.test(html), "local-factions script");
+  assert(/idNameLockNote/.test(html), "username lock note in gate");
   assert(/btnExportSave/.test(html) && /btnImportSave/.test(html), "export/import");
   assert(!/maps\.googleapis|maps\.google\.com/i.test(html), "no Google Maps SKU in index");
   const inlineStart = html.lastIndexOf("<script>");
@@ -99,12 +107,14 @@ const html = fs.readFileSync(path.join(__dirname, "../web/index.html"), "utf8");
   const chk = spawnSync("node", ["--check"], { input: inline, encoding: "utf8" });
   assert(chk.status === 0, "index inline still parses: " + (chk.stderr || chk.stdout || ""));
   assert(/flyToUser|LvfeField/.test(inline), "geolocate flies / field claim");
+  assert(/refreshLocalFactions|LvfeLocalFactions/.test(inline), "local factions on locate");
   assert(/LvfePhotoStore/.test(inline), "visit confirms photo store");
   assert(/discardPending/.test(inline), "sheet close discards pending photo");
+  assert(/username_locked|nameLocked|isNameLocked/.test(inline), "username lock wired");
 
   const kt = fs.readFileSync(path.join(__dirname, "../android/app/src/main/java/com/lvfe/xperience/MainActivity.kt"), "utf8");
   assert(/signInWithGoogle/.test(kt), "Android Google bridge");
   assert(/google_web_client_id/.test(kt) || /googleWebClient/.test(kt) || /R\.string\.google_web_client_id/.test(kt), "placeholder string");
 assert(!/maps\.googleapis|MapView|com\.google\.android\.gms\.maps/i.test(kt), "no Play Maps SDK");
 
-console.log("account / google fail-loud / photo confirm / field-claim ok");
+console.log("account / google / photo confirm / field-claim / username lock ok");
