@@ -2,7 +2,7 @@
    Leave WEB_CLIENT_ID empty until a human pastes a real Web client ID from
    Google Cloud Console. Do not invent secrets. */
 (function (global) {
-  const WEB_CLIENT_ID = "";
+  const WEB_CLIENT_ID = "730640559588-i03q4imeb8cl8lonr3j6iliaefmr1sa6.apps.googleusercontent.com";
   const ANDROID_PACKAGE = "com.lvfe.xperience";
   const BLOCKER_CODE = "oauth_not_configured";
   const BLOCKER_TITLE = "Google sign-in is not wired yet.";

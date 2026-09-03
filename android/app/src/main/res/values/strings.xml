@@ -2,5 +2,5 @@
 <resources>
     <string name="app_name">Lvfe</string>
     <!-- Paste the OAuth 2.0 *Web application* client ID (…apps.googleusercontent.com). Identity only — not Maps. -->
-    <string name="google_web_client_id" translatable="false"></string>
+    <string name="google_web_client_id" translatable="false">730640559588-i03q4imeb8cl8lonr3j6iliaefmr1sa6.apps.googleusercontent.com</string>
 </resources>
