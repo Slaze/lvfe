@@ -130,6 +130,7 @@ Location-based territorial game. World data from OpenStreetMap (no paid Google M
 - `curl …/lvfe-save/health` → `buyNcn.configured:false`; `POST /v1/buy/init` → `paystack_not_configured` blocker.
 - `./gradlew clean assembleDebug` SUCCESS; `adb -s bea6919f install -r`; **`lastUpdateTime=2026-09-03 10:23:31`**.
 - Nord CDP: `buyModule`+`sigils` true, `buyConfigured` false, FAB photo node + initiate sigil + `goldHang`+`searchMag` kept.
+- Commit **`5e15556`**.
 
 **Current state:** Buy UI + credit path live; payments blocked until Paystack keys pasted. Profile FAB shows letter until Google photo available.
 
