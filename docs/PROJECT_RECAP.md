@@ -100,6 +100,22 @@ Location-based territorial game. World data from OpenStreetMap (no paid Google M
 
 ## Sessions
 
+### 2026-09-03 — OAuth consent URL cheat sheet
+
+**Goal:** Exact Iconia privacy/terms URLs + paste table for Google Cloud OAuth consent (Lvfe: The Xperience).
+
+**What changed:** Added `docs/OAUTH_CONSENT.md`. Verified live: privacy `https://iconiaglobal.com/privacy-policy` (also `/pages/privacy-policy`). Terms URL `https://iconiaglobal.com/pages/terms-and-conditions` exists but body is only “Coming soon…”. No `/lvfe` marketing page; `github.com/Slaze/lvfe` private (404 public); `lvfe-save` is API only. Recommended homepage for now: `https://iconiaglobal.com/`. Authorised domain: `iconiaglobal.com`. Scopes: openid/email/profile.
+
+**Why:** Consent screen needs stable public HTTPS links matching authorised domains; do not invent ToS URLs.
+
+**How verified:** `/usr/bin/curl` status codes on common paths; Context scrape of privacy + terms pages.
+
+**Current state:** Privacy ready to paste. Terms must be filled on Iconia before Production ToS field is honest. Local `hosting/lvfe` has no `privacy.html`.
+
+**Next steps:** Human fills Iconia terms CMS (or `/terms` / `/lvfe/terms`); paste cheat sheet into Console; publish consent; keep Android OAuth client + SHA-1.
+
+**Blockers / risks:** Terms placeholder will fail a serious review if left as “Coming soon…”.
+
 ### 2026-09-03 — Lvfe brand mark for Google OAuth + splash
 
 - **Goal:** Proper logo assets for Google Cloud OAuth consent branding and app splash (not placeholder “L” gold disc).
