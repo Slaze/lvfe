@@ -299,7 +299,7 @@
       pointer-events: auto;
       visibility: visible;
       transform: translateY(0);
-      transition: transform .24s cubic-bezier(.2,.8,.2,1), height .24s cubic-bezier(.2,.8,.2,1), max-height .24s cubic-bezier(.2,.8,.2,1);
+      transition: transform .24s cubic-bezier(.2,.8,.2,1);
       overflow: hidden;
       background: #f3ead6;
       color: #2a241c;
@@ -307,10 +307,21 @@
       box-shadow: 0 -6px 28px rgba(0,0,0,.28);
     }
     .sheet.doc {
-      height: 34vh; max-height: 34vh;
+      height: 34vh; max-height: 34vh; min-height: 34vh;
     }
     .sheet.doc-exp {
-      height: 70vh; max-height: 70vh;
+      height: 70vh; max-height: 70vh; min-height: 70vh;
+    }
+    /* Absolute sheet: pin peek/expand (avoid stuck used-height after class swap). */
+    #sheet.doc {
+      height: 34vh !important;
+      max-height: 34vh !important;
+      min-height: 34vh !important;
+    }
+    #sheet.doc-exp {
+      height: 70vh !important;
+      max-height: 70vh !important;
+      min-height: 70vh !important;
     }
     .sheet-bar {
       display: flex; align-items: center; justify-content: center;
@@ -681,6 +692,121 @@
       padding: 8px 12px; font-size: 13px; max-width: min(80%, 360px);
       pointer-events: none; overflow-wrap: anywhere; text-align: center;
     }
+    #gameBanner {
+      position: absolute; z-index: 16; left: 12px; right: 12px;
+      top: calc(66px + env(safe-area-inset-top, 0px));
+      background: rgba(28, 28, 30, 0.94); color: #f5f5f7;
+      border: 1px solid rgba(255,255,255,.1); border-radius: 14px;
+      padding: 12px 14px; box-shadow: 0 8px 28px rgba(0,0,0,.35);
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    }
+    #gameBanner[hidden] { display: none !important; }
+    #gameBanner strong { display: block; font-size: 14px; margin: 0 0 4px; }
+    #gameBanner p { margin: 0 0 10px; font-size: 12px; color: #9aa0a6; }
+    #gameBanner .ban-acts { display: flex; gap: 8px; flex-wrap: wrap; }
+    #gameBanner .ban-acts button {
+      flex: 1; min-height: 40px; border-radius: 10px; border: 0; cursor: pointer;
+      font: 650 13px/1 system-ui, sans-serif;
+    }
+    #gameBanner .ban-acts .primary { background: #ff7a1a; color: #1a140c; }
+    #gameBanner .ban-acts .ghost { background: #2a2a2e; color: #f5f5f7; }
+    #playHubScrim {
+      position: absolute; inset: 0; z-index: 17;
+      background: rgba(0,0,0,.45); border: 0; padding: 0; margin: 0; cursor: pointer;
+    }
+    #playHubScrim[hidden] { display: none !important; }
+    #playHub {
+      position: absolute; z-index: 18; left: 0; right: 0; bottom: 0;
+      max-height: min(88vh, 720px);
+      background: rgba(20, 20, 22, 0.96); color: #f5f5f7;
+      border-radius: 18px 18px 0 0;
+      border: 1px solid rgba(255,255,255,.08);
+      border-bottom: 0;
+      box-shadow: 0 -12px 40px rgba(0,0,0,.45);
+      display: flex; flex-direction: column;
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+      backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+      transform: translateY(110%);
+      transition: transform .28s ease;
+    }
+    #playHub.open { transform: translateY(0); }
+    #playHub[hidden] { display: none !important; }
+    .hub-bar {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 12px 0; flex: 0 0 auto;
+    }
+    .hub-handle {
+      flex: 1; height: 28px; border: 0; background: transparent; cursor: pointer;
+      position: relative;
+    }
+    .hub-handle::after {
+      content: ""; position: absolute; left: 50%; top: 10px;
+      width: 42px; height: 4px; margin-left: -21px; border-radius: 4px;
+      background: rgba(255,255,255,.22);
+    }
+    .hub-close {
+      width: 40px; height: 40px; border: 0; border-radius: 50%;
+      background: #2a2a2e; color: #f5f5f7; font-size: 22px; cursor: pointer;
+    }
+    .hub-tabs {
+      display: flex; gap: 6px; padding: 8px 12px 10px;
+      overflow-x: auto; -webkit-overflow-scrolling: touch;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+    }
+    .hub-tabs button {
+      flex: 0 0 auto; border: 1px solid rgba(255,255,255,.1);
+      background: transparent; color: #9aa0a6;
+      border-radius: 999px; padding: 8px 14px; min-height: 36px;
+      font: 650 13px/1 system-ui, sans-serif; cursor: pointer;
+    }
+    .hub-tabs button[aria-selected="true"] {
+      color: #f5f5f7; background: #1c1c1e; border-color: transparent;
+    }
+    .hub-scroll {
+      overflow: auto; -webkit-overflow-scrolling: touch;
+      padding: 12px 14px 20px; flex: 1;
+    }
+    .hub-bal { margin: 0; font-size: 28px; font-weight: 800; color: #ff7a1a; font-variant-numeric: tabular-nums; }
+    .hub-meta, .hub-note { margin: 6px 0 12px; color: #9aa0a6; font-size: 13px; line-height: 1.4; }
+    .hub-empty { color: #9aa0a6; font-size: 13px; }
+    .hub-cta {
+      display: flex; align-items: center; gap: 10px; width: 100%;
+      min-height: 48px; margin: 0 0 12px; padding: 0 14px;
+      border: 0; border-radius: 12px; cursor: pointer;
+      background: #ff7a1a; color: #1a140c; font: 700 14px/1 system-ui, sans-serif;
+    }
+    .hub-cta.ghost { background: #2a2a2e; color: #f5f5f7; }
+    .hub-cta .mark { width: 22px; text-align: center; }
+    .hub-details { margin: 0 0 14px; color: #c5c8ce; font-size: 13px; }
+    .hub-details summary { cursor: pointer; color: #ff7a1a; font-weight: 650; margin-bottom: 8px; }
+    .hub-pane h4 { margin: 16px 0 8px; font-size: 13px; color: #9aa0a6; text-transform: uppercase; letter-spacing: .04em; }
+    .hub-list { list-style: none; margin: 0; padding: 0; }
+    .hub-list li {
+      border-top: 1px solid rgba(255,255,255,.06);
+      padding: 10px 0; font-size: 13px;
+    }
+    .hub-list li:first-child { border-top: 0; }
+    .hub-time { display: block; color: #5a6573; font-size: 11px; margin-top: 2px; }
+    .hub-mission {
+      display: block; width: 100%; text-align: left; border: 0; background: transparent;
+      color: inherit; cursor: pointer; padding: 0; font: inherit;
+    }
+    .hub-mission strong { display: block; font-size: 14px; }
+    .hub-mission span { color: #9aa0a6; font-size: 12px; }
+    .hub-rank { list-style: none; margin: 0; padding: 0; }
+    .hub-rank li {
+      display: grid; grid-template-columns: 28px 1fr; gap: 2px 10px;
+      padding: 10px 0; border-top: 1px solid rgba(255,255,255,.06); font-size: 13px;
+    }
+    .hub-rank li:first-child { border-top: 0; }
+    .hub-pos { grid-row: span 2; font-weight: 800; color: #ff7a1a; font-size: 16px; align-self: center; }
+    .hub-rank span:last-child { color: #9aa0a6; font-size: 12px; }
+    .hub-check {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 0; border-top: 1px solid rgba(255,255,255,.06);
+      font-size: 14px; cursor: pointer;
+    }
+    .hub-check input { width: 18px; height: 18px; }
     #arStage[hidden] { display: none !important; }
     #mapFail {
       position: absolute; z-index: 5; left: 50%; top: 42%;
@@ -810,8 +936,11 @@
         <a class="acct-row" href="rules.html"><span class="mark">▸</span> How to play<span class="go">›</span></a>
         <a class="acct-row" href="catalog.html"><span class="mark">▦</span> Catalog<span class="go">›</span></a>
         <a class="acct-row" href="assets.html"><span class="mark">◈</span> My places<span class="go">›</span></a>
-      </section>
-      <section class="acct-sec" aria-labelledby="acctMap">
+        <button type="button" class="acct-row" id="btnHubWallet"><span class="mark">◎</span> Wallet<span class="go">›</span></button>
+        <button type="button" class="acct-row" id="btnHubEarn"><span class="mark">↑</span> Earn more<span class="go">›</span></button>
+        <button type="button" class="acct-row" id="btnHubRank"><span class="mark">#</span> Rankings<span class="go">›</span></button>
+        <button type="button" class="acct-row" id="btnHubAnalytics"><span class="mark">▣</span> Analytics<span class="go">›</span></button>
+      </section>      <section class="acct-sec" aria-labelledby="acctMap">
         <h3 id="acctMap">Map pins</h3>
         <div id="filterPop">
           <label class="row sw-row"><span class="swatch" style="background:#2ecc71"></span> Photo <span class="count" id="nA">0</span>
@@ -843,6 +972,21 @@
       </section>
     </div>
   </div>
+  <button type="button" id="playHubScrim" hidden aria-label="Close play hub"></button>
+  <div id="playHub" hidden>
+    <div class="hub-bar">
+      <button type="button" class="hub-handle" id="hubHandle" aria-label="Close hub"></button>
+      <button type="button" class="hub-close" id="hubClose" aria-label="Close">×</button>
+    </div>
+    <div class="hub-tabs" role="tablist">
+      <button type="button" role="tab" data-hub-tab="wallet" aria-selected="true">Wallet</button>
+      <button type="button" role="tab" data-hub-tab="earn" aria-selected="false">Earn</button>
+      <button type="button" role="tab" data-hub-tab="rankings" aria-selected="false">Rankings</button>
+      <button type="button" role="tab" data-hub-tab="analytics" aria-selected="false">Analytics</button>
+    </div>
+    <div class="hub-scroll" id="hubBody"></div>
+  </div>
+  <div id="gameBanner" hidden></div>
   <div class="sheet collapsed" id="sheet" hidden>
     <div class="sheet-bar">
       <button type="button" class="sheet-expand" id="sheetExpand" aria-label="Expand place" hidden>▴</button>
@@ -945,9 +1089,12 @@
   <script src="js/claim-rules.js"></script>
   <script src="js/conquest.js"></script>
   <script src="js/dossier.js"></script>
+  <script src="js/game-notify.js"></script>
+  <script src="js/rankings.js"></script>
+  <script src="js/wallet-earn.js"></script>
+  <script src="js/play-hub.js"></script>
   <script src="js/track-guide.js"></script>
-  <script src="js/bus-stops.js"></script>
-  <script src="js/satellite.js"></script>
+  <script src="js/bus-stops.js"></script>  <script src="js/satellite.js"></script>
   <script src="nairacoin/protocol.js"></script>
   <script src="nairacoin/iou-ledger.js"></script>
   <script src="nairacoin/rpc-stub.js"></script>
@@ -1107,9 +1254,25 @@
       if (next === "collapsed") {
         sheet.hidden = true;
         sheet.setAttribute("aria-hidden", "true");
+        sheet.style.removeProperty("height");
+        sheet.style.removeProperty("max-height");
+        sheet.style.removeProperty("min-height");
       } else {
         sheet.hidden = false;
         sheet.removeAttribute("aria-hidden");
+        // Pixel heights beat vh=0 when WebView briefly reports innerHeight 0,
+        // and avoid sticky used-height when swapping peek ↔ expand.
+        if (next === "doc" || next === "doc-exp") {
+          const frac = next === "doc" ? 0.34 : 0.70;
+          const px = Math.max(160, Math.round((window.innerHeight || 800) * frac)) + "px";
+          sheet.style.setProperty("height", px, "important");
+          sheet.style.setProperty("max-height", px, "important");
+          sheet.style.setProperty("min-height", px, "important");
+        } else {
+          sheet.style.removeProperty("height");
+          sheet.style.removeProperty("max-height");
+          sheet.style.removeProperty("min-height");
+        }
       }
       const handle = document.getElementById("sheetHandle");
       const expand = document.getElementById("sheetExpand");
@@ -1184,6 +1347,7 @@
     function hideMenus() {
       hidePopovers();
       closeAccountSheet();
+      closePlayHub();
     }
 
     function renderSearchHits(q) {
@@ -1420,6 +1584,54 @@
         document.getElementById("identityGate").hidden = false;
       });
       bindSaveButtons();
+      const hubOpeners = [
+        ["btnHubWallet", "wallet"],
+        ["btnHubEarn", "earn"],
+        ["btnHubRank", "rankings"],
+        ["btnHubAnalytics", "analytics"],
+      ];
+      hubOpeners.forEach(function (pair) {
+        const el = document.getElementById(pair[0]);
+        if (!el) return;
+        el.addEventListener("click", function () {
+          openPlayHub(pair[1]);
+        });
+      });
+      const hubClose = document.getElementById("hubClose");
+      const hubHandle = document.getElementById("hubHandle");
+      const hubScrim = document.getElementById("playHubScrim");
+      if (hubClose) hubClose.addEventListener("click", closePlayHub);
+      if (hubHandle) hubHandle.addEventListener("click", closePlayHub);
+      if (hubScrim) hubScrim.addEventListener("click", closePlayHub);
+      document.getElementById("playHub").addEventListener("click", function (e) {
+        const tab = e.target.closest("[data-hub-tab]");
+        if (tab && tab.getAttribute("data-hub-tab")) {
+          e.preventDefault();
+          hubTab = tab.getAttribute("data-hub-tab");
+          renderPlayHub();
+          return;
+        }
+        const mission = e.target.closest("[data-open-place]");
+        if (mission) {
+          e.preventDefault();
+          openPlaceFromHub(mission.getAttribute("data-open-place"), mission.getAttribute("data-bid") === "1");
+        }
+      });
+      const gameBanner = document.getElementById("gameBanner");
+      if (gameBanner) {
+        gameBanner.addEventListener("click", function (e) {
+          const btn = e.target.closest("[data-ban-act]");
+          if (!btn) return;
+          const act = btn.getAttribute("data-ban-act");
+          const placeId = btn.getAttribute("data-ban-place") || "";
+          gameBanner.hidden = true;
+          if (act === "dismiss" || act === "ignore") {
+            toast("Ignored");
+            return;
+          }
+          if (placeId) openPlaceFromHub(placeId, act === "bid");
+        });
+      }
       document.getElementById("btn3d").addEventListener("click", () => {
         const box = document.getElementById("toggle3d");
         box.checked = !box.checked;
@@ -2263,10 +2475,14 @@
     function bootCloudSave() {
       const Sync = window.LvfeSaveSync;
       if (!Sync || !Sync.enabled()) return;
+      ownershipSnap = ownershipMap();
       Sync.pullAndMerge(PLAYER_KEY, {
         packOpts: syncPackOpts(),
         afterImport: function (res) {
           if (res && res.playerKey) switchPlayer(res.playerKey);
+          const after = ownershipMap();
+          notifyOwnershipDiff(ownershipSnap || {}, after);
+          ownershipSnap = after;
           renderHud();
           stampPlaceMarks();
           refreshPlaceSource();
@@ -2442,6 +2658,306 @@
       clearTimeout(toastTimer);
       toastTimer = setTimeout(() => { el.hidden = true; }, 3200);
     }
+
+    let hubTab = "wallet";
+    let bannerTimer = 0;
+    let notifyScanTimer = 0;
+    let ownershipSnap = null;
+
+    function ownershipMap(places) {
+      const all = places || loadPlaces();
+      const out = {};
+      Object.keys(all).forEach(function (id) {
+        if (all[id] && all[id].ownerId) out[id] = all[id].ownerId;
+      });
+      return out;
+    }
+
+    function emitGameNotify(evt, opts) {
+      const N = window.LvfeGameNotify;
+      if (!N) return false;
+      const o = opts || {};
+      const gate = N.canNotify(evt, { force: Boolean(o.force), now: o.now });
+      if (!gate.ok) return false;
+      const payload = N.buildPayload(evt);
+      N.markSent(evt, { now: o.now });
+      let nativeOk = false;
+      try {
+        if (window.LvfeNative && typeof window.LvfeNative.showGameNotification === "function") {
+          const st = window.LvfeNative.showGameNotification(JSON.stringify(payload));
+          nativeOk = st === "ok";
+          if (st === "denied" && typeof window.LvfeNative.requestNotifications === "function") {
+            window.LvfeNative.requestNotifications();
+          }
+        }
+      } catch (err) { /* soft fail */ }
+      if (!nativeOk) showGameBanner(payload);
+      return true;
+    }
+
+    function showGameBanner(payload) {
+      const el = document.getElementById("gameBanner");
+      if (!el) {
+        toast((payload && payload.title ? payload.title + ": " : "") + (payload && payload.body || ""));
+        return;
+      }
+      const acts = (payload.actions || []).map(function (a) {
+        const cls = a.id === "ignore" ? "ghost" : "primary";
+        return `<button type="button" class="${cls}" data-ban-act="${esc(a.id)}" data-ban-place="${esc(payload.placeId || "")}">${esc(a.label)}</button>`;
+      }).join("");
+      el.innerHTML =
+        `<strong>${esc(payload.title || "Lvfe")}</strong>` +
+        `<p>${esc(payload.body || "")}</p>` +
+        `<div class="ban-acts">${acts || `<button type="button" class="primary" data-ban-act="open" data-ban-place="${esc(payload.placeId || "")}">Open</button>`}` +
+        `<button type="button" class="ghost" data-ban-act="dismiss">Dismiss</button></div>`;
+      el.hidden = false;
+      clearTimeout(bannerTimer);
+      bannerTimer = setTimeout(function () { el.hidden = true; }, 12000);
+    }
+
+    function closePlayHub() {
+      const hub = document.getElementById("playHub");
+      const scrim = document.getElementById("playHubScrim");
+      if (hub) {
+        hub.classList.remove("open");
+        setTimeout(function () { hub.hidden = true; }, 220);
+      }
+      if (scrim) scrim.hidden = true;
+    }
+
+    function openPlayHub(tab) {
+      closeAccountSheet();
+      hideMenus();
+      hubTab = tab || "wallet";
+      const hub = document.getElementById("playHub");
+      const scrim = document.getElementById("playHubScrim");
+      if (scrim) scrim.hidden = false;
+      if (hub) {
+        hub.hidden = false;
+        window.requestAnimationFrame(function () { hub.classList.add("open"); });
+      }
+      renderPlayHub();
+      try {
+        if (window.LvfeNative && typeof window.LvfeNative.requestNotifications === "function") {
+          window.LvfeNative.requestNotifications();
+        }
+      } catch (err) { /* */ }
+    }
+
+    function hubIdentities() {
+      const out = {};
+      try {
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (!k || k.indexOf("lvfe.identity.") !== 0) continue;
+          const pk = k.slice("lvfe.identity.".length);
+          const row = lsGet(k, null);
+          if (row) out[pk] = row;
+        }
+      } catch (err) { /* */ }
+      const sel = document.getElementById("profileSelect");
+      if (sel) {
+        Array.prototype.forEach.call(sel.options || [], function (opt) {
+          if (!opt.value) return;
+          if (!out[opt.value]) out[opt.value] = loadIdentity(opt.value) || { playerName: opt.textContent, playerKey: opt.value };
+        });
+      }
+      const idn = loadIdentity();
+      if (idn) out[PLAYER_KEY] = idn;
+      return out;
+    }
+
+    function renderPlayHub() {
+      const Hub = window.LvfePlayHub;
+      const Earn = window.LvfeWalletEarn;
+      const Rank = window.LvfeRankings;
+      const N = window.LvfeGameNotify;
+      const body = document.getElementById("hubBody");
+      if (!body || !Hub) return;
+      document.querySelectorAll("#playHub [data-hub-tab]").forEach(function (btn) {
+        btn.setAttribute("aria-selected", btn.getAttribute("data-hub-tab") === hubTab ? "true" : "false");
+      });
+      const places = loadPlaces();
+      const pools = lsGet(FACTION_POOL_KEY, {});
+      const idn = loadIdentity();
+      if (hubTab === "earn") {
+        const missions = Earn
+          ? Earn.earnMissions(placesFc.features, places, {
+            lat: userPos && userPos.lat,
+            lon: userPos && userPos.lon,
+            playerKey: PLAYER_KEY,
+            radiusM: 500,
+          })
+          : [];
+        body.innerHTML = Hub.earnHtml(missions, { noGps: !userPos });
+      } else if (hubTab === "rankings") {
+        const global = Rank
+          ? Rank.globalLeaders(places, { identities: hubIdentities(), metric: "staked", emptyDemo: true })
+          : [];
+        const factions = Rank
+          ? Rank.factionLeaders(places, pools, FACTION_NAMES, { identities: hubIdentities() })
+          : [];
+        const who = (Rank && idn && idn.factionId)
+          ? Rank.factionWhoIsWho(idn.factionId, places, { identities: hubIdentities() })
+          : null;
+        body.innerHTML = Hub.rankingsHtml({ global: global, factions: factions, who: who });
+      } else if (hubTab === "analytics") {
+        const prefs = N ? N.loadPrefs() : {};
+        body.innerHTML = Hub.analyticsHtml({
+          territory: Earn ? Earn.territoryControl(placesFc.features, places, FACTION_NAMES) : [],
+          claims: Earn ? Earn.yourClaims(PLAYER_KEY, places, placesFc.features) : [],
+          rivals: Earn
+            ? Earn.rivalPressure(placesFc.features, places, {
+              lat: userPos && userPos.lat,
+              lon: userPos && userPos.lon,
+              playerKey: PLAYER_KEY,
+              radiusM: 400,
+            })
+            : [],
+          prefs: prefs,
+          noGps: !userPos,
+        });
+        bindHubPrefs();
+      } else {
+        body.innerHTML = Hub.walletHtml({
+          balance: walletWhole(),
+          stakesOut: Earn ? Earn.stakesOut(PLAYER_KEY, places) : { total: 0, owned: 0, backed: 0, rows: [] },
+          activity: Earn ? Earn.loadActivity() : [],
+        });
+      }
+    }
+
+    function bindHubPrefs() {
+      const N = window.LvfeGameNotify;
+      if (!N) return;
+      const prefs = N.loadPrefs();
+      const muteAll = document.getElementById("hubMuteAll");
+      const muteClaims = document.getElementById("hubMuteClaims");
+      const muteNearby = document.getElementById("hubMuteNearby");
+      const muteEnemy = document.getElementById("hubMuteEnemy");
+      const testBtn = document.getElementById("hubTestNotify");
+      function save() {
+        N.savePrefs({
+          muted: Boolean(muteAll && muteAll.checked),
+          allowClaims: !(muteClaims && muteClaims.checked),
+          allowNearby: !(muteNearby && muteNearby.checked),
+          allowEnemy: !(muteEnemy && muteEnemy.checked),
+        });
+      }
+      if (muteAll) muteAll.addEventListener("change", save);
+      if (muteClaims) muteClaims.addEventListener("change", save);
+      if (muteNearby) muteNearby.addEventListener("change", save);
+      if (muteEnemy) muteEnemy.addEventListener("change", save);
+      if (testBtn) {
+        testBtn.addEventListener("click", function () {
+          emitGameNotify({
+            type: N.TYPES.TEST,
+            body: "Test notification — Bid / Ignore / Open deep-links work from the system tray on Android.",
+            placeId: (placesFc.features[0] && placesFc.features[0].properties && placesFc.features[0].properties.id) || "",
+            placeName: "Test place",
+          }, { force: true });
+          toast("Test notification sent");
+        });
+      }
+    }
+
+    function scheduleNotifyScan() {
+      clearTimeout(notifyScanTimer);
+      notifyScanTimer = setTimeout(runNotifyScan, 1800);
+    }
+
+    function runNotifyScan() {
+      const N = window.LvfeGameNotify;
+      if (!N || !userPos) return;
+      const idn = loadIdentity();
+      const places = loadPlaces();
+      const rows = [];
+      for (let i = 0; i < placesFc.features.length; i++) {
+        const f = placesFc.features[i];
+        const p = f.properties || {};
+        if (!isOwnable(p)) continue;
+        const coords = f.geometry && f.geometry.coordinates;
+        if (!coords) continue;
+        const rec = places[p.id] || {};
+        rows.push({
+          id: p.id,
+          name: placeName(p),
+          lon: coords[0],
+          lat: coords[1],
+          ownable: true,
+          ownerId: rec.ownerId || "",
+          ownerName: rec.ownerName || "",
+          factionId: rec.factionId || "",
+        });
+      }
+      const scan = N.scanNearby(rows, {
+        lat: userPos.lat,
+        lon: userPos.lon,
+        playerKey: PLAYER_KEY,
+        factionId: (idn && idn.factionId) || "",
+        radiusM: 400,
+      });
+      if (scan.enemy) emitGameNotify(scan.enemy);
+      else if (scan.claimable) emitGameNotify(scan.claimable);
+    }
+
+    function notifyOwnershipDiff(before, after) {
+      const N = window.LvfeGameNotify;
+      if (!N) return;
+      const names = {};
+      const ownerNames = {};
+      const places = loadPlaces();
+      Object.keys(after || {}).forEach(function (id) {
+        const feat = placeById(id);
+        names[id] = feat ? placeName(feat.properties) : id;
+        ownerNames[id] = (places[id] && places[id].ownerName) || "Rival";
+      });
+      const events = N.rivalClaimsFromDiff(before, after, {
+        playerKey: PLAYER_KEY,
+        names: names,
+        ownerNames: ownerNames,
+      });
+      if (events[0]) emitGameNotify(events[0]);
+    }
+
+    function openPlaceFromHub(placeId, bid) {
+      closePlayHub();
+      const feat = placeById(placeId);
+      if (!feat) {
+        toast("Place not on map yet.");
+        return;
+      }
+      if (bid) dossierTab = "wallet";
+      const coords = feat.geometry && feat.geometry.coordinates;
+      if (map && coords) {
+        ignorePan = true;
+        map.flyTo({ center: coords, zoom: Math.max(map.getZoom() || 0, 16), duration: 700 });
+        map.once("moveend", function () { ignorePan = false; });
+      }
+      openPlacePopup(feat);
+      if (bid) {
+        setTimeout(function () {
+          setDossierTab("wallet");
+          const input = document.querySelector('#placeCard input[name="amount"]');
+          if (input) {
+            try { input.focus(); input.select(); } catch (err) { /* */ }
+          }
+        }, 80);
+      }
+    }
+
+    window.lvfeDeepLink = function (payload) {
+      const p = payload || {};
+      const action = String(p.action || "open");
+      if (action === "ignore" || action === "dismiss") {
+        const ban = document.getElementById("gameBanner");
+        if (ban) ban.hidden = true;
+        toast("Ignored");
+        return;
+      }
+      if (p.placeId) openPlaceFromHub(String(p.placeId), action === "bid");
+      else openPlayHub("wallet");
+    };
 
     function showIdentityGate() {
       const gate = document.getElementById("identityGate");
@@ -2640,17 +3156,29 @@
       }
       const mine = rec.stakes[PLAYER_KEY];
       const first = !(mine && mine.amount > 0);
-      const need = first ? minStake(p) : 1;
+      let need = first ? minStake(p) : 1;
+      let overturn = false;
+      let ownerStake = 0;
+      if (window.LvfeWalletEarn) {
+        const bid = window.LvfeWalletEarn.bidToOwn(rec, PLAYER_KEY, minStake(p));
+        need = bid.add;
+        overturn = Boolean(bid.overturn);
+        ownerStake = Number(bid.ownerStake) || 0;
+      }
       const needPhoto = photoRequired(p, rec);
+      const label = overturn ? "Bid to overturn" : (first ? "Back this place" : "Put more coins");
       const bits = [`<form class="visit-form" data-place="${esc(p.id)}" data-kind="stake">`];
+      if (overturn) {
+        bits.push(`<p class="meta">Deposit at least ${need} NCN to beat ${esc(ownerDisplayName(rec))} (${ownerStake} NCN).</p>`);
+      }
       if (needPhoto) {
         bits.push(`<input type="file" accept="image/*" capture="environment" class="photo-in" name="photo" />`);
       } else if (mine && mine.photo) {
         bits.push(`<span class="meta">Photo already in</span>`);
       }
       bits.push(`<div class="stake-row">` +
-        `<input type="number" name="amount" min="${need}" step="1" value="${first ? minStake(p) : need}" />` +
-        `<button type="submit" class="claim">${first ? "Back this place" : "Put more coins"}</button>` +
+        `<input type="number" name="amount" min="${need}" step="1" value="${need}" />` +
+        `<button type="submit" class="claim">${label}</button>` +
         `</div></form>`);
       return bits.join("");
     }
@@ -2694,6 +3222,7 @@
       }
       if (!near.length) {
         box.textContent = "Walk closer.";
+        scheduleNotifyScan();
         return;
       }
       box.innerHTML = near.map(({ f, dist }) => {
@@ -2706,6 +3235,7 @@
           `<br>${esc(areaLabel(p))}</span>` +
           `</button>${visitFormHtml(p, rec, true, true)}</div>`;
       }).join("");
+      scheduleNotifyScan();
     }
 
     function placeHasPhoto(p, rec) {
@@ -2930,7 +3460,10 @@
         return;
       }
       const amount = Math.floor(Number(opts && opts.amount));
-      const need = first ? minStake(p) : 1;
+      let need = first ? minStake(p) : 1;
+      if (window.LvfeWalletEarn) {
+        need = window.LvfeWalletEarn.bidToOwn(rec, PLAYER_KEY, minStake(p)).add;
+      }
       if (!Number.isFinite(amount) || amount < need) {
         toast(`Need ${need} NCN to back this place.`);
         return;
@@ -2998,6 +3531,22 @@
       }
       if (promoted) parts.push("photo");
       toast(parts.join(" · ") + " · " + placeName(p));
+      if (window.LvfeWalletEarn) {
+        window.LvfeWalletEarn.appendActivity({
+          kind: youOwn && (first || split.prevOwner !== PLAYER_KEY) ? "claim" : "stake",
+          placeId: id,
+          amount: amount,
+          text: (youOwn && (first || split.prevOwner !== PLAYER_KEY) ? "Claimed " : "Backed ") + placeName(p),
+        });
+      }
+      if (youOwn && (first || split.prevOwner !== PLAYER_KEY)) {
+        emitGameNotify({
+          type: window.LvfeGameNotify && window.LvfeGameNotify.TYPES.CLAIM_SELF,
+          placeId: id,
+          placeName: placeName(p),
+        });
+      }
+      ownershipSnap = ownershipMap(all);
     }
 
     function setFilter() {
@@ -3674,6 +4223,7 @@
         refreshOpenDossier();
         if (window.LvfeTrack) window.LvfeTrack.onUserPos(userPos);
         flyToUser(userPos);
+        scheduleNotifyScan();
       });
       geo.on("error", () => {
         if (!forcedPos) {

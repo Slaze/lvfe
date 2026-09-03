@@ -2,6 +2,9 @@ package com.lvfe.xperience
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -11,6 +14,7 @@ import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.net.Uri
 import android.graphics.Color
+import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
 import android.view.View
@@ -22,6 +26,7 @@ import androidx.lifecycle.lifecycleScope
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import kotlinx.coroutines.launch
+import org.json.JSONArray
 import org.json.JSONObject
 import android.webkit.JavascriptInterface
 import android.webkit.PermissionRequest
@@ -39,6 +44,8 @@ import androidx.camera.core.CameraSelector
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.webkit.WebViewAssetLoader
@@ -65,6 +72,8 @@ class MainActivity : AppCompatActivity() {
     @Volatile private var deviceHeadingDeg: Float = Float.NaN
     private val rotationMatrix = FloatArray(9)
     private val orientationAngles = FloatArray(3)
+    private var pendingDeepLink: JSONObject? = null
+    private var pageReady = false
 
     private val headingListener = object : SensorEventListener {
         override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
@@ -171,6 +180,36 @@ class MainActivity : AppCompatActivity() {
         }
 
         @JavascriptInterface
+        fun hasNotifications(): Boolean = hasNotificationPermission()
+
+        @JavascriptInterface
+        fun requestNotifications() {
+            runOnUiThread { requestNotificationPerms() }
+        }
+
+        /** JSON payload from LvfeGameNotify.buildPayload. Returns status string. */
+        @JavascriptInterface
+        fun showGameNotification(json: String): String {
+            return try {
+                val obj = JSONObject(json)
+                if (!hasNotificationPermission()) {
+                    runOnUiThread { requestNotificationPerms() }
+                    return "denied"
+                }
+                postGameNotification(obj)
+            } catch (err: Exception) {
+                "error"
+            }
+        }
+
+        @JavascriptInterface
+        fun cancelGameNotification(id: Int) {
+            runOnUiThread {
+                NotificationManagerCompat.from(this@MainActivity).cancel(NOTIF_TAG, id)
+            }
+        }
+
+        @JavascriptInterface
         fun previewLuma(): Int {
             val latch = java.util.concurrent.CountDownLatch(1)
             var luma = -1
@@ -202,6 +241,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        ensureNotificationChannels()
         previewView = PreviewView(this).apply {
             implementationMode = PreviewView.ImplementationMode.PERFORMANCE
             scaleType = PreviewView.ScaleType.FILL_CENTER
@@ -231,6 +271,14 @@ class MainActivity : AppCompatActivity() {
         requestAllLaunchPerms()
         sensorManager = getSystemService(Context.SENSOR_SERVICE) as? SensorManager
         rotationSensor = sensorManager?.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
+        captureDeepLink(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        captureDeepLink(intent)
+        flushDeepLink()
     }
 
     private fun startHeadingUpdates() {
@@ -299,6 +347,8 @@ class MainActivity : AppCompatActivity() {
                 view?.post { notifyMapFit(view) }
                 view?.postDelayed({ notifyMapFit(view) }, 80)
                 view?.postDelayed({ notifyMapFit(view) }, 400)
+                pageReady = true
+                flushDeepLink()
             }
         }
 
@@ -693,8 +743,135 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
+    private fun ensureNotificationChannels() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+        val mgr = getSystemService(NotificationManager::class.java) ?: return
+        val channels = listOf(
+            NotificationChannel(CHANNEL_CLAIMS, "Claims", NotificationManager.IMPORTANCE_DEFAULT),
+            NotificationChannel(CHANNEL_NEARBY, "Nearby places", NotificationManager.IMPORTANCE_DEFAULT),
+            NotificationChannel(CHANNEL_ENEMY, "Enemy assets", NotificationManager.IMPORTANCE_HIGH),
+            NotificationChannel(CHANNEL_GAME, "Game", NotificationManager.IMPORTANCE_LOW),
+        )
+        channels.forEach { ch ->
+            ch.description = "Lvfe: The Xperience"
+            mgr.createNotificationChannel(ch)
+        }
+    }
+
+    private fun hasNotificationPermission(): Boolean {
+        if (Build.VERSION.SDK_INT < 33) return true
+        return ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.POST_NOTIFICATIONS,
+        ) == PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun requestNotificationPerms() {
+        if (Build.VERSION.SDK_INT < 33) return
+        if (hasNotificationPermission()) return
+        launchPerms(listOf(Manifest.permission.POST_NOTIFICATIONS))
+    }
+
+    private fun postGameNotification(obj: JSONObject): String {
+        return try {
+            val id = obj.optInt("id", (System.currentTimeMillis() % 100000).toInt())
+            val channel = when (obj.optString("channel")) {
+                "claims" -> CHANNEL_CLAIMS
+                "nearby" -> CHANNEL_NEARBY
+                "enemy" -> CHANNEL_ENEMY
+                else -> CHANNEL_GAME
+            }
+            val title = obj.optString("title", "Lvfe")
+            val body = obj.optString("body", "")
+            val placeId = obj.optString("placeId", "")
+            val type = obj.optString("type", "")
+            val tapAction = obj.optString("action", "open")
+
+            val contentIntent = deepLinkIntent(placeId, tapAction, type, id)
+            val builder = NotificationCompat.Builder(this, channel)
+                .setSmallIcon(android.R.drawable.ic_menu_mylocation)
+                .setContentTitle(title)
+                .setContentText(body)
+                .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+                .setAutoCancel(true)
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setContentIntent(contentIntent)
+
+            val actions = obj.optJSONArray("actions") ?: JSONArray()
+            for (i in 0 until actions.length()) {
+                val act = actions.optJSONObject(i) ?: continue
+                val actId = act.optString("id", "open")
+                val label = act.optString("label", "Open")
+                val pi = deepLinkIntent(placeId, actId, type, id * 10 + i + 1)
+                builder.addAction(0, label, pi)
+            }
+
+            NotificationManagerCompat.from(this).notify(NOTIF_TAG, id, builder.build())
+            "ok"
+        } catch (err: Exception) {
+            "error"
+        }
+    }
+
+    private fun deepLinkIntent(
+        placeId: String,
+        action: String,
+        type: String,
+        requestCode: Int,
+    ): PendingIntent {
+        val intent = Intent(this, MainActivity::class.java).apply {
+            this.action = Intent.ACTION_VIEW
+            data = if (placeId.isNotBlank()) {
+                Uri.parse("lvfe://place/$placeId?action=$action")
+            } else {
+                Uri.parse("lvfe://place/?action=$action")
+            }
+            putExtra(EXTRA_PLACE_ID, placeId)
+            putExtra(EXTRA_ACTION, action)
+            putExtra(EXTRA_TYPE, type)
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val flags = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        return PendingIntent.getActivity(this, requestCode, intent, flags)
+    }
+
+    private fun captureDeepLink(intent: Intent?) {
+        if (intent == null) return
+        var placeId = intent.getStringExtra(EXTRA_PLACE_ID) ?: ""
+        var action = intent.getStringExtra(EXTRA_ACTION) ?: "open"
+        var type = intent.getStringExtra(EXTRA_TYPE) ?: ""
+        val data = intent.data
+        if (placeId.isBlank() && data != null && data.scheme == "lvfe") {
+            placeId = data.lastPathSegment?.takeIf { it.isNotBlank() && it != "place" } ?: ""
+            action = data.getQueryParameter("action") ?: action
+        }
+        if (placeId.isBlank() && action == "open" && type.isBlank()) return
+        pendingDeepLink = JSONObject()
+            .put("placeId", placeId)
+            .put("action", action)
+            .put("type", type)
+    }
+
+    private fun flushDeepLink() {
+        val payload = pendingDeepLink ?: return
+        if (!pageReady || !this::webView.isInitialized) return
+        pendingDeepLink = null
+        webView.evaluateJavascript(
+            "window.lvfeDeepLink&&window.lvfeDeepLink($payload)",
+            null,
+        )
+    }
+
     companion object {
         private const val WEB_ORIGIN = "https://appassets.androidplatform.net"
+        private const val NOTIF_TAG = "lvfe"
+        private const val CHANNEL_CLAIMS = "claims"
+        private const val CHANNEL_NEARBY = "nearby"
+        private const val CHANNEL_ENEMY = "enemy"
+        private const val CHANNEL_GAME = "game"
+        const val EXTRA_PLACE_ID = "lvfe_place_id"
+        const val EXTRA_ACTION = "lvfe_action"
+        const val EXTRA_TYPE = "lvfe_type"
     }
 
     @Deprecated("Deprecated in Java")
