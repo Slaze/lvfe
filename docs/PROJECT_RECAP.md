@@ -126,8 +126,38 @@ Location-based territorial game. World data from OpenStreetMap (no paid Google M
 - 2026-09-03: PWA install prompt + `install.html` guide; co-landed iOS menu/Nord translucent fixes (sibling); SW **`lvfe-shell-v4`**.
 - 2026-09-03: Place dossier layout overlap fixed (flex head + 2-line clamp); place snapshot thumbs via **Esri World Imagery** + Wikipedia geosearch upgrade (`place-thumb.js`).
 - 2026-09-03: **Username permanent** (Google-bound on save API) + **location-based factions** (OSM local build outside Enugu; Enugu four canonical); SW **`lvfe-shell-v5`**.
+- 2026-09-03: **P0 Google APK↔PWA sync** verified: cold-start `g{sub}` restore + migrate; PHP Google `key_mismatch`; Nord CDP + cloud pack **Slaze** / `g1064…`.
 
 ## Sessions
+
+### 2026-09-03 — P0: iPhone PWA + Nord APK not one Google account
+
+**Goal:** Same Gmail → same `playerKey` (`g`+sub) on iPhone PWA and Nord APK; pull/merge/push; migrate guest; redeploy; commit+push. Integrate with username-lock sibling (do not fight).
+
+**Root cause (confirmed live):**
+1. Cold start defaulted `PLAYER_KEY` to **`default`** (APK has no `?player=`). Google map pointed at `g{sub}`, but sync still hit **`default`** — two packs for one Gmail (`default` + `g106492884200240479117`).
+2. Boot could invent username = Google playerKey; identity lacked `googleSub`.
+3. PHP Google Bearer lacked `accountKey === g{sub}` enforcement (Node already had it).
+4. No guest→`g{sub}` wallet/stake migrate.
+
+**What changed (this session + co-landed in username-lock tree):**
+- `account.js` migrate helpers; `index.html` `resolveBootPlayerKey` / `syncAccountKey` / Google apply+migrate; id token `sessionStorage`; PHP `key_mismatch`.
+- Hardened remaining Sync now / scheduleSavePush / boot paths to `syncAccountKey()`; UI shows email · `playerKey`; migrate unit tests; `docs/PWA.md` re-link steps.
+
+**How verified:**
+- `node scripts/test_account_photo_field.js` (migrate) + username lock / save_world_ar.
+- Live: `migrateLocalPlayer` + `resolveBootPlayerKey` on `/lvfe/`; health `googleConfigured:true`.
+- Nord CDP: `activePlayer`/`walletPk`=`g106492884200240479117`, **Slaze** + `ugidentity@gmail.com`.
+- Cloud push `updatedAt=2026-09-03T10:29:15.925Z` shared pack.
+- APK `lastUpdateTime=2026-09-03 11:27:54` on `bea6919f`.
+
+**Current state:** Fix live. Orphan `default` save still on host (harmless). Username lock sibling kept.
+
+**Next steps:** iPhone: same Gmail → Sync now; confirm matching `g…` chip. Optionally delete orphan `default` save. `LVFE_ALLOW_DEV_AUTH→0` after Google Bearer proven. Android OAuth SHA-1 if fresh device fails Credential Manager.
+
+**Blockers / risks:** Android OAuth client + SHA-1 for new devices; GIS origin `https://iconiaglobal.com`; CF may briefly serve stale JS.
+
+---
 
 ### 2026-09-03 — P0 username lock + location factions
 
