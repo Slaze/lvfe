@@ -21,4 +21,13 @@ return [
     'PAYSTACK_CURRENCY' => 'NGN',
     // When currency=NGN: charge kobo = NCN * NGN_PER_USD * 100
     'NGN_PER_USD' => '1500',
+    // OPay Cashier (optional; soft-fail in UI until set). Never commit real keys.
+    'OPAY_MERCHANT_ID' => '',
+    'OPAY_PUBLIC_KEY' => '',
+    'OPAY_SECRET_KEY' => '',
+    'OPAY_SANDBOX' => '1',
+    'OPAY_CURRENCY' => 'NGN',
+    'OPAY_PAYOUT_ACCOUNT' => '7035474827',
+    'OPAY_PAYOUT_NAME' => 'Okogeri Ugochukwu O',
+    'OPAY_MERCHANT_EMAIL' => 'ugidentity@gmail.com',
 ];

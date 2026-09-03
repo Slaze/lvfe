@@ -1,6 +1,6 @@
 # Lvfe: The Xperience — project recap
 
-Location-based territorial game. World data from OpenStreetMap (no paid Google Maps SKUs). Device GPS is the physics. Canonical loop is **endowment / ownership + NairaCoin IOU** (not extractive XP).
+Location-based territorial game. World data from OpenStreetMap (no paid Google Maps SKUs). Device GPS is the physics. Canonical loop is **endowment / ownership + NairaCoin IOU** (not extractive XP). Brand mark is a stylized **Nigerian 1 naira (Herbert Macaulay)** coin.
 
 **Internal (not for players):** schema `locked_by` / `source` may use the username `architect`. Player UI, catalog, AR, and GeoJSON notes must not mention The Architect, God Mode, or Architect points.
 
@@ -55,11 +55,13 @@ Location-based territorial game. World data from OpenStreetMap (no paid Google M
 - `web/ar-overlay.js` — map-page AR (not `ar.html`). **Nord/Android:** CameraX `PreviewView` under a transparent WebView (`LvfeNative.startArCamera`); no getUserMedia (rear WebView stream is #000). `#arThree` hidden. HTML pin glyphs (red X / black unknown / claimed circles) within **~120 m**, FOV + compass (native heading preferred). Marked-pin HUD (`#arTrackHud`) live metres + heading every tick. Debug: `?arMock=1` or `localStorage.lvfe.arMock=1` places a mock pin ~45 m north. Empty-range / GPS-off copy, × → map. **Desktop:** visible `<video id="arCam">`. Pin labels do **not** touch `LvfeCatalogWallet` (`W`). `web/ar.html` leftover.
 - `web/map-3d.js` / `web/map-3d.css` — **one** `#btn3d` switch (green only when live 3D: pitch ~52 + terrain). Tap 3D from idle 12.2 → pitch 52 **and zoom ≥ 14.2**. Every OSM footprint is a box (tagged height/levels; untagged **OMT 5 m**; cap 80). **SAT-off opacity 1** (solid box city). **SAT+3D opacity 0.35** (ghost walls so draped Esri roofs read). SAT restacks above Liberty beige, under extrusion, under pins. 2D `building` fill hidden while extruded. No skip-filter. Terrain **1.0×** + sky; DEM fail → banner, switch off, stay flat. Labels `text-pitch-alignment: viewport`. Pins billboard (X/circle); no −16 px; no chimney poles. NavigationControl `visualizePitch` off. No Google 3D SKU. No Three.js.
 - `data/places.geojson` — typed pins. Place value/owner live in `lvfe.places.v1`.
-- `web/manifest.webmanifest` + `web/sw.js` + `web/js/pwa-register.js` + `web/js/pwa-install.js` + `web/install.html` — installable PWA (Nord dark theme, standalone). In-app install banner (Chromium `beforeinstallprompt` / iOS Share guide); SW caches shell; network-first for HTML/CSS/JS + `lvfe-save` / tiles / GIS. **SW skipped** when `LvfeNative` or appassets WebView. Cache id **`lvfe-shell-v6`**. Theme CSS: `web/css/nord-shell-v2.css` (cache-bust rename).
+- `web/manifest.webmanifest` + `web/sw.js` + `web/js/pwa-register.js` + `web/js/pwa-install.js` + `web/install.html` — installable PWA (Nord dark theme, standalone). In-app install banner (Chromium `beforeinstallprompt` / iOS Share guide); SW caches shell; network-first for HTML/CSS/JS + `lvfe-save` / tiles / GIS. **SW skipped** when `LvfeNative` or appassets WebView. Cache id **`lvfe-shell-v7`**. Theme CSS: `web/css/nord-shell-v2.css` (cache-bust rename).
 - `hosting/lvfe/` + `scripts/stage_pwa.sh` / `deploy_pwa.sh` — deploy tree to **`https://iconiaglobal.com/lvfe/`** (FTP Iconia). Apex `.htaccess` pass-through includes `lvfe`. Docs: `docs/PWA.md`.
 - `android/` — debug WebView APK (`com.lvfe.xperience`, minSdk 24). `sync-www.sh` bundles `web/` + `data/places.geojson` + `data/catalog.json` + `geojson/enugu-factions.geojson` + MapLibre JS/CSS. OpenFreeMap tiles still need the network. No Google Maps SDK. Not the Don Maseratte shop.
 
 ## Inception → now timeline
+
+- 2026-09-03: **Wallet 1e9 / OPay+P2P / Travel / 1-naira brand / hub P0 / BigInt ledger / Asabana.**
 
 - 2026-08-31: Design — Google Maps rejected for cost; OSM + MapLibre + phone GPS.
 - 2026-08-31: Enugu OSM tag census; place-tag → mission roles.
@@ -133,6 +135,31 @@ Location-based territorial game. World data from OpenStreetMap (no paid Google M
 - 2026-09-03: **Kill tech notifications** — player-only toast/banner/native channel copy; raw Overpass/OAuth/Paystack/LWW/`g{sub}`/`SAVE_API` gated behind `?debug=1` / `localStorage.lvfe.debug=1`.
 
 ## Sessions
+
+
+### 2026-09-03 — Multi-ask A–I (wallet 1e9, OPay, P2P, UI, Travel, brand, catalog, hubs)
+
+**Goal:** Wallet credit 1e9, OPay+P2P, clean account UI, Travel mode, 1-naira brand, Enugu catalog refresh, fix broken hubs, report notifies. Nord `bea6919f` + PWA + PHP.
+
+**What changed:**
+- **A)** Cloud `g106492884200240479117` / Slaze / ugidentity@gmail.com → **1,000,000,000 NCN** + ledger `ops_credit_1e9_ncn_20260903`. Local ledger **BigInt** atomics; Nord CDP bal **1e9**.
+- **B)** `hosting/lvfe-save/opay.php` + `docs/OPAY_NCN.md`; soft-fail until keys; receipt PHP mail + `pack.receipts`; payout hint 7035474827.
+- **C)** `p2p.php` + Wallet Send NCN; server debit/credit when both on cloud.
+- **D)** No username picker / locked jargon / g{sub} chips; keep Slaze; Google handle only.
+- **E)** Travel mode toggle; expansion flags on out-of-home claims.
+- **F)** Coin brand PNGs/mipmaps/SVG; SAT default ON; OpenFreeMap **dark** basemap.
+- **G)** City Park → **Asabana Hotel** in catalog/geojson; `scripts/refresh_enugu_catalog.sh` (manual).
+- **H)** Hub P0: `openPlayHub` must not call `hideMenus()`; `#playHub`/`scrim` **fixed** positioning.
+- **I)** Notify report in agent return (unchanged throttle this pass).
+
+**How verified:** Cloud verify_ncn 1e9; health `opayNcn.configured:false`; `test_nairacoin_ledger.js` ok; Nord CDP bal/SAT/travel/meta; APK **lastUpdateTime=2026-09-03 12:52:01**; PWA+PHP FTP Iconia.
+
+**Current state:** Shipped PWA/PHP/Nord. OPay/Paystack keys empty (soft-fail). Full Overpass re-ingest skipped (rate-limit); rename patched.
+
+**Next steps:** OPay sandbox keys in `config.local.php`; optional weekly catalog cron; device tap-confirm hub slide.
+
+**Blockers / risks:** OPay keys; Gmail API absent (PHP mail); FTP must use Iconia `iconicxy` @ 198.54.120.95.
+
 
 ### 2026-09-03 — Remove technical notifications (player voice only)
 

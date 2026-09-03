@@ -31,6 +31,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 require_once __DIR__ . '/buy.php';
+require_once __DIR__ . '/opay.php';
+require_once __DIR__ . '/p2p.php';
 
 $cfg = load_config();
 $path = isset($_GET['_path']) ? (string)$_GET['_path'] : '';
@@ -47,6 +49,7 @@ if ($path === 'health' || $path === '') {
     if ($path === 'health' || $path === '') {
         if ($path === 'health' || ($path === '' && ($_GET['probe'] ?? '') === '1')) {
             $buy = buy_keys_status($cfg);
+            $opay = opay_keys_status($cfg);
             json_out(200, [
                 'ok' => true,
                 'service' => 'lvfe-save',
@@ -57,6 +60,12 @@ if ($path === 'health' || $path === '') {
                     'provider' => 'paystack',
                     'configured' => $buy['configured'],
                     'sandbox' => $buy['sandbox'],
+                    'ncnPerUsd' => 1,
+                ],
+                'opayNcn' => [
+                    'provider' => 'opay',
+                    'configured' => $opay['configured'],
+                    'sandbox' => $opay['sandbox'],
                     'ncnPerUsd' => 1,
                 ],
             ]);
@@ -75,6 +84,22 @@ if ($path === 'v1/buy/webhook' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     buy_handle_webhook($cfg, $saveDir);
 }
 
+/* OPay Buy NCN */
+if ($path === 'v1/opay/init' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    opay_handle_init($cfg, $saveDir);
+}
+if ($path === 'v1/opay/verify' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    opay_handle_verify($cfg, $saveDir);
+}
+if ($path === 'v1/opay/webhook' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    opay_handle_webhook($cfg, $saveDir);
+}
+
+/* P2P NCN */
+if ($path === 'v1/p2p/transfer' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    p2p_handle_transfer($cfg, $saveDir);
+}
+
 $key = isset($_GET['key']) ? safe_key((string)$_GET['key']) : null;
 if ($key === null && preg_match('#(?:^|/)v1/save/([^/]+)$#', $path, $m)) {
     $key = safe_key($m[1]);
@@ -86,6 +111,7 @@ if ($key === null && preg_match('#^save/([^/]+)$#', $path, $m)) {
 if ($key === null) {
     if ($path === '' || $path === 'health') {
         $buy = buy_keys_status($cfg);
+        $opay = opay_keys_status($cfg);
         json_out(200, [
             'ok' => true,
             'service' => 'lvfe-save',
@@ -96,6 +122,12 @@ if ($key === null) {
                 'provider' => 'paystack',
                 'configured' => $buy['configured'],
                 'sandbox' => $buy['sandbox'],
+                'ncnPerUsd' => 1,
+            ],
+            'opayNcn' => [
+                'provider' => 'opay',
+                'configured' => $opay['configured'],
+                'sandbox' => $opay['sandbox'],
                 'ncnPerUsd' => 1,
             ],
         ]);

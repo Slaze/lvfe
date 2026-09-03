@@ -2,7 +2,7 @@
    HTML/CSS/JS/manifest: network-first (avoid stale Nord chrome + menus).
    Images/icons: cache-first.
    API / cloud save / maps / GIS / tiles: network-first (never stale save). */
-const CACHE = "lvfe-shell-v6";
+const CACHE = "lvfe-shell-v7";
 const SHELL = [
   "./",
   "./index.html",
@@ -31,7 +31,7 @@ function isNetworkFirst(url) {
   if (/\/lvfe-save(\/|$)/i.test(u)) return true;
   if (/accounts\.google\.com|googleapis\.com|gstatic\.com/i.test(u)) return true;
   if (/openfreemap|arcgisonline|overpass|osrm|tile|maplibre/i.test(u)) return true;
-  if (/paystack/i.test(u)) return true;
+  if (/paystack|opaycheckout/i.test(u)) return true;
   if (/\/v1\//i.test(u)) return true;
   /* Shell mutables — never stick on an old Nord theme / menu HTML. */
   if (/\.(?:css|html|js|webmanifest)(?:\?|$)/i.test(u)) return true;

@@ -60,7 +60,7 @@
 
   function emptyWallet(pk) {
     return {
-      atomic: 0,
+      atomic: 0n,
       faucetGranted: false,
       unit: "atomic",
       protocol: P.CRYPTONOTE_NAME,
@@ -73,7 +73,7 @@
     const o = lsGet(walletKey(id), null);
     if (!o || typeof o !== "object") return migrateLegacy(id);
     return {
-      atomic: Math.floor(Number(o.atomic) || 0),
+      atomic: P.toAtomicBig(o.atomic),
       faucetGranted: Boolean(o.faucetGranted),
       unit: "atomic",
       protocol: P.CRYPTONOTE_NAME,
@@ -88,7 +88,7 @@
       if (raw == null) return w;
       const n = Math.floor(Number(JSON.parse(raw)));
       if (!(n > 0)) return w;
-      w.atomic = n * P.ATOMIC_PER_COIN;
+      w.atomic = P.wholeToAtomic(n);
       w.faucetGranted = true;
       saveWallet(w, id);
     } catch (err) {
@@ -99,8 +99,9 @@
 
   function saveWallet(w, pk) {
     const id = playerId(pk);
+    const atomic = P.toAtomicBig(w && w.atomic);
     lsSet(walletKey(id), {
-      atomic: Math.floor(Number(w.atomic) || 0),
+      atomic: atomic.toString(),
       faucetGranted: Boolean(w.faucetGranted),
       unit: "atomic",
       protocol: P.CRYPTONOTE_NAME,
@@ -117,20 +118,21 @@
   }
 
   function credit(pk, atomic) {
-    const n = Math.floor(Number(atomic));
-    if (!(n > 0) || !pk) return false;
+    const n = P.toAtomicBig(atomic);
+    if (!(n > 0n) || !pk) return false;
     const w = loadWallet(pk);
-    w.atomic += n;
+    w.atomic = P.toAtomicBig(w.atomic) + n;
     saveWallet(w, pk);
     return true;
   }
 
   function debit(pk, atomic) {
-    const n = Math.floor(Number(atomic));
-    if (!(n > 0)) return false;
+    const n = P.toAtomicBig(atomic);
+    if (!(n > 0n)) return false;
     const w = loadWallet(pk);
-    if (w.atomic < n) return false;
-    w.atomic -= n;
+    const have = P.toAtomicBig(w.atomic);
+    if (have < n) return false;
+    w.atomic = have - n;
     saveWallet(w, pk);
     return true;
   }
@@ -138,7 +140,7 @@
   function ensureFaucet(pk) {
     const w = loadWallet(pk);
     if (w.faucetGranted) return w;
-    w.atomic += FAUCET_ATOMIC;
+    w.atomic = P.toAtomicBig(w.atomic) + P.toAtomicBig(FAUCET_ATOMIC);
     w.faucetGranted = true;
     saveWallet(w, pk);
     return w;

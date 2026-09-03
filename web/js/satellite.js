@@ -45,12 +45,13 @@
   function readPref() {
     try {
       const o = JSON.parse(localStorage.getItem(STORE) || "null");
-      if (o && typeof o === "object") {
+      if (o && typeof o === "object" && typeof o.on === "boolean") {
         hybridOn = o.hybrid !== false;
         return o;
       }
     } catch (err) { /* */ }
-    return { on: false, hybrid: true };
+    /* Default: satellite ON at first boot (GMaps-like). */
+    return { on: true, hybrid: true };
   }
 
   function writePref() {
@@ -318,6 +319,7 @@
     hooks = opts || {};
     const pref = readPref();
     hybridOn = pref.hybrid !== false;
+    wantedOn = pref.on !== false;
     if (!map) {
       paintFab();
       return;
@@ -352,8 +354,13 @@
           setHybrid(hyb.checked);
         });
       }
+      writePref();
     }
     ensure(map);
+    if (wantedOn) {
+      try { map.setLayoutProperty(LAYER_ID, "visibility", "visible"); } catch (err) { /* */ }
+      startWatch(map);
+    }
   }
 
   const api = {

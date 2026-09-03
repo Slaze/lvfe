@@ -895,12 +895,12 @@
     .mark-acts .mark-btn { min-height: 44px; }
     .mark-acts .mark-btn[aria-pressed="true"] { border-color: #ff7a1a; color: #ff7a1a; }
     #playHubScrim {
-      position: absolute; inset: 0; z-index: 17;
+      position: fixed; inset: 0; z-index: 17;
       background: rgba(0,0,0,.45); border: 0; padding: 0; margin: 0; cursor: pointer;
     }
     #playHubScrim[hidden] { display: none !important; }
     #playHub {
-      position: absolute; z-index: 18; left: 0; right: 0; bottom: 0;
+      position: fixed; z-index: 18; left: 0; right: 0; bottom: 0;
       max-height: min(88vh, 720px);
       background: rgba(20, 20, 22, 0.96); color: #f5f5f7;
       border-radius: 18px 18px 0 0;
@@ -912,6 +912,7 @@
       backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
       transform: translateY(110%);
       transition: transform .28s ease;
+      pointer-events: auto;
     }
     #playHub.open { transform: translateY(0); }
     #playHub[hidden] { display: none !important; }
@@ -1078,7 +1079,7 @@
   <input type="checkbox" id="toggleAr" hidden />
   <input type="checkbox" id="toggle3d" hidden />
   <div class="fabs" id="fabs">
-    <button type="button" class="sw-ctl map" id="btnSat" role="switch" aria-checked="false" aria-label="Satellite">
+    <button type="button" class="sw-ctl map" id="btnSat" role="switch" aria-checked="true" aria-label="Satellite on">
       <span class="sw-ctl-name">SAT</span>
       <span class="sw-ui" aria-hidden="true"></span>
     </button>
@@ -1109,15 +1110,18 @@
       <button type="button" class="google-btn" id="btnGoogleSignInSheet">Sign in with Google</button>
       <div data-gis-btn id="gisBtnHostSheet" hidden style="margin:0 14px 12px;min-height:44px"></div>
       <div class="acct-google-box" id="acctGoogleSigned" hidden>
-        <p class="label">Google</p>
-        <p class="who" id="acctGoogleWho">Signed in</p>
+        <p class="label">Signed in</p>
+        <p class="who" id="acctGoogleWho">Google account</p>
         <button type="button" class="sign-out" id="btnGoogleSignOut">Sign out</button>
       </div>
       <p id="acctGoogleNote" hidden></p>
       <section class="acct-sec" aria-labelledby="acctYou">
         <h3 id="acctYou">You</h3>
-        <button type="button" class="acct-row" data-id-edit="1" id="btnNameFaction"><span class="mark">✎</span> <span id="btnNameFactionLabel">Name and neighbourhood</span><span class="go">›</span></button>
-        <button type="button" class="acct-row" id="btnNewProfile"><span class="mark">+</span> Add another name<span class="go">›</span></button>
+        <button type="button" class="acct-row" data-id-edit="1" id="btnNameFaction"><span class="mark">⌂</span> <span id="btnNameFactionLabel">Neighbourhood</span><span class="go">›</span></button>
+        <label class="menu-check sw-row" id="travelModeRow">Travel mode
+          <input type="checkbox" id="travelMode" class="sw" role="switch" aria-checked="false" />
+        </label>
+        <p class="iou-note" id="travelModeNote" style="margin:0 14px 10px" hidden>Claim outside home for expansion — home chapter stays.</p>
         <button type="button" class="acct-row" id="btnMainMenu"><span class="mark">☰</span> Main menu<span class="go">›</span></button>
         <div class="acct-switch" id="menuSwitch" hidden>
           <label>Switch walker
@@ -1213,12 +1217,12 @@
   <div id="identityGate" hidden>
     <form class="card" id="identityForm">
       <button type="button" class="sheet-close" id="identityClose" aria-label="Close">×</button>
-      <h2>Who’s walking?</h2>
-      <p id="idGateIntro">Pick a unique name once — it becomes permanent. Faction follows your current map/GPS region. Gmail is only a sign-in key, not your name.</p>
-      <label>Name
-        <input id="idName" name="playerName" required maxlength="32" autocomplete="username" />
+      <h2>Neighbourhood</h2>
+      <p id="idGateIntro">Your handle follows Google sign-in. Pick the neighbourhood chapter for this region.</p>
+      <label>Handle
+        <input id="idName" name="playerName" required maxlength="32" autocomplete="username" readonly />
       </label>
-      <p id="idNameLockNote" class="iou-note" hidden>Username locked forever (bound to Google when signed in + synced).</p>
+      <p id="idNameLockNote" class="iou-note" hidden></p>
       <label>Faction <span id="idFactionRegion" class="iou-note" style="display:inline;font-weight:400"></span>
         <select id="idFaction" name="factionId">
           <option value="">None yet</option>
@@ -1301,6 +1305,7 @@
   <script src="js/wallet-earn.js"></script>
   <script src="js/buy-ncn.config.js"></script>
   <script src="js/buy-ncn.js"></script>
+  <script src="js/p2p-ncn.js"></script>
   <script src="js/play-hub.js"></script>
   <script src="js/track-guide.js"></script>
   <script src="js/bus-stops.js"></script>  <script src="js/satellite.js"></script>
@@ -1783,6 +1788,16 @@
       if (acctHandle) acctHandle.addEventListener("click", () => closeAccountSheet());
       const scrim = document.getElementById("accountScrim");
       if (scrim) scrim.addEventListener("click", () => closeAccountSheet());
+      const travelBox = document.getElementById("travelMode");
+      if (travelBox && travelBox.dataset.bound !== "1") {
+        travelBox.dataset.bound = "1";
+        travelBox.addEventListener("change", function () {
+          setTravelMode(travelBox.checked);
+          toast(travelBox.checked
+            ? "Travel mode on — claim outside home for expansion"
+            : "Travel mode off — home chapter");
+        });
+      }
       bindAccountSwipe();
       document.getElementById("btnAbout").addEventListener("click", () => {
         closeAccountSheet();
@@ -2203,12 +2218,10 @@
       if (gateBtn) gateBtn.hidden = signed;
       if (box) box.hidden = !signed;
       const label = signed
-        ? (g.email ? ("Signed in as " + g.email) : "Signed in with Google")
+        ? (g.email ? ("Signed in · " + String(g.email).split("@")[0]) : "Signed in with Google")
         : "";
       if (who) {
-        who.textContent = signed
-          ? (label + (PLAYER_KEY ? (" · " + PLAYER_KEY) : ""))
-          : (label || "Signed in");
+        who.textContent = signed ? (label || "Signed in") : (label || "Signed in");
       }
       if (gNote) {
         if (signed) {
@@ -2218,11 +2231,11 @@
       }
       if (gateSigned) {
         gateSigned.hidden = !signed;
-        gateSigned.textContent = signed ? (label + (PLAYER_KEY ? (" · " + PLAYER_KEY) : "")) : "";
+        gateSigned.textContent = signed ? (label || "Signed in") : "";
       }
       if (menuAuth) {
         menuAuth.textContent = signed
-          ? ((g.email ? ("Signed in · " + g.email) : "Signed in with Google") + " · " + PLAYER_KEY)
+          ? (g.email ? ("Signed in · " + String(g.email).split("@")[0]) : "Signed in with Google")
           : "Not signed in with Google";
       }
       try {
@@ -2244,25 +2257,21 @@
       if (seal) seal.textContent = sealGlyph;
       const nameEl = document.getElementById("acctName");
       if (nameEl) {
-        nameEl.textContent = (idn && idn.playerName)
-          ? (idn.playerName + (locked ? " 🔒" : ""))
-          : "No name yet";
+        nameEl.textContent = (idn && idn.playerName) ? idn.playerName : "No name yet";
       }
       const meta = document.getElementById("acctMeta");
       if (meta) {
         const fac = idn && idn.factionId ? (FACTION_NAMES[idn.factionId] || idn.factionId) : "no neighbourhood";
         meta.innerHTML = idn
-          ? esc(fac) + (locked ? " · username locked" : "") + " · <span class=\"coin\" id=\"acctCoin\">" + whole + "</span> NCN"
-          : "Set a name to back places · <span class=\"coin\" id=\"acctCoin\">" + whole + "</span> NCN";
+          ? esc(fac) + " · <span class=\"coin\" id=\"acctCoin\">" + whole + "</span> NCN"
+          : "Sign in to Claim · <span class=\"coin\" id=\"acctCoin\">" + whole + "</span> NCN";
       } else {
         const coin = document.getElementById("acctCoin");
         if (coin) coin.textContent = String(whole);
       }
       const nfl = document.getElementById("btnNameFactionLabel");
       if (nfl) {
-        nfl.textContent = locked
-          ? (idn && idn.factionId ? "Neighbourhood / chapter" : "Pick neighbourhood")
-          : "Name and neighbourhood";
+        nfl.textContent = idn && idn.factionId ? "Neighbourhood / travel" : "Pick neighbourhood";
       }
       paintFabProfile();
       paintGoogleAuthUi();
@@ -2274,15 +2283,19 @@
       }
       const wrap = document.getElementById("menuSwitch");
       const sel = document.getElementById("profileSelect");
-      const ids = listIdentities();
-      const show = ids.length > 1 || PLAYER_KEY !== "default" || Boolean(idn);
-      if (wrap) wrap.hidden = !show;
-      if (sel && show) {
-        sel.innerHTML = ids.map((row) =>
-          "<option value=\"" + esc(row.pk) + "\"" + (row.pk === PLAYER_KEY ? " selected" : "") + ">" +
-          esc(row.name) + (row.pk === PLAYER_KEY ? " (now)" : "") + "</option>"
-        ).join("");
+      /* Multi-profile picker removed — Google binds one handle. */
+      if (wrap) wrap.hidden = true;
+      if (sel) {
+        sel.innerHTML = "";
+        const opt = document.createElement("option");
+        opt.value = PLAYER_KEY;
+        opt.textContent = (idn && idn.playerName) || PLAYER_KEY;
+        sel.appendChild(opt);
+        sel.value = PLAYER_KEY;
       }
+      const btnNew = document.getElementById("btnNewProfile");
+      if (btnNew) btnNew.hidden = true;
+      paintTravelModeUi();
     }
 
     function playerRankRow() {
@@ -3383,21 +3396,29 @@
       const scrim = document.getElementById("playHubScrim");
       if (hub) {
         hub.classList.remove("open");
-        setTimeout(function () { hub.hidden = true; }, 220);
+        window.setTimeout(function () {
+          if (hub.classList.contains("open")) return;
+          hub.hidden = true;
+        }, 220);
       }
       if (scrim) scrim.hidden = true;
     }
 
     function openPlayHub(tab) {
+      /* Do not call hideMenus() — it closes the hub (race with 220ms hide). */
+      hidePopovers();
       closeAccountSheet();
-      hideMenus();
       hubTab = tab || "wallet";
       const hub = document.getElementById("playHub");
       const scrim = document.getElementById("playHubScrim");
       if (scrim) scrim.hidden = false;
       if (hub) {
         hub.hidden = false;
-        window.requestAnimationFrame(function () { hub.classList.add("open"); });
+        try { void hub.offsetWidth; } catch (err) { /* */ }
+        window.requestAnimationFrame(function () {
+          hub.classList.add("open");
+          window.requestAnimationFrame(function () { hub.classList.add("open"); });
+        });
       }
       renderPlayHub();
       try {
@@ -3507,7 +3528,73 @@
           takeovers: takeovers,
         });
         bindHubBuy();
+        bindHubP2p();
       }
+    }
+
+    function travelModeOn() {
+      try {
+        const o = JSON.parse(localStorage.getItem("lvfe.travel.v1") || "null");
+        return Boolean(o && o.on);
+      } catch (err) {
+        return false;
+      }
+    }
+
+    function setTravelMode(on) {
+      try {
+        localStorage.setItem("lvfe.travel.v1", JSON.stringify({ on: Boolean(on), at: new Date().toISOString() }));
+      } catch (err) { /* */ }
+      paintTravelModeUi();
+    }
+
+    function paintTravelModeUi() {
+      const box = document.getElementById("travelMode");
+      const note = document.getElementById("travelModeNote");
+      const on = travelModeOn();
+      if (box) {
+        box.checked = on;
+        box.setAttribute("aria-checked", on ? "true" : "false");
+      }
+      if (note) {
+        note.hidden = !on;
+        note.textContent = on
+          ? "Travel on — claim outside home for expansion. Home chapter stays."
+          : "";
+      }
+    }
+
+    function bindHubP2p() {
+      const go = document.getElementById("hubP2pGo");
+      if (!go || go.dataset.bound === "1") return;
+      go.dataset.bound = "1";
+      go.addEventListener("click", function () {
+        const P2p = window.LvfeP2pNcn;
+        if (!P2p) {
+          toast("Send isn’t available yet.");
+          return;
+        }
+        const to = (document.getElementById("hubP2pTo") || {}).value || "";
+        const amt = (document.getElementById("hubP2pAmt") || {}).value || "0";
+        toast("Sending…");
+        P2p.transfer({
+          fromPlayerKey: PLAYER_KEY,
+          to: to,
+          amount: amt,
+        }).then(function (res) {
+          if (!res || !res.ok) {
+            toast((res && res.error) || "Couldn't send NCN");
+            return;
+          }
+          loadWallet();
+          scheduleSavePush();
+          paintProfileMenu();
+          renderPlayHub();
+          toast("Sent " + res.ncnAmount + " NCN");
+        }).catch(function () {
+          toast("Couldn't send NCN");
+        });
+      });
     }
 
     function bindHubBuy() {
@@ -3531,7 +3618,7 @@
           ncnAmount: amount,
         }, function (res) {
           if (!res || !res.ok) {
-            if (res && (res.code === "paystack_not_configured" || res.code === "live_keys_missing")) {
+            if (res && (res.code === "paystack_not_configured" || res.code === "live_keys_missing" || res.code === "opay_not_configured")) {
               showBuyBlocker(res);
             } else if (res && res.code !== "closed") {
               toast((res && res.message) || "Purchase failed.");
@@ -4107,28 +4194,30 @@
       const gate = document.getElementById("identityGate");
       const idn = loadIdentity();
       const Acc = window.LvfeAccount;
-      const locked = idn && Acc && Acc.isNameLocked ? Acc.isNameLocked(idn) : Boolean(idn && idn.playerName);
+      const locked = true; /* handle is Google-bound; no picker */
       const nameInp = document.getElementById("idName");
-      nameInp.value = (idn && idn.playerName) || (PLAYER_KEY !== "default" ? PLAYER_KEY : "");
-      nameInp.readOnly = Boolean(locked);
-      nameInp.disabled = Boolean(locked);
+      let handle = (idn && idn.playerName) || "";
+      if (!handle || (Acc && Acc.isPlaceholderGoogleName && Acc.isPlaceholderGoogleName(handle, PLAYER_KEY))) {
+        const g = googleSignedState();
+        handle = (Acc && Acc.handleFromEmail && g && g.email)
+          ? Acc.handleFromEmail(g.email)
+          : (handle || "Walker");
+      }
+      if (idn && idn.playerName === "Slaze") handle = "Slaze";
+      nameInp.value = handle;
+      nameInp.readOnly = true;
+      nameInp.disabled = false;
       const lockNote = document.getElementById("idNameLockNote");
       if (lockNote) {
-        lockNote.hidden = !locked;
-        lockNote.textContent = locked
-          ? ("Username locked" + (idn.googleSub
-            ? " and bound to your Google account."
-            : ". Cloud permanence applies when you Sign in with Google + Sync."))
-          : "";
+        lockNote.hidden = true;
+        lockNote.textContent = "";
       }
       const intro = document.getElementById("idGateIntro");
       if (intro) {
-        intro.textContent = locked
-          ? "Your name is permanent. Neighbourhood follows the map region you are in; travel keeps your chapter."
-          : "Pick a unique name once — it becomes permanent. Faction follows your current map/GPS region. Gmail is only a sign-in key, not your name.";
+        intro.textContent = "Your handle follows Google. Neighbourhood follows the map region; Travel mode lets you claim outside home.";
       }
       const enter = document.getElementById("idEnterBtn");
-      if (enter) enter.textContent = locked ? "Save neighbourhood" : "Enter";
+      if (enter) enter.textContent = "Save neighbourhood";
       refreshLocalFactions(userPos);
       const LF = window.LvfeLocalFactions;
       const chapter = LF && LF.resolveChapter
@@ -4701,6 +4790,19 @@
       }
 
       recomputeOwner(rec);
+      if (travelModeOn()) {
+        const idnHome = loadIdentity();
+        const homeFac = idnHome && idnHome.factionId ? String(idnHome.factionId) : "";
+        const placeFac = String((p && (p.territory_id || p.factionId)) || (rec.factionId) || "");
+        if (homeFac && placeFac && placeFac !== homeFac) {
+          rec.expansion = true;
+          rec.travelChapter = true;
+          rec.homeFactionId = homeFac;
+        } else if (!homeFac || placeFac !== homeFac) {
+          rec.expansion = true;
+          rec.travelChapter = true;
+        }
+      }
       const all = loadPlaces();
       all[id] = rec;
       savePlaces(all);
@@ -5516,7 +5618,7 @@
     } else try {
       map = new maplibregl.Map({
         container: "map",
-        style: "https://tiles.openfreemap.org/styles/liberty",
+        style: "https://tiles.openfreemap.org/styles/dark",
         transformStyle: stripOsmPoiLayers,
         center: forcedPos ? [forcedPos.lon, forcedPos.lat] : [7.515, 6.45],
         zoom: forcedPos ? 16.4 : 12.2,

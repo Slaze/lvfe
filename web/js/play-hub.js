@@ -89,6 +89,7 @@
     }
     bits.push(
       `</div>`,
+      (global.LvfeP2pNcn && global.LvfeP2pNcn.formHtml) ? global.LvfeP2pNcn.formHtml() : "",
       `<button type="button" class="hub-cta" data-hub-tab="earn"><span class="mark">◎</span> Earn more</button>`,
       `<details class="hub-details"><summary>How it works</summary><p>${esc(copy.long)}</p></details>`,
       `<h4>Recent activity</h4>`

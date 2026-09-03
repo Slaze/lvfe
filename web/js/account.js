@@ -48,6 +48,18 @@
     return ("g" + (s || "user")).slice(0, 32);
   }
 
+  /** Short game handle from Gmail local-part (sanitized). Keeps Slaze if already set. */
+  function handleFromEmail(email) {
+    const local = String(email || "").split("@")[0] || "";
+    let s = local
+      .toLowerCase()
+      .replace(/[^a-z0-9._-]+/g, "")
+      .replace(/^[._-]+|[._-]+$/g, "")
+      .slice(0, 24);
+    if (!s) return "Walker";
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+
   /** True when playerName was invented from the Google playerKey (boot bug). */
   function isPlaceholderGoogleName(name, playerKey) {
     const n = String(name || "").trim();
@@ -76,11 +88,12 @@
     }
     const wallet = lsGet(walletKeys(pk), null);
     if (wallet && typeof wallet === "object") {
-      const atomic = Number(wallet.atomic);
-      if (Number.isFinite(atomic) && atomic > 0) {
-        /* Demo faucet alone is weak signal; still migrate if identity or stakes exist.
-           Faucet-only guest → allow migrate so NCN follows the Google key. */
-        return true;
+      try {
+        const atomic = BigInt(String(wallet.atomic || "0"));
+        if (atomic > 0n) return true;
+      } catch (err) {
+        const atomic = Number(wallet.atomic);
+        if (Number.isFinite(atomic) && atomic > 0) return true;
       }
     }
     return false;
@@ -129,10 +142,12 @@
       if (!toW) {
         lsSet(walletKeys(to), fromW);
       } else {
-        const fa = Number(fromW.atomic) || 0;
-        const ta = Number(toW.atomic) || 0;
+        let fa = 0n;
+        let ta = 0n;
+        try { fa = BigInt(String(fromW.atomic || "0")); } catch (e1) { fa = BigInt(Math.floor(Number(fromW.atomic) || 0)); }
+        try { ta = BigInt(String(toW.atomic || "0")); } catch (e2) { ta = BigInt(Math.floor(Number(toW.atomic) || 0)); }
         lsSet(walletKeys(to), Object.assign({}, toW, {
-          atomic: Math.max(fa, ta),
+          atomic: (fa > ta ? fa : ta).toString(),
           faucetGranted: Boolean(toW.faucetGranted || fromW.faucetGranted),
         }));
       }
@@ -442,6 +457,7 @@
     ACTIVITY_KEY,
     PACK_KIND,
     playerKeyFromSub,
+    handleFromEmail,
     isPlaceholderGoogleName,
     looksLikeGooglePlayerKey,
     hasLocalProgress,

@@ -9,18 +9,33 @@
 (function (global) {
   const CRYPTONOTE_DISPLAY_DECIMAL_POINT = 8;
   const ATOMIC_PER_COIN = 100000000; // 10 ** 8
+  const ATOMIC_PER_COIN_BI = BigInt(ATOMIC_PER_COIN);
   const GENESIS_COINBASE_TX_HEX = "";
+
+  function toAtomicBig(v) {
+    if (typeof v === "bigint") return v < 0n ? 0n : v;
+    if (typeof v === "string" && /^-?\d+$/.test(v)) {
+      try {
+        const b = BigInt(v);
+        return b < 0n ? 0n : b;
+      } catch (err) {
+        return 0n;
+      }
+    }
+    const n = Math.floor(Number(v));
+    if (!Number.isFinite(n) || n < 0) return 0n;
+    return BigInt(n);
+  }
 
   function wholeToAtomic(whole) {
     const n = Math.floor(Number(whole));
-    if (!Number.isFinite(n) || n < 0) return 0;
-    return n * ATOMIC_PER_COIN;
+    if (!Number.isFinite(n) || n < 0) return 0n;
+    return BigInt(n) * ATOMIC_PER_COIN_BI;
   }
 
   function atomicToWhole(atomic) {
-    const n = Math.floor(Number(atomic));
-    if (!Number.isFinite(n) || n < 0) return 0;
-    return Math.floor(n / ATOMIC_PER_COIN);
+    const a = toAtomicBig(atomic);
+    return Number(a / ATOMIC_PER_COIN_BI);
   }
 
   /* FNV-1a 32-bit over JS UTF-16 code units (player ids are ASCII). */
@@ -74,6 +89,7 @@
     UPSTREAM_COMMIT: "6ac59523227a03414e6af60a979fd31577dd15d0",
     wholeToAtomic,
     atomicToWhole,
+    toAtomicBig,
     formatIouAddress,
     isIouStubAddress,
     fnv1a32,
