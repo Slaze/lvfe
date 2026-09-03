@@ -24,15 +24,18 @@ Location-based territorial game. World data from OpenStreetMap (no paid Google M
 - `hosting/lvfe-save/` — **public HTTPS save API** (PHP on Iconia Namecheap/cPanel). Live base **`https://iconiaglobal.com/lvfe-save`**. Same routes/auth as Node. Secrets in host-only `config.local.php` (gitignored). Preferred branded host `lvfe-save.iconiaglobal.com` needs Cloudflare DNS + cPanel subdomain (human).
 - `docs/ICONIA_TERMS.md` + `hosting/iconia/terms-content.html` — Iconia ToS (live CMS `https://iconiaglobal.com/pages/terms-and-conditions`, September 2026). Privacy remains `https://iconiaglobal.com/privacy-policy`.
 - `web/js/save-api.config.js` / `save-sync.js` — client pull after boot, push on stake/identity (debounced), offline queue, Export/Import kept. Default `SAVE_API_BASE` = public Iconia URL (override `?saveApi=` / `localStorage`).
-- `web/js/google-auth.config.js` / `google-auth.js` / `account.js` — Web OAuth `WEB_CLIENT_ID` set (`730640559588-…apps.googleusercontent.com`); native `LvfeNative.signInWithGoogle` on Android; unique username ≠ email; save pack `lvfe.save.v1` + `updatedAt`. On-screen blocker still lists Android client + SHA-1 steps if native sign-in fails.
-- `web/js/photo-store.js` — visit photo bytes in IndexedDB on Pay confirm; discard on sheet close / cancel; sync may send small dataURLs.
-- `web/js/field-claim.js` — catalog bbox is Enugu; GPS fly-to; outside bbox → hinterland + OSM footprints + **world Overpass** merge. No planet download.
-- `web/js/world-catalog.js` — viewport Overpass (~0.012° pad) outside Enugu; rate-limit 45s; cell cache 30 min; mirrors overpass-api.de + kumi; quality tiers match ingest; banks/ATMs not ownable; fail banner → hinterland.
+- `web/js/google-auth.config.js` / `google-auth.js` / `account.js` — Web OAuth `WEB_CLIENT_ID` set (`730640559588-…apps.googleusercontent.com`); native `LvfeNative.signInWithGoogle` on Android; **username permanent once set** (`nameLocked`; bound to Google `sub` on save API); save pack `lvfe.save.v1` + `updatedAt`. Docs: `docs/ACCOUNT.md`.
+- `web/js/local-factions.js` — GPS-region factions: Enugu → canonical four; elsewhere Overpass suburb/neighbourhood/quarter (3–6); travel keeps chapter; fail soft → generic quarters.
+- `server/username-lock.js` + PHP `enforce_username_lock` — `username-map.json` (`username ↔ googleSub`); reject rename/reuse.
+- `hosting/lvfe-save/` — **public HTTPS save API** (PHP on Iconia Namecheap/cPanel). Live base **`https://iconiaglobal.com/lvfe-save`**. Same routes/auth as Node. Secrets in host-only `config.local.php` (gitignored). Preferred branded host `lvfe-save.iconiaglobal.com` needs Cloudflare DNS + cPanel subdomain (human).
+- `docs/OAUTH_CONSENT.md` — consent + **Authorized JavaScript origins** for GIS (`https://iconiaglobal.com`, …).
+- `docs/ACCOUNT.md` — username permanence + location factions.
 - `web/js/conquest.js` — neighbourhood owned-count bonus: `displayValue = baseValue * (1 + 0.5 * count/max)`; hinterland `unclaimed` bonus 0. Does not mint into `rec.value`. **Unknown** (quality D / `civic_unknown` / `unmapped`) `baseValue = max(ledger, 100)` so it is the top quality tier; named empty stays 0. Red X `#ff3b30` vs black unknown `#111111`.
 - `web/js/satellite.js` — Esri World Imagery overlay; SAT switch; never billed Google tiles; never `setStyle`. Source `maxzoom` **18** (Enugu z19 is Esri empty plate); raster **layer** `maxzoom` 24 so street zoom overscales last rooftops. `map.resize()` after style load and SAT toggle.
 - `web/rules.html` — player How to play (walk, photo, NairaCoin, 80 m, highest backer owns, faction, neighbourhood value bonus, Pay gate, beep/track, AR, catalog, banks, world Overpass).
 - `web/assets.html` + `web/js/assets.js` — owned/backed places, visit interest (10%), gap vs next backer; dossier-style section toggles.
-- `web/js/dossier.js` — place-file HTML; Land mark actions (watch / threat / takeover); **Bid to overturn** via `LvfeWalletEarn.bidToOwn`.
+- `web/js/dossier.js` — place-file HTML; Land mark actions (watch / threat / takeover); **Bid to overturn** via `LvfeWalletEarn.bidToOwn`. Flex head row; 2-line title clamp.
+- `web/js/place-thumb.js` — place snapshot: Esri World Imagery tile + Wikipedia geosearch upgrade; IndexedDB cache; catalog chips.
 - `web/js/game-notify.js` — notifications (`claim_self` / `claim_rival` / `nearby_claimable` / `enemy_nearby` / `pass_toll` / `toll_owner` / `watch_change` / `threat_act` / `test`); prefs; Android `LvfeNative.showGameNotification` else `#gameBanner`.
 - `web/js/pass-toll.js` — pass-by toll ≤80 m enemy-owned: `max(2, floor(ownerStake×5%))`, 60 min/place, partial+debt, Escape refund fee, owner inbox.
 - `web/js/game-marks.js` — watchlist / threats / takeover plans (`lvfe.marks.v1` + save pack); ledger diff notifies.
@@ -119,8 +122,38 @@ Location-based territorial game. World data from OpenStreetMap (no paid Google M
 - 2026-09-03: Pass-by toll + contest notify (Outpay/Escape/Accept) + mark watch/threat/takeover (`dc5eba5`); co-landed PWA shell in same commit.
 - 2026-09-03: PWA deployed live to **`https://iconiaglobal.com/lvfe/`** (FTP; apex `lvfe` pass-through; GIS origins documented).
 - 2026-09-03: PWA install prompt + `install.html` guide; co-landed iOS menu/Nord translucent fixes (sibling); SW **`lvfe-shell-v4`**.
+- 2026-09-03: Place dossier layout overlap fixed (flex head + 2-line clamp); place snapshot thumbs via **Esri World Imagery** + Wikipedia geosearch upgrade (`place-thumb.js`).
 
 ## Sessions
+
+### 2026-09-03 — Place dossier overlap + place snapshot thumbs (P0)
+
+**Goal:** Stop long place titles covering Track/tabs/controls in the place file; show a free online place snapshot/thumb (no Google Maps/Places SKUs); Nord install + PWA redeploy; commit/push.
+
+**Overlap root cause:** `.track-toggle` was `position:absolute; right:48px` (~Track label + 52px switch ≈ 100px wide → ~148px from the right edge) while `.dossier-head h2` only reserved `margin-right:110px` and used unbounded `overflow-wrap:anywhere`. Long names ran under Track and grew the head into the tab row on ~424px / 34vh peek.
+
+**What changed:**
+- `web/js/dossier.js` — flex `.dossier-head-row` / `.dossier-head-text` + Track as static flex sibling; photo block with `data-lat/lon/place-id`.
+- `web/index.html` + `web/css/lvfe.css` — 2-line `-webkit-line-clamp` titles, `min-width:0`, scrollable tab row / page body; peek 34vh / expand 70vh kept.
+- `web/js/place-thumb.js` — **Esri** z16 World Imagery tile at lon/lat (immediate); optional **Wikipedia geosearch** page image upgrade; IndexedDB URL cache; fail soft. Visit photos still win via `data-visit-photo`.
+- `web/js/catalog.js` + `catalog.html` — Esri chip thumbs on list rows; fill dossier photo on open.
+- `scripts/test_place_thumb.js` — tile math smoke test.
+- Co-landed in sibling commit **`d494a3c`** (iOS PWA/Nord shell same tree). This session redeployed PWA after append-immediate img fix for WebView.
+
+**Thumb source chosen:** Esri World Imagery static tile (same ArcGIS endpoint as SAT) as primary worldwide/Enugu snapshot; Wikipedia geosearch thumbnail when nearby page image exists.
+
+**How verified:**
+- `node scripts/test_place_thumb.js` ok.
+- Nord `bea6919f`: `assembleDebug` + `install -r`; **`lastUpdateTime=2026-09-03 11:09:26`**.
+- WebView CDP @423×882: long title `lineClamp=2`, `headOverlapTrack=false` (titleRight 313 < trackLeft 321), peek `sheetH=300` (~34vh), expand ~70vh, `photoSrcKind=esri` / `naturalWidth=256`.
+- Screencap `_state/layout-audit/11-dossier-long-name.png` (+ `11d-dossier-bottom.png`): File head + Track side-by-side, tabs intact, Esri aerial in Place tab.
+- PWA: `./scripts/stage_pwa.sh` + `deploy_pwa.sh` → `https://iconiaglobal.com/lvfe/`; live `place-thumb.js` body **10968** bytes; `dossier-head-row` present.
+
+**Current state:** Overlap P0 closed on Nord APK + live PWA. Thumbs Esri-first; wiki upgrade best-effort. Sibling account/username-lock WIP may still be dirty in the tree — not part of this session.
+
+**Next steps:** Optional Overpass `image=` / `wikimedia_commons=` tag prefer when present; CF may briefly serve stale HEAD for JS (GET body was correct after deploy).
+
+**Blockers / risks:** Cloudflare cache on `/lvfe/js/*` can stale HEAD `Content-Length`; hard-refresh / SW network-first mitigates. Wikipedia rate limits → soft fall back to Esri.
 
 ### 2026-09-03 — P0 iOS PWA: menu dead + Nord theme missing
 
