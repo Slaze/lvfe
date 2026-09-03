@@ -113,6 +113,7 @@ Location-based territorial game. World data from OpenStreetMap (no paid Google M
 - Disk: ID present in `google-auth.config.js`, `strings.xml`, synced `assets/www/js/google-auth.config.js`, host config (gitignored).
 - `curl https://iconiaglobal.com/lvfe-save/health` → `{"ok":true,…,"devAuth":true,"googleConfigured":true}`.
 - `./gradlew assembleDebug` SUCCESS; install Success; **`lastUpdateTime=2026-09-03 08:48:03`**.
+- Commit **`43a4e70`** pushed to `https://github.com/Slaze/lvfe` (`main`).
 - `git check-ignore` confirms `config.local.php` ignored.
 
 **Current state:** Web client ID live on phone + public save. Dev auth still enabled. Sign-in may still fail until Google Cloud has an **Android** OAuth client for `com.lvfe.xperience` with SHA-1 `2E:48:31:66:B1:07:A2:4C:FB:25:35:EE:EA:9C:B6:B3:E5:E4:35:E5`.
