@@ -14,7 +14,8 @@ Location-based territorial game. World data from OpenStreetMap (no paid Google M
 - `scripts/ingest_places.py` — Overpass → cluster 80 m → `data/lvfe.sqlite`; points outside all polygons get `territory_id=unclaimed`.
 - `scripts/claim_points.py` — min stake: `round(BASE[type] * QUALITY[q] * ROLE[role])`, min 1. Not claim XP.
 - `scripts/export_catalog.py` — sqlite/geojson → `data/catalog.json` + `data/catalog.csv` (ownable **min stake**; bank/atm **0**).
-- `web/index.html` — MapLibre + OpenFreeMap **GMaps-style chrome**: full-bleed map, top search pill + **gold seal stamp** (opens account sheet), CSS bottom sheet (**hidden until pin tap**). **SAT / 3D / AR** are LTR/RTL slide switches on-map (`role="switch"`, green `#34c759` on / gray `#9aa0a6` off). **GPS is a locate action**, not a switch. `ensureLayers` uses valid `addLy({` (seven `addLy({)` SyntaxErrors fixed). `window.lvfeFitMap` → `map.resize()` after style/load, SAT toggle, `visualViewport`/`orientationchange`/`window.resize`, and delayed boot (WebView). Esri World Imagery `{z}/{y}/{x}` overlay (no `setStyle`). **Unclaimed named pins = red X** (`places-x`, `#ff3b30`); **unknown (quality D / civic_unknown / unmapped) = black X** (`places-x-unknown`, `#111111`); **owned pins = circle** (`places-circles`, self `#1d8cff` vs other/faction color). Invisible `places-hit` keeps taps at z12.2. Pins / green walk / 80 m ring / you-dot re-attach via `reattachOverlays`; hybrid OSM labels in account **Map pins**; fail banner **Satellite couldn’t load**. Pin tap opens a **paper file / dossier** (`.sheet.doc` compact peek **34vh**, expand `.sheet.doc-exp` **70vh**) with **Place / Mission / Land / Money / Wallet** tabs (44px). Wallet **Pay** is `disabled` unless GPS and `dist <= 80`. Track chip + green OSRM walk line + 80 m pay ring. ▴ / handle expands; × + swipe-down close fully. Idle map still auto-hides (`display:none`). Profile stamp → **grouped account sheet** (`#accountSheet`: You / Play / Map pins / This phone + Google + export/import + **Sync now**). No left `.panel`, no always-on `#hud`, no MapLibre Popup, no OSM/Esri wordmark on the map (About only). Default pitch **0**. 80 m GPS; photo + NairaCoin. **localStorage cache + optional cloud save** (`SAVE_API_BASE` / `?saveApi=`). Reinstall still wipes unless Export save **or** cloud sync. **Sign in with Google** uses Web client ID via native Credential Manager (Identity OAuth only — no Maps SKUs); Android OAuth client + SHA-1 still required in Console.
+- `web/css/nord-shell.css` — Nord dark-glass design system (splash/menu + secondary page chrome; orange `#ff7a1a`).
+- `web/index.html` — Cold start **splash → main menu** (Play Now / Save / Restart / Check Catalog / Rules / My places / Account), then MapLibre + OpenFreeMap **GMaps-style chrome**: full-bleed map, top search pill + **gold seal stamp** (opens account sheet), CSS bottom sheet (**hidden until pin tap**). **SAT / 3D / AR** are LTR/RTL slide switches on-map (`role="switch"`, green `#34c759` on / gray `#9aa0a6` off). **GPS is a locate action**, not a switch. `ensureLayers` uses valid `addLy({` (seven `addLy({)` SyntaxErrors fixed). `window.lvfeFitMap` → `map.resize()` after style/load, SAT toggle, `visualViewport`/`orientationchange`/`window.resize`, and delayed boot (WebView). Esri World Imagery `{z}/{y}/{x}` overlay (no `setStyle`). **Unclaimed named pins = red X** (`places-x`, `#ff3b30`); **unknown (quality D / civic_unknown / unmapped) = black X** (`places-x-unknown`, `#111111`); **owned pins = circle** (`places-circles`, self `#1d8cff` vs other/faction color). Invisible `places-hit` keeps taps at z12.2. Pins / green walk / 80 m ring / you-dot re-attach via `reattachOverlays`; hybrid OSM labels in account **Map pins**; fail banner **Satellite couldn’t load**. Pin tap opens a **paper file / dossier** (`.sheet.doc` compact peek **34vh**, expand `.sheet.doc-exp` **70vh**) with **Place / Mission / Land / Money / Wallet** tabs (44px). Wallet **Pay** is `disabled` unless GPS and `dist <= 80`. Track chip + green OSRM walk line + 80 m pay ring. ▴ / handle expands; × + swipe-down close fully. Idle map still auto-hides (`display:none`). Profile stamp → **grouped account sheet** (`#accountSheet`: You / Play / Map pins / This phone + Google signed-in chip / Sign out / Main menu + export/import + **Sync now**). Catalog/rules/assets use Nord pill nav (not old flat chrome). No left `.panel`, no always-on `#hud`, no MapLibre Popup, no OSM/Esri wordmark on the map (About only). Default pitch **0**. 80 m GPS; photo + NairaCoin. **localStorage cache + optional cloud save** (`SAVE_API_BASE` / `?saveApi=`). Reinstall still wipes unless Export save **or** cloud sync. **Sign in with Google** uses Web client ID via native Credential Manager (Identity OAuth only — no Maps SKUs); when `googleSub` is present the Sign-in CTA is **hidden** and email is shown. Android OAuth client + SHA-1 still required in Console for fresh native sign-in on new devices.
 - `server/` — zero-dep Node save API (`PORT` default **18787**). `GET/PUT /v1/save/:playerKey`. Conflict: **last-write-wins** by `pack.updatedAt`. Auth: `Bearer lvfe-dev:<playerKey>` when `LVFE_ALLOW_DEV_AUTH=1`; `SAVE_SECRET`; `google:<id_token>` when `GOOGLE_WEB_CLIENT_ID` set (else production Gmail fails loud). Photos: max 8, dataURL >~400KB → meta-only; body ≤2.5 MiB. Env: see `server/.env.example` + `server/README.md`. Optional Netlify: `netlify.toml` + `netlify/functions/save.js`.
 - `hosting/lvfe-save/` — **public HTTPS save API** (PHP on Iconia Namecheap/cPanel). Live base **`https://iconiaglobal.com/lvfe-save`**. Same routes/auth as Node. Secrets in host-only `config.local.php` (gitignored). Preferred branded host `lvfe-save.iconiaglobal.com` needs Cloudflare DNS + cPanel subdomain (human).
 - `web/js/save-api.config.js` / `save-sync.js` — client pull after boot, push on stake/identity (debounced), offline queue, Export/Import kept. Default `SAVE_API_BASE` = public Iconia URL (override `?saveApi=` / `localStorage`).
@@ -94,8 +95,64 @@ Location-based territorial game. World data from OpenStreetMap (no paid Google M
 - 2026-09-03: Server-backed saves (`server/` + optional Netlify), AR pin overlays with native heading, world Overpass catalog outside Enugu.
 - 2026-09-03: Public HTTPS save on Iconia PHP (`https://iconiaglobal.com/lvfe-save`); client default `SAVE_API_BASE` wired; Google Web client ID how-to expanded (still empty placeholder).
 - 2026-09-03: Human Web OAuth client ID wired into web + Android + host `GOOGLE_WEB_CLIENT_ID`; Nord debug APK reinstalled; health `googleConfigured:true`; `LVFE_ALLOW_DEV_AUTH` left on until Gmail verified.
+- 2026-09-03: Critic/builder — skipped-request audit; splash + main menu; Nord dark-glass chrome; Google signed-in hides Sign-in CTA; catalog/rules/assets remodeled so gold-seal destinations no longer dump into old flat UI.
 
 ## Sessions
+
+### 2026-09-03 — Critic/builder: skipped requests + splash/menu remodel (PASS)
+
+**Goal:** Inventory all human asks; close P0 gaps (splash/menu, gold-seal old UI, Google signed-in state); remodel chrome from last Nord screenshots (dark glass / orange / gold seal); keep map features; install Nord; commit+push `Slaze/lvfe`.
+
+**Skipped-request audit (inception → now)**
+
+| Request | Status | Notes |
+|---|---|---|
+| Splash / intro then main menu (Play Now, Save, Restart, Check Catalog) | **DONE** (this session) | Was SKIPPED; now `#bootOverlay` splash → menu |
+| Gold seal options land in modern IA (not old flat UI) | **DONE** (this session) | Was PARTIAL; catalog/rules/assets + account restyled via `nord-shell` |
+| Google signed-in: hide Sign-in CTA; show identity; persist | **DONE** (this session) | Was PARTIAL (note only); now chip + Sign out; `unbindGoogle` |
+| Zero Google Maps SKUs / OSM path | DONE | Standing rule |
+| Enugu polygons + catalog schema + ingest | DONE | |
+| NairaCoin as currency / endowment ownership loop | DONE (IOU) | On-chain genesis still open |
+| No “The Architect” in player UI | PARTIAL | Code/copy cleaned; **local Nord name still “The Architect”** — rename via Name and neighbourhood |
+| AR switch + CameraX viewfinder | DONE | |
+| 3D tilt + extrusion + SAT ghost 0.35 | DONE | Not Google Photorealistic mesh |
+| Walk beep / Track / green walk line / Mute | DONE | |
+| Dossier 34vh peek / 70vh expand / Pay @ 80 m | DONE | CDP: `.sheet.doc` height rule + ~300px |
+| Satellite toggle (Esri) | DONE | |
+| Rules + My assets pages | DONE | Remodeled chrome this session |
+| Server / public save (`iconiaglobal.com/lvfe-save`) | DONE | |
+| Gmail Web client ID | DONE | Wired `730640559588-…` |
+| Android OAuth client + SHA-1 for Credential Manager | **BLOCKER / PARTIAL** | Fresh native sign-in may fail loud; existing session on Nord works |
+| NairaCoin genesis + seed on iconiaglobal | SKIPPED / P1 | DNS noted; daemon not listening; empty genesis in protocol |
+| Photo confirm / discard UX | DONE | IndexedDB on Pay; discard on cancel/close |
+| Export / Import save | DONE | Plus cloud Sync |
+| Filters (quality / neighbourhoods) | DONE | In account Map pins |
+| World Overpass outside Enugu | DONE | |
+| Calendar / Gmail as game props (original GTA-Google brief) | SKIPPED / rejected | Replaced by $0 OSM stack |
+| Divine Authority / God Mode player features | SKIPPED / rejected | Internal `architect` username only |
+
+**P0 backlog closed this session:** splash+menu; gold destinations; Google signed-in UI.  
+**P1 remaining:** NairaCoin genesis/seed; rename local “The Architect”; optional subdomain `lvfe-save.iconiaglobal.com`; turn off `LVFE_ALLOW_DEV_AUTH` after Android OAuth verified; catalog default “My places” empty until owned pins.
+
+**What changed:**
+- `web/css/nord-shell.css` — design tokens + splash/menu + signed-in chip.
+- `web/index.html` — splash/menu overlay; Save/Restart/Account; Main menu from seal; Google hide/show; translucent account sheet accents.
+- `web/js/account.js` — `unbindGoogle`, `googleSessionFor`.
+- `web/css/lvfe.css`, `catalog.html`, `rules.html`, `assets.html` — Nord dark pill nav.
+- `.gitignore` — `_state/`.
+
+**Why:** Human asked for intro menu + no resurrection of old chrome + correct signed-in Google state. Visual reference: Nord Screenshots 08:58–08:59 (dark glass energy dashboard) for chrome; Lvfe map 06:12 + live map for play layer.
+
+**How verified (Nord `bea6919f`):**
+- `assembleDebug` SUCCESS; `adb install -r`; **`lastUpdateTime=2026-09-03 09:25:56`**.
+- Screencaps: splash, menu, account signed-in (no Sign in button; “Signed in as ugidentity@gmail.com”), catalog pill nav.
+- WebView CDP: `bootHidden` false→true on Play; `googleBtnHidden:true`; `places-x` + `guide-line` present; `.sheet.doc` 34vh rule true; catalog URL loads.
+
+**Current state:** PASS on P0 UI gates. Map features intact. Google session already present on this Nord profile.
+
+**Next steps:** Confirm Android OAuth client exists for package+SHA-1; after that set host `LVFE_ALLOW_DEV_AUTH=0`. Rename local player off “The Architect”. Optional NairaCoin genesis work.
+
+**Blockers / risks:** Android OAuth client may still be required for *new* Credential Manager sign-ins on other devices. Device must be unlocked for adb screencap (lockscreen captured as black earlier).
 
 ### 2026-09-03 — Wire Google Web OAuth client ID + ship Nord
 

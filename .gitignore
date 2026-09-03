@@ -4,6 +4,7 @@ android/app/build/
 android/local.properties
 android/app/src/main/assets/www/
 android/.cache/
+_state/
 *.apk
 *.ap_
 .DS_Store

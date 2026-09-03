@@ -1,0 +1,335 @@
+/* Nord screenshot design system (dark glass + orange accent).
+   Used by splash/menu + secondary pages so gold-seal destinations
+   do not resurrect the old flat chrome. */
+:root {
+  --nord-bg: #0a0a0a;
+  --nord-elev: #141416;
+  --nord-card: rgba(28, 28, 30, 0.92);
+  --nord-card-solid: #1c1c1e;
+  --nord-line: rgba(255, 255, 255, 0.08);
+  --nord-ink: #f5f5f7;
+  --nord-muted: #9aa0a6;
+  --nord-accent: #ff7a1a;
+  --nord-accent-dim: rgba(255, 122, 26, 0.18);
+  --nord-gold: #c9a227;
+  --nord-green: #34c759;
+  --nord-radius: 16px;
+  --nord-radius-pill: 999px;
+}
+
+.nord-page {
+  margin: 0;
+  min-height: 100%;
+  background: var(--nord-bg);
+  color: var(--nord-ink);
+  font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+.nord-nav {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  padding: calc(10px + env(safe-area-inset-top, 0px)) 14px 12px;
+  background: linear-gradient(180deg, rgba(10, 10, 10, 0.96), rgba(10, 10, 10, 0.88));
+  border-bottom: 1px solid var(--nord-line);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.nord-nav-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.nord-nav-top h1 {
+  margin: 0;
+  flex: 1;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.nord-nav-top .bal {
+  font-variant-numeric: tabular-nums;
+  color: var(--nord-muted);
+  font-size: 12px;
+}
+
+.nord-nav-top .bal strong {
+  color: var(--nord-accent);
+  font-size: 14px;
+}
+
+.nord-pills {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 2px;
+}
+
+.nord-pills a {
+  flex: 0 0 auto;
+  text-decoration: none;
+  color: var(--nord-muted);
+  background: transparent;
+  border: 1px solid var(--nord-line);
+  border-radius: var(--nord-radius-pill);
+  padding: 8px 14px;
+  min-height: 36px;
+  font: 650 13px/1 system-ui, sans-serif;
+}
+
+.nord-pills a[aria-current="page"],
+.nord-pills a.is-active {
+  color: var(--nord-ink);
+  background: var(--nord-card-solid);
+  border-color: transparent;
+}
+
+.nord-wrap {
+  padding: 14px 14px calc(28px + env(safe-area-inset-bottom, 0px));
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.nord-card {
+  background: var(--nord-card);
+  border: 1px solid var(--nord-line);
+  border-radius: var(--nord-radius);
+  padding: 14px 16px;
+  margin: 0 0 12px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.nord-card h2 {
+  margin: 0 0 8px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.nord-muted { color: var(--nord-muted); font-size: 12px; }
+
+/* —— Splash + main menu (map page) —— */
+#bootOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  background:
+    radial-gradient(120% 80% at 50% -10%, rgba(255, 122, 26, 0.22), transparent 55%),
+    radial-gradient(80% 60% at 100% 100%, rgba(201, 162, 39, 0.12), transparent 50%),
+    var(--nord-bg);
+  color: var(--nord-ink);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  padding: calc(24px + env(safe-area-inset-top, 0px)) 20px calc(24px + env(safe-area-inset-bottom, 0px));
+  transition: opacity 0.28s ease, visibility 0.28s;
+}
+
+#bootOverlay[hidden] {
+  display: none !important;
+}
+
+#bootOverlay.boot-out {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.boot-stage {
+  width: min(420px, 100%);
+  margin: 0 auto;
+}
+
+#splashStage {
+  text-align: center;
+  animation: bootFade 0.6s ease both;
+}
+
+@keyframes bootFade {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #splashStage { animation: none; }
+  #bootOverlay { transition: none; }
+}
+
+.splash-seal {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 18px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #e8c56a, var(--nord-gold) 55%, #8a6a18);
+  color: #1a140c;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 700 28px/1 "Iowan Old Style", Palatino, serif;
+  box-shadow: inset 0 0 0 2px rgba(255, 236, 190, 0.45), 0 8px 28px rgba(0, 0, 0, 0.45);
+}
+
+.splash-brand {
+  margin: 0;
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.splash-tag {
+  margin: 6px 0 0;
+  font-size: 15px;
+  color: var(--nord-accent);
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.splash-sub {
+  margin: 14px auto 0;
+  max-width: 260px;
+  color: var(--nord-muted);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.menu-panel {
+  background: var(--nord-card);
+  border: 1px solid var(--nord-line);
+  border-radius: 22px;
+  padding: 18px 16px 14px;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.45);
+}
+
+.menu-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.menu-head .splash-seal {
+  width: 48px;
+  height: 48px;
+  margin: 0;
+  font-size: 20px;
+}
+
+.menu-head h1 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.menu-head p {
+  margin: 2px 0 0;
+  color: var(--nord-muted);
+  font-size: 12px;
+}
+
+.menu-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.menu-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 52px;
+  padding: 0 16px;
+  border: 1px solid var(--nord-line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--nord-ink);
+  font: 650 15px/1.2 system-ui, sans-serif;
+  text-align: left;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.menu-btn .mark {
+  width: 28px;
+  text-align: center;
+  color: var(--nord-accent);
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.menu-btn .go {
+  margin-left: auto;
+  color: var(--nord-muted);
+}
+
+.menu-btn.primary {
+  background: linear-gradient(180deg, #ff8a33, var(--nord-accent));
+  border-color: transparent;
+  color: #1a0e04;
+  font-weight: 800;
+  box-shadow: 0 6px 20px rgba(255, 122, 26, 0.35);
+}
+
+.menu-btn.primary .mark,
+.menu-btn.primary .go { color: #1a0e04; }
+
+.menu-btn.danger {
+  color: #ff6b6b;
+}
+
+.menu-btn.danger .mark { color: #ff6b6b; }
+
+.menu-foot {
+  margin: 12px 2px 0;
+  font-size: 11px;
+  color: var(--nord-muted);
+  text-align: center;
+}
+
+/* Signed-in identity chip (account sheet) */
+.acct-google-box {
+  margin: 0 12px 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--nord-accent-dim);
+  border: 1px solid rgba(255, 122, 26, 0.28);
+}
+
+.acct-google-box[hidden] { display: none !important; }
+
+.acct-google-box .label {
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--nord-accent);
+  font-weight: 650;
+}
+
+.acct-google-box .who {
+  margin: 4px 0 10px;
+  font-size: 14px;
+  color: var(--nord-ink);
+  word-break: break-all;
+}
+
+.acct-google-box .sign-out {
+  width: 100%;
+  min-height: 44px;
+  border-radius: 10px;
+  border: 1px solid var(--nord-line);
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--nord-ink);
+  font: 650 13px/1 system-ui, sans-serif;
+  cursor: pointer;
+}

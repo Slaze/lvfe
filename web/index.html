@@ -7,12 +7,14 @@
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.1/dist/maplibre-gl.css" />
   <link rel="stylesheet" href="map-3d.css" />
   <link rel="stylesheet" href="css/switch.css" />
+  <link rel="stylesheet" href="css/nord-shell.css" />
   <style>
     :root {
-      --bg: #0e1116;
-      --panel: #161b22;
-      --ink: #e8edf4;
-      --muted: #8b98a8;
+      --bg: #0a0a0a;
+      --panel: #1c1c1e;
+      --ink: #f5f5f7;
+      --muted: #9aa0a6;
+      --nord-accent: #ff7a1a;
     }
     html, body { margin: 0; width: 100%; height: 100%; background: var(--bg); color: var(--ink); font: 14px/1.4 system-ui, sans-serif; overflow: hidden; text-size-adjust: 100%; -webkit-text-size-adjust: 100%; }
     [hidden] { display: none !important; }
@@ -77,10 +79,13 @@
     #accountSheet {
       position: absolute; z-index: 14; left: 0; right: 0; bottom: 0;
       max-height: min(72vh, 640px);
-      background: #141a22;
-      color: #e8edf4;
-      border-radius: 18px 18px 0 0;
-      box-shadow: 0 -8px 32px rgba(0,0,0,.4);
+      background: rgba(20, 20, 22, 0.96);
+      color: #f5f5f7;
+      border-radius: 22px 22px 0 0;
+      box-shadow: 0 -12px 40px rgba(0,0,0,.55);
+      border-top: 1px solid rgba(255,255,255,.08);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
       transform: translateY(110%);
       visibility: hidden;
       pointer-events: none;
@@ -133,9 +138,9 @@
     .acct-hero .coin { color: #34c759; font-variant-numeric: tabular-nums; }
     .acct-sec {
       margin: 0 12px 12px;
-      background: #1b222c;
-      border: 1px solid #2a3340;
-      border-radius: 12px;
+      background: rgba(28, 28, 30, 0.92);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 16px;
       overflow: hidden;
     }
     .acct-sec h3 {
@@ -155,7 +160,7 @@
     .acct-sec > .acct-row:first-of-type,
     .acct-sec > a.acct-row:first-of-type { border-top: 0; }
     .acct-row .mark {
-      width: 22px; color: #b8893a; font-size: 14px; text-align: center; flex-shrink: 0;
+      width: 22px; color: #ff7a1a; font-size: 14px; text-align: center; flex-shrink: 0;
     }
     .acct-row .go { margin-left: auto; color: #5a6573; }
     .acct-switch { padding: 8px 14px 12px; border-top: 1px solid #2a3340; }
@@ -733,11 +738,17 @@
         </div>
       </div>
       <button type="button" class="google-btn" id="btnGoogleSignInSheet">Sign in with Google</button>
+      <div class="acct-google-box" id="acctGoogleSigned" hidden>
+        <p class="label">Google</p>
+        <p class="who" id="acctGoogleWho">Signed in</p>
+        <button type="button" class="sign-out" id="btnGoogleSignOut">Sign out</button>
+      </div>
       <p id="acctGoogleNote" hidden></p>
       <section class="acct-sec" aria-labelledby="acctYou">
         <h3 id="acctYou">You</h3>
         <button type="button" class="acct-row" data-id-edit="1"><span class="mark">✎</span> Name and neighbourhood<span class="go">›</span></button>
         <button type="button" class="acct-row" id="btnNewProfile"><span class="mark">+</span> Add another name<span class="go">›</span></button>
+        <button type="button" class="acct-row" id="btnMainMenu"><span class="mark">☰</span> Main menu<span class="go">›</span></button>
         <div class="acct-switch" id="menuSwitch" hidden>
           <label>Switch walker
             <select id="profileSelect"></select>
@@ -826,6 +837,7 @@
       </label>
       <button type="submit" class="claim">Enter Enugu</button>
       <button type="button" class="google-btn" id="btnGoogleSignIn">Sign in with Google</button>
+      <p id="gateGoogleSigned" class="iou-note" hidden></p>
       <p id="googleBlocker" hidden></p>
       <div class="save-row">
         <button type="button" id="btnExportSaveGate">Export save</button>
@@ -847,6 +859,35 @@
     <button type="button" class="claim" id="mapFailClose">Close</button>
   </div>
   <div id="toast" hidden></div>
+  <div id="bootOverlay" aria-live="polite">
+    <div id="splashStage" class="boot-stage">
+      <div class="splash-seal" aria-hidden="true">L</div>
+      <p class="splash-brand">Lvfe</p>
+      <p class="splash-tag">The Xperience</p>
+      <p class="splash-sub">Walk the real city. Photo. Back places with NairaCoin.</p>
+    </div>
+    <div id="menuStage" class="boot-stage" hidden>
+      <div class="menu-panel">
+        <div class="menu-head">
+          <div class="splash-seal" aria-hidden="true">L</div>
+          <div>
+            <h1>Lvfe</h1>
+            <p>Main menu</p>
+          </div>
+        </div>
+        <div class="menu-actions">
+          <button type="button" class="menu-btn primary" id="menuPlay"><span class="mark">▶</span> Play Now<span class="go">›</span></button>
+          <button type="button" class="menu-btn" id="menuSave"><span class="mark">☁</span> Save<span class="go">›</span></button>
+          <button type="button" class="menu-btn danger" id="menuRestart"><span class="mark">↺</span> Restart<span class="go">›</span></button>
+          <a class="menu-btn" id="menuCatalog" href="catalog.html"><span class="mark">▦</span> Check Catalog<span class="go">›</span></a>
+          <a class="menu-btn" id="menuRules" href="rules.html"><span class="mark">▸</span> How to play<span class="go">›</span></a>
+          <a class="menu-btn" id="menuAssets" href="assets.html"><span class="mark">◈</span> My places<span class="go">›</span></a>
+          <button type="button" class="menu-btn" id="menuAccount"><span class="mark">◎</span> Account<span class="go">›</span></button>
+        </div>
+        <p class="menu-foot" id="menuAuthLine">Not signed in with Google</p>
+      </div>
+    </div>
+  </div>
   <script src="https://unpkg.com/maplibre-gl@5.6.1/dist/maplibre-gl.js"></script>
   <script src="https://unpkg.com/three@0.160.1/build/three.min.js"></script>
   <script src="map-3d.js"></script>
@@ -1547,6 +1588,61 @@
       paintProfileMenu();
     }
 
+    function googleSignedState() {
+      const idn = loadIdentity();
+      if (idn && idn.googleSub) {
+        return { sub: idn.googleSub, email: idn.email || "", playerKey: PLAYER_KEY };
+      }
+      if (pendingGoogle && pendingGoogle.sub) {
+        return { sub: pendingGoogle.sub, email: pendingGoogle.email || "", playerKey: pendingGoogle.playerKey || PLAYER_KEY };
+      }
+      const Acc = window.LvfeAccount;
+      if (Acc && Acc.googleSessionFor) {
+        const row = Acc.googleSessionFor(PLAYER_KEY) || Acc.googleSessionFor("");
+        if (row && row.sub) return row;
+      }
+      try {
+        if (params.get("mockGoogle") === "1" || localStorage.getItem("lvfe.mockGoogle") === "1") {
+          return { sub: "mock-dev", email: "mock@lvfe.local", playerKey: PLAYER_KEY, mock: true };
+        }
+      } catch (err) { /* */ }
+      return null;
+    }
+
+    function paintGoogleAuthUi() {
+      const g = googleSignedState();
+      const signed = Boolean(g && g.sub);
+      const sheetBtn = document.getElementById("btnGoogleSignInSheet");
+      const gateBtn = document.getElementById("btnGoogleSignIn");
+      const box = document.getElementById("acctGoogleSigned");
+      const who = document.getElementById("acctGoogleWho");
+      const gNote = document.getElementById("acctGoogleNote");
+      const gateSigned = document.getElementById("gateGoogleSigned");
+      const menuAuth = document.getElementById("menuAuthLine");
+      if (sheetBtn) sheetBtn.hidden = signed;
+      if (gateBtn) gateBtn.hidden = signed;
+      if (box) box.hidden = !signed;
+      const label = signed
+        ? (g.email ? ("Signed in as " + g.email) : "Signed in with Google")
+        : "";
+      if (who) who.textContent = label || "Signed in";
+      if (gNote) {
+        if (signed) {
+          gNote.hidden = true;
+          gNote.textContent = "";
+        }
+      }
+      if (gateSigned) {
+        gateSigned.hidden = !signed;
+        gateSigned.textContent = signed ? label : "";
+      }
+      if (menuAuth) {
+        menuAuth.textContent = signed
+          ? (g.email ? ("Signed in · " + g.email) : "Signed in with Google")
+          : "Not signed in with Google";
+      }
+    }
+
     function paintProfileMenu() {
       const idn = loadIdentity();
       const whole = walletWhole();
@@ -1569,18 +1665,7 @@
         const coin = document.getElementById("acctCoin");
         if (coin) coin.textContent = String(whole);
       }
-      const gNote = document.getElementById("acctGoogleNote");
-      if (gNote) {
-        if (idn && idn.googleSub) {
-          gNote.hidden = false;
-          gNote.textContent = idn.email
-            ? "Signed in · " + idn.email
-            : "Signed in with Google";
-        } else {
-          gNote.hidden = true;
-          gNote.textContent = "";
-        }
-      }
+      paintGoogleAuthUi();
       const syncNote = document.getElementById("acctSyncNote");
       if (syncNote && window.LvfeSaveSync) {
         syncNote.textContent = window.LvfeSaveSync.statusLine();
@@ -1598,6 +1683,158 @@
           esc(row.name) + (row.pk === PLAYER_KEY ? " (now)" : "") + "</option>"
         ).join("");
       }
+    }
+
+    function signOutGoogle() {
+      const g = googleSignedState();
+      const Acc = window.LvfeAccount;
+      if (g && g.sub && Acc && Acc.unbindGoogle && !g.mock) Acc.unbindGoogle(g.sub);
+      try {
+        if (g && g.mock) localStorage.removeItem("lvfe.mockGoogle");
+      } catch (err) { /* */ }
+      pendingGoogle = null;
+      const idn = loadIdentity();
+      if (idn) {
+        saveIdentity({
+          playerName: idn.playerName,
+          factionId: idn.factionId,
+          googleSub: "",
+          email: "",
+        });
+      }
+      paintProfileMenu();
+      toast("Signed out of Google on this phone.");
+    }
+
+    function restartLocalRun() {
+      const ok = window.confirm(
+        "Restart this phone’s run?\n\nClears local places, field pins, and wallets on this device. Your name and Google link stay. Cloud save is not deleted — Sync later if you want the cloud copy back."
+      );
+      if (!ok) return;
+      try {
+        localStorage.removeItem(PLACES_KEY);
+        localStorage.removeItem(FACTION_POOL_KEY);
+        localStorage.removeItem("lvfe.field.v1");
+        const prefix = (window.LvfeNairaCoin && window.LvfeNairaCoin.STORE_PREFIX) || "lvfe.nc.iou.v1.";
+        const doomed = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && k.indexOf(prefix) === 0) doomed.push(k);
+        }
+        doomed.forEach(function (k) { localStorage.removeItem(k); });
+      } catch (err) {
+        toast("Restart failed: " + String(err && err.message ? err.message : err));
+        return;
+      }
+      if (window.LvfePhotoStore && typeof window.LvfePhotoStore.clearAll === "function") {
+        try { window.LvfePhotoStore.clearAll(); } catch (err2) { /* optional */ }
+      }
+      if (window.LvfeTrack && window.LvfeTrack.clear) window.LvfeTrack.clear();
+      loadWallet();
+      stampPlaceMarks();
+      refreshPlaceSource();
+      refreshNearby();
+      closeSheet();
+      renderHud();
+      toast("Local run reset.");
+    }
+
+    function menuSaveAction() {
+      const Sync = window.LvfeSaveSync;
+      if (Sync && Sync.enabled()) {
+        toast("Saving to cloud…");
+        Sync.push(PLAYER_KEY, syncPackOpts()).then(function (p) {
+          toast(p && p.ok ? "Saved to cloud." : ("Save: " + ((p && p.error) || "failed")));
+          paintProfileMenu();
+        });
+        return;
+      }
+      downloadSave();
+      toast("Cloud off — exported a save file.");
+    }
+
+    function showMainMenu() {
+      const overlay = document.getElementById("bootOverlay");
+      const splash = document.getElementById("splashStage");
+      const menu = document.getElementById("menuStage");
+      if (!overlay) return;
+      overlay.hidden = false;
+      overlay.classList.remove("boot-out");
+      if (splash) splash.hidden = true;
+      if (menu) menu.hidden = false;
+      paintGoogleAuthUi();
+      try { sessionStorage.removeItem("lvfe.sessionPlay"); } catch (err) { /* */ }
+    }
+
+    function enterPlayFromMenu() {
+      const overlay = document.getElementById("bootOverlay");
+      if (!overlay) return;
+      try { sessionStorage.setItem("lvfe.sessionPlay", "1"); } catch (err) { /* */ }
+      overlay.classList.add("boot-out");
+      window.setTimeout(function () {
+        overlay.hidden = true;
+        overlay.classList.remove("boot-out");
+        if (typeof fitMap === "function") fitMap();
+      }, 280);
+    }
+
+    function bindBootChrome() {
+      if (bindBootChrome.done) return;
+      bindBootChrome.done = true;
+      const play = document.getElementById("menuPlay");
+      if (play) play.addEventListener("click", function () { enterPlayFromMenu(); });
+      const save = document.getElementById("menuSave");
+      if (save) save.addEventListener("click", function () { menuSaveAction(); });
+      const restart = document.getElementById("menuRestart");
+      if (restart) restart.addEventListener("click", function () { restartLocalRun(); });
+      const acct = document.getElementById("menuAccount");
+      if (acct) acct.addEventListener("click", function () {
+        enterPlayFromMenu();
+        window.setTimeout(function () { openAccountSheet(); }, 300);
+      });
+      const mainMenu = document.getElementById("btnMainMenu");
+      if (mainMenu) mainMenu.addEventListener("click", function () {
+        closeAccountSheet();
+        showMainMenu();
+      });
+      const signOut = document.getElementById("btnGoogleSignOut");
+      if (signOut) signOut.addEventListener("click", function (e) {
+        e.preventDefault();
+        signOutGoogle();
+      });
+    }
+
+    function startBootFlow() {
+      bindBootChrome();
+      const overlay = document.getElementById("bootOverlay");
+      const splash = document.getElementById("splashStage");
+      const menu = document.getElementById("menuStage");
+      if (!overlay) return;
+      let sessionPlay = false;
+      try { sessionPlay = sessionStorage.getItem("lvfe.sessionPlay") === "1"; } catch (err) { /* */ }
+      const forceMenu = params.get("menu") === "1";
+      const forcePlay = params.get("play") === "1" || params.get("open") || params.get("track");
+      if (forcePlay && !forceMenu) {
+        if (splash) splash.hidden = true;
+        if (menu) menu.hidden = true;
+        overlay.hidden = true;
+        try { sessionStorage.setItem("lvfe.sessionPlay", "1"); } catch (err2) { /* */ }
+        return;
+      }
+      if (sessionPlay && !forceMenu) {
+        overlay.hidden = true;
+        return;
+      }
+      overlay.hidden = false;
+      if (splash) splash.hidden = false;
+      if (menu) menu.hidden = true;
+      paintGoogleAuthUi();
+      const splashMs = (typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches) ? 200 : 1100;
+      window.setTimeout(function () {
+        if (splash) splash.hidden = true;
+        if (menu) menu.hidden = false;
+        paintGoogleAuthUi();
+      }, splashMs);
     }
 
     function loadIdentity(pk) {
@@ -1664,11 +1901,13 @@
         hideIdentityGate();
         toast("Signed in. Playing as " + existing.playerName + ".");
         renderHud();
+        paintGoogleAuthUi();
         return;
       }
       creatingProfile = false;
       document.getElementById("idName").value = "";
       showIdentityGate();
+      paintGoogleAuthUi();
       toast("Signed into Google. Pick a unique name — not your email.");
     }
 
@@ -2943,6 +3182,7 @@
 
     bootstrapIdentity();
     bindChrome();
+    startBootFlow();
     bootCloudSave();
     closeSheet();
     hideIdentityGate();

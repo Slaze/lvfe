@@ -125,6 +125,34 @@
     return row;
   }
 
+  function unbindGoogle(sub) {
+    const id = String(sub || "").trim();
+    if (!id) return false;
+    const all = googleMap();
+    if (!all[id]) return false;
+    delete all[id];
+    lsSet(GOOGLE_MAP_KEY, all);
+    return true;
+  }
+
+  /** Active Google session for a player key (or any bound sub). */
+  function googleSessionFor(playerKey) {
+    const want = String(playerKey || "").slice(0, 32);
+    const all = googleMap();
+    const keys = Object.keys(all);
+    for (let i = 0; i < keys.length; i++) {
+      const row = all[keys[i]];
+      if (!row || !row.playerKey) continue;
+      if (want && row.playerKey !== want) continue;
+      return {
+        sub: keys[i],
+        email: String(row.email || "").slice(0, 128),
+        playerKey: String(row.playerKey).slice(0, 32),
+      };
+    }
+    return null;
+  }
+
   function walletKeys(playerKey) {
     const L = global.LvfeNairaCoin;
     const prefix = (L && L.STORE_PREFIX) || WALLET_PREFIX;
@@ -219,6 +247,8 @@
     listIdentities,
     bindGoogle,
     lookupGoogle,
+    unbindGoogle,
+    googleSessionFor,
     googleMap,
     packSave,
     unpackSave,
