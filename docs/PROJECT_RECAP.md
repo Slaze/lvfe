@@ -27,9 +27,12 @@ Location-based territorial game. World data from OpenStreetMap (no paid Google M
 - `web/js/google-auth.config.js` / `google-auth.js` / `account.js` — Web OAuth `WEB_CLIENT_ID` set (`730640559588-…apps.googleusercontent.com`); native `LvfeNative.signInWithGoogle` on Android; **username permanent once set** (`nameLocked`; bound to Google `sub` on save API); save pack `lvfe.save.v1` + `updatedAt`. Docs: `docs/ACCOUNT.md`.
 - `web/js/local-factions.js` — GPS-region factions: Enugu → canonical four; elsewhere Overpass suburb/neighbourhood/quarter (3–6); travel keeps chapter; fail soft → generic quarters.
 - `server/username-lock.js` + PHP `enforce_username_lock` — `username-map.json` (`username ↔ googleSub`); reject rename/reuse.
-- `hosting/lvfe-save/` — **public HTTPS save API** (PHP on Iconia Namecheap/cPanel). Live base **`https://iconiaglobal.com/lvfe-save`**. Same routes/auth as Node. Secrets in host-only `config.local.php` (gitignored). Preferred branded host `lvfe-save.iconiaglobal.com` needs Cloudflare DNS + cPanel subdomain (human).
-- `docs/OAUTH_CONSENT.md` — consent + **Authorized JavaScript origins** for GIS (`https://iconiaglobal.com`, …).
+- `web/js/photo-store.js` — visit photo bytes in IndexedDB on Pay confirm; discard on sheet close / cancel; sync may send small dataURLs.
+- `web/js/field-claim.js` — catalog bbox is Enugu; GPS fly-to; outside bbox → hinterland + OSM footprints + **world Overpass** merge. No planet download.
+- `web/js/world-catalog.js` — viewport Overpass (~0.012° pad) outside Enugu; rate-limit 45s; cell cache 30 min; mirrors overpass-api.de + kumi; quality tiers match ingest; banks/ATMs not ownable; fail banner → hinterland.
+- `hosting/lvfe-save/` — **public HTTPS save API** (PHP on Iconia Namecheap/cPanel). Live base **`https://iconiaglobal.com/lvfe-save`**. Same routes/auth as Node (+ username lock). Secrets in host-only `config.local.php` (gitignored).
 - `docs/ACCOUNT.md` — username permanence + location factions.
+- `docs/OAUTH_CONSENT.md` — consent + **Authorized JavaScript origins** for GIS (`https://iconiaglobal.com`, …).
 - `web/js/conquest.js` — neighbourhood owned-count bonus: `displayValue = baseValue * (1 + 0.5 * count/max)`; hinterland `unclaimed` bonus 0. Does not mint into `rec.value`. **Unknown** (quality D / `civic_unknown` / `unmapped`) `baseValue = max(ledger, 100)` so it is the top quality tier; named empty stays 0. Red X `#ff3b30` vs black unknown `#111111`.
 - `web/js/satellite.js` — Esri World Imagery overlay; SAT switch; never billed Google tiles; never `setStyle`. Source `maxzoom` **18** (Enugu z19 is Esri empty plate); raster **layer** `maxzoom` 24 so street zoom overscales last rooftops. `map.resize()` after style load and SAT toggle.
 - `web/rules.html` — player How to play (walk, photo, NairaCoin, 80 m, highest backer owns, faction, neighbourhood value bonus, Pay gate, beep/track, AR, catalog, banks, world Overpass).
@@ -138,7 +141,7 @@ Location-based territorial game. World data from OpenStreetMap (no paid Google M
 - `web/js/place-thumb.js` — **Esri** z16 World Imagery tile at lon/lat (immediate); optional **Wikipedia geosearch** page image upgrade; IndexedDB URL cache; fail soft. Visit photos still win via `data-visit-photo`.
 - `web/js/catalog.js` + `catalog.html` — Esri chip thumbs on list rows; fill dossier photo on open.
 - `scripts/test_place_thumb.js` — tile math smoke test.
-- Co-landed in sibling commit **`d494a3c`** (iOS PWA/Nord shell same tree). This session redeployed PWA after append-immediate img fix for WebView.
+- Co-landed in sibling commit **`d494a3c`** (iOS PWA/Nord shell same tree). This session redeployed PWA after append-immediate img fix for WebView. Recap commit **`da4fc87`**.
 
 **Thumb source chosen:** Esri World Imagery static tile (same ArcGIS endpoint as SAT) as primary worldwide/Enugu snapshot; Wikipedia geosearch thumbnail when nearby page image exists.
 
