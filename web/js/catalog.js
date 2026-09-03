@@ -148,8 +148,9 @@
         }
       }
       return `<button type="button" class="cat-row" data-open="${R.esc(p.id)}">` +
-        `<strong>${R.esc(R.placeTitle(p))}</strong>` +
-        `<span>${R.esc(R.typeLabel(p))} · ${R.esc(R.qualityWords(p.quality))} · ${R.esc(R.areaLabel(p))} · ${note}${money}</span>` +
+        (window.LvfePlaceThumb ? window.LvfePlaceThumb.chipHtml(p, R.esc) : "") +
+        `<div><strong>${R.esc(R.placeTitle(p))}</strong>` +
+        `<span>${R.esc(R.typeLabel(p))} · ${R.esc(R.qualityWords(p.quality))} · ${R.esc(R.areaLabel(p))} · ${note}${money}</span></div>` +
         `</button>`;
     }).join("") || `<p class="meta">No places match.</p>`;
     document.getElementById("meta").textContent =
@@ -189,6 +190,26 @@
       state.tab = name;
       renderFile();
     });
+    if (window.LvfePlaceThumb) {
+      window.LvfePlaceThumb.fillFromRoot(card, p);
+    }
+    if (window.LvfePhotoStore && p.id) {
+      window.LvfePhotoStore.objectUrl(p.id, W.playerKey()).then(function (url) {
+        if (!url) return;
+        const box = card.querySelector(".dossier-photo");
+        if (!box || box.getAttribute("data-place-id") !== String(p.id)) {
+          URL.revokeObjectURL(url);
+          return;
+        }
+        box.setAttribute("data-visit-photo", "1");
+        box.innerHTML = "";
+        box.classList.add("has-thumb");
+        const img = document.createElement("img");
+        img.alt = "Visit photo";
+        img.src = url;
+        box.appendChild(img);
+      }).catch(function () { /* none */ });
+    }
   }
 
   function closeFile() {

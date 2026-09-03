@@ -16,6 +16,10 @@ Options -Indexes +FollowSymLinks
   <FilesMatch "^(sw\.js|manifest\.webmanifest)$">
     Header set Cache-Control "no-cache, max-age=0, must-revalidate"
   </FilesMatch>
+  # Nord chrome + app shell: short TTL, always revalidate (never 30d immutable).
+  <FilesMatch "\.(?i:css|html|js)$">
+    Header set Cache-Control "no-cache, max-age=0, must-revalidate"
+  </FilesMatch>
 </IfModule>
 
 <IfModule mod_rewrite.c>

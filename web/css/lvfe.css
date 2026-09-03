@@ -1,4 +1,4 @@
-@import url("nord-shell.css");
+@import url("nord-shell-v2.css");
 
 :root {
   --bg: var(--nord-bg, #0a0a0a);
@@ -82,12 +82,24 @@ button.ghost { background: var(--line); color: var(--ink); }
 .sec-toggles label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink); cursor: pointer; }
 .cat-list { display: flex; flex-direction: column; gap: 6px; }
 .cat-row {
-  display: block; width: 100%; text-align: left;
+  display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
   background: rgba(28, 28, 30, 0.92); color: inherit; border: 1px solid var(--line);
-  border-radius: 16px; padding: 14px 16px; font: inherit; cursor: pointer;
+  border-radius: 16px; padding: 10px 12px; font: inherit; cursor: pointer;
 }
-.cat-row strong { display: block; font-size: 15px; }
-.cat-row span { color: var(--muted); font-size: 12px; }
+.cat-row > div { flex: 1 1 auto; min-width: 0; }
+.cat-row strong {
+  display: block; font-size: 15px; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; max-width: 100%;
+}
+.cat-row span {
+  display: block; color: var(--muted); font-size: 12px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%;
+}
+.cat-thumb {
+  flex: 0 0 48px; width: 48px; height: 48px; border-radius: 8px; overflow: hidden;
+  background: #2a2a2e;
+}
+.cat-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
 #catFile {
   position: fixed; z-index: 8; left: 0; right: 0; bottom: 0;
   height: 78vh; max-height: 78vh;
@@ -111,42 +123,66 @@ button.ghost { background: var(--line); color: var(--ink); }
 }
 #catFile #catCard { flex: 1; min-height: 0; overflow: hidden; }
 #catFile .dossier { display: flex; flex-direction: column; flex: 1; min-height: 0; height: 100%; background: #f7f1e4; }
-.dossier-head { padding: 0 16px 8px; border-bottom: 1px solid #d8cbb4; position: relative; flex-shrink: 0; }
+.dossier-head { padding: 0 12px 8px; border-bottom: 1px solid #d8cbb4; position: relative; flex-shrink: 0; min-width: 0; }
+.dossier-head-row {
+  display: flex; align-items: flex-start; gap: 8px; min-width: 0;
+}
+.dossier-head-text { flex: 1 1 auto; min-width: 0; }
 .dossier-mark {
   display: block; font-size: 11px; letter-spacing: 0.14em;
   text-transform: uppercase; color: #8a7a62; font-weight: 650;
 }
-.dossier-head h2 { margin: 4px 110px 0 0; font-size: clamp(15px, 4.2vw, 18px); line-height: 1.25; font-weight: 700; color: #1f1a14; overflow-wrap: anywhere; }
-.track-toggle {
-  position: absolute; right: 8px; top: 0;
-  color: #3a3228;
+.dossier-head h2 {
+  margin: 4px 0 0; font-size: clamp(15px, 4.2vw, 18px); line-height: 1.25;
+  font-weight: 700; color: #1f1a14; max-width: 100%;
+  overflow: hidden; text-overflow: ellipsis;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+  overflow-wrap: anywhere; word-break: break-word;
 }
+.track-toggle {
+  position: static; flex: 0 0 auto; align-self: flex-start;
+  color: #3a3228; max-width: 46%; min-width: 0;
+}
+.track-toggle .sw-ctl-name { overflow: hidden; text-overflow: ellipsis; }
 .dossier-tabs {
   display: flex; gap: 2px; padding: 4px 6px 0;
   background: #e6dcc6; border-bottom: 1px solid #c9bba3;
   flex-shrink: 0; overflow-x: auto; -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain; scrollbar-width: none;
 }
+.dossier-tabs::-webkit-scrollbar { display: none; }
 .dossier-tabs button {
-  flex: 1 0 auto; min-width: 0; min-height: 44px; border: 0; background: transparent;
+  flex: 1 1 0; min-width: 3.4em; min-height: 44px; border: 0; background: transparent;
   color: #5c5346; font: 650 12px/1.1 system-ui, sans-serif;
   border-radius: 8px 8px 0 0; padding: 8px 4px; cursor: pointer;
-  white-space: nowrap;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .dossier-tabs button[aria-selected="true"] { background: #f7f1e4; color: #1f1a14; }
-.dossier-pages { flex: 1; min-height: 0; overflow: hidden; }
-.dossier-page { display: none; padding: 12px 16px 20px; height: 100%; overflow: auto; -webkit-overflow-scrolling: touch; }
+.dossier-pages { flex: 1; min-height: 0; overflow: hidden; min-width: 0; }
+.dossier-page {
+  display: none; padding: 12px 16px 20px; height: 100%; max-height: 100%;
+  box-sizing: border-box; overflow: auto; -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
 .dossier-page.active { display: block; }
 .dossier-page .row-label {
   margin: 12px 0 2px; font-size: 11px; letter-spacing: 0.06em;
   text-transform: uppercase; color: #8a7a62; font-weight: 650;
 }
 .dossier-page .row-label:first-child { margin-top: 0; }
-.dossier-page .row-value { margin: 0; font-size: 15px; color: #1f1a14; overflow-wrap: anywhere; }
-.dossier-page .note { margin: 10px 0 0; font-size: 14px; color: #4a4338; overflow-wrap: anywhere; }
+.dossier-page .row-value { margin: 0; font-size: 15px; color: #1f1a14; overflow-wrap: anywhere; word-break: break-word; }
+.dossier-page .note { margin: 10px 0 0; font-size: 14px; color: #4a4338; overflow-wrap: anywhere; word-break: break-word; }
 .dossier-photo {
   display: flex; align-items: center; justify-content: center;
-  min-height: 72px; margin: 0 0 8px; border-radius: 4px;
-  background: #e8dcc6; color: #6d6250; font-size: 13px;
+  position: relative; overflow: hidden;
+  min-height: 96px; max-height: 160px; margin: 0 0 8px; border-radius: 8px;
+  background: #e8dcc6; color: #6d6250; font-size: 13px; flex-shrink: 0;
+}
+.dossier-photo-ph { padding: 12px; text-align: center; overflow-wrap: anywhere; }
+.dossier-photo.has-thumb { background: #1a1a1a; }
+.dossier-photo img {
+  display: block; width: 100%; height: 100%; min-height: 96px; max-height: 160px;
+  object-fit: cover; border-radius: 8px;
 }
 button.claim {
   background: #1a73e8; color: #fff; border: 0;

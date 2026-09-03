@@ -14,7 +14,7 @@ Location-based territorial game. World data from OpenStreetMap (no paid Google M
 - `scripts/ingest_places.py` — Overpass → cluster 80 m → `data/lvfe.sqlite`; points outside all polygons get `territory_id=unclaimed`.
 - `scripts/claim_points.py` — min stake: `round(BASE[type] * QUALITY[q] * ROLE[role])`, min 1. Not claim XP.
 - `scripts/export_catalog.py` — sqlite/geojson → `data/catalog.json` + `data/catalog.csv` (ownable **min stake**; bank/atm **0**).
-- `web/css/nord-shell.css` — Nord dark-glass design system (splash/menu + secondary page chrome; orange `#ff7a1a`).
+- `web/css/nord-shell.css` + **`web/css/nord-shell-v2.css`** — Nord dark-glass design system (splash/menu + secondary page chrome; orange `#ff7a1a`). Live PWA links **`nord-shell-v2.css`** to bypass Cloudflare’s 30-day immutable cache on the old CSS URL.
 - `web/assets/brand/` — **Lvfe brand mark** (gold seal + green `#34c759` map pin + gold geometric L). Primary PNGs: `lvfe-mark-512.png`, `lvfe-logo-wide.png`; SVG sources `lvfe-mark.svg` / `lvfe-logo-wide.svg`. Immediate Google OAuth uploads: `exports/brand/GOOGLE-OAUTH-*.png`.
 - `web/js/buy-ncn.config.js` / `buy-ncn.js` — **Buy NCN** via Paystack Checkout (1 NCN = USD $1). Public key only in client; init/verify against save host; clear sandbox blocker if keys missing. Docs: `docs/BUY_NCN.md`.
 - `web/js/rank-sigils.js` — rank **sigils/emblems** (Initiate→Sovereign tiers + Banner Lord / Vanguard / Kin faction roles). Used in Rankings hub + under profile FAB.
@@ -48,7 +48,7 @@ Location-based territorial game. World data from OpenStreetMap (no paid Google M
 - `web/map-3d.js` / `web/map-3d.css` — **one** `#btn3d` switch (green only when live 3D: pitch ~52 + terrain). Tap 3D from idle 12.2 → pitch 52 **and zoom ≥ 14.2**. Every OSM footprint is a box (tagged height/levels; untagged **OMT 5 m**; cap 80). **SAT-off opacity 1** (solid box city). **SAT+3D opacity 0.35** (ghost walls so draped Esri roofs read). SAT restacks above Liberty beige, under extrusion, under pins. 2D `building` fill hidden while extruded. No skip-filter. Terrain **1.0×** + sky; DEM fail → banner, switch off, stay flat. Labels `text-pitch-alignment: viewport`. Pins billboard (X/circle); no −16 px; no chimney poles. NavigationControl `visualizePitch` off. No Google 3D SKU. No Three.js.
 - `data/places.geojson` — typed pins. Place value/owner live in `lvfe.places.v1`.
 - `web/js/lvfe-assets.js` — URL helper for repo-root python (`/data`), APK `appassets…/www/`, and HTTPS PWA under `/lvfe/`.
-- `web/manifest.webmanifest` + `web/sw.js` + `web/js/pwa-register.js` — installable PWA (Nord dark theme, standalone). SW caches shell; network-first for `lvfe-save` / tiles / GIS. **SW skipped** when `LvfeNative` or appassets WebView.
+- `web/manifest.webmanifest` + `web/sw.js` + `web/js/pwa-register.js` + `web/js/pwa-install.js` + `web/install.html` — installable PWA (Nord dark theme, standalone). In-app install banner (Chromium `beforeinstallprompt` / iOS Share guide); SW caches shell; network-first for HTML/CSS/JS + `lvfe-save` / tiles / GIS. **SW skipped** when `LvfeNative` or appassets WebView. Cache id **`lvfe-shell-v3`**.
 - `hosting/lvfe/` + `scripts/stage_pwa.sh` / `deploy_pwa.sh` — deploy tree to **`https://iconiaglobal.com/lvfe/`** (FTP Iconia). Apex `.htaccess` pass-through includes `lvfe`. Docs: `docs/PWA.md`.
 - `docs/OAUTH_CONSENT.md` — consent + **Authorized JavaScript origins** for GIS (`https://iconiaglobal.com`, …).
 - `android/` — debug WebView APK (`com.lvfe.xperience`, minSdk 24). `sync-www.sh` bundles `web/` + `data/places.geojson` + `data/catalog.json` + `geojson/enugu-factions.geojson` + MapLibre JS/CSS. OpenFreeMap tiles still need the network. No Google Maps SDK. Not the Don Maseratte shop.
@@ -118,8 +118,61 @@ Location-based territorial game. World data from OpenStreetMap (no paid Google M
 - 2026-09-03: Buy NCN (Paystack) + rank sigils + Google profile FAB; PHP buy routes on Iconia.
 - 2026-09-03: Pass-by toll + contest notify (Outpay/Escape/Accept) + mark watch/threat/takeover (`dc5eba5`); co-landed PWA shell in same commit.
 - 2026-09-03: PWA deployed live to **`https://iconiaglobal.com/lvfe/`** (FTP; apex `lvfe` pass-through; GIS origins documented).
+- 2026-09-03: PWA install prompt + `install.html` guide; co-landed iOS menu/Nord translucent fixes (sibling); SW **`lvfe-shell-v3`**.
 
 ## Sessions
+
+### 2026-09-03 — P0 iOS PWA: menu dead + Nord theme missing
+
+**Goal:** Fix Apple device PWA at `https://iconiaglobal.com/lvfe/` — splash/main menu + gold account menu fail to open; darker translucent Nord chrome not applied. Redeploy; commit+push.
+
+**Root cause (combined):**
+1. **`#bootOverlay` positioning lived only in external CSS** and used `position:absolute`. If Nord CSS was stale/missing (SW cache-first `lvfe-shell-v1` + CF `Cache-Control: immutable` max-age 30d on `/css/nord-shell.css`), the overlay was not stacked over `#map` → menus appeared dead / light map chrome dominated.
+2. **Account sheet / gold FAB** also `position:absolute` under iOS standalone — unreliable vs visual viewport; clicks needed `touch-action` + pointerup fallback.
+3. Stale SW + CDN meant phones kept pre-Nord shell even after FTP updates.
+
+**What changed:**
+- Inline critical `#bootOverlay` / `.menu-panel` / `.menu-btn` dark-glass in `web/index.html`; overlays → **`position:fixed`**; gold FAB `z-index:12` + `touch-action:manipulation`; `onActivate` (click + touch `pointerup`).
+- `nord-shell.css` fixed overlay + solid-then-translucent card fallbacks; ship as **`css/nord-shell-v2.css`** (CF bypass).
+- SW **`lvfe-shell-v3`**: network-first HTML/CSS/JS; `SKIP_WAITING` message; `pwa-register` controllerchange reload.
+- `hosting/lvfe/.htaccess`: `no-cache` for css/html/js (plus existing sw/manifest).
+- Co-landed sibling install prompt (`install.html` / `pwa-install.js`) already on the same tree/deploy.
+
+**Why:** Absolute overlays + cache-first shell + immutable CDN CSS is a classic iOS PWA failure mode; renaming CSS URL is the reliable purge when CF ignores origin revalidate.
+
+**How verified:**
+- `curl -sI https://iconiaglobal.com/lvfe/css/nord-shell-v2.css` → **200**, body **8260** bytes with `--nord-bg`, `position: fixed`, `touch-action`.
+- Live HTML contains `nord-shell-v2.css`, inline `z-index: 40` boot overlay, `onActivate`, `pwaInstallBanner`.
+- Live `sw.js` → `CACHE = "lvfe-shell-v3"` + `./css/nord-shell-v2.css`.
+- Bare `/css/nord-shell.css` still CF-stale (7675 / old md5) — intentional reason for `-v2` filename.
+
+**Current state:** Fix live on Iconia. iPhone home-screen users may still need **Clear Website Data** once if `v1` SW never updates.
+
+**Next steps:** User clears Safari site data for iconiaglobal.com and reopens home-screen icon; confirm Play Now + gold seal open; Android Chrome install banner smoke.
+
+**Blockers / risks:** CF still immutably caches old `nord-shell.css` URL; do not relink to it without a new filename or CF purge.
+
+### 2026-09-03 — PWA install / download prompt + guide
+
+**Goal:** Real Add to Home Screen / install PWA prompt (not fake store), detailed multi-platform guide, menu + account entry points; merge with sibling iOS menu + Nord translucent theme; redeploy `/lvfe/`; commit+push.
+
+**What changed:**
+- `web/js/pwa-install.js` — `beforeinstallprompt` capture; iOS Safari Share guide copy; throttled `#pwaInstallBanner` after Play; skip `LvfeNative`/appassets/standalone.
+- `web/install.html` — iPhone/iPad, Android Chrome, desktop Chrome/Edge, after-install Google sync steps.
+- `web/index.html` — menu **Install app**, account **Install / download game**, banner DOM/CSS; wire after Play / `?play=1`.
+- SW cache bump **`lvfe-shell-v1` → `v3`** (sibling `v2` + this ship); shell includes `install.html` / `pwa-install.js`; network-first HTML/CSS/JS (sibling) retained.
+- Sibling (same tree): iOS menu `position:fixed` / `onActivate` pointerup, inline critical Nord chrome, `pwa-register` SKIP_WAITING reload, `.htaccess` no-cache for css/html/js, nord-shell solid fallback + **`nord-shell-v2.css`**.
+- `docs/PWA.md` + this recap.
+
+**Why:** Players need a discoverable install path on HTTPS; iOS has no install event; APK must not register SW.
+
+**How verified:** Live `install.html` / `pwa-install.js` / `sw.js` **200**; CACHE `lvfe-shell-v3`; HTML contains `pwaInstallBanner` + `menuInstall` + Nord v2 link.
+
+**Current state:** Install prompt + iOS theme/menu fix live on `https://iconiaglobal.com/lvfe/`.
+
+**Next steps:** Confirm Android Chrome install prompt + iOS Share path on a real device after Clear Website Data.
+
+**Blockers / risks:** CF may cache `sw.js` briefly; `beforeinstallprompt` only after Chrome engagement heuristics.
 
 ### 2026-09-03 — Deploy PWA to Iconia HTTPS
 

@@ -16,7 +16,7 @@
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.1/dist/maplibre-gl.css" />
   <link rel="stylesheet" href="map-3d.css" />
   <link rel="stylesheet" href="css/switch.css" />
-  <link rel="stylesheet" href="css/nord-shell.css" />
+  <link rel="stylesheet" href="css/nord-shell-v2.css" />
   <style>
     :root {
       --bg: #0a0a0a;
@@ -27,9 +27,54 @@
       --lvfe-chrome-bottom: 28px;
     }
     *, *::before, *::after { box-sizing: border-box; }
-    html, body { margin: 0; width: 100%; height: 100%; background: var(--bg); color: var(--ink); font: 14px/1.4 system-ui, sans-serif; overflow: hidden; text-size-adjust: 100%; -webkit-text-size-adjust: 100%; }
+    html, body {
+      margin: 0; width: 100%; height: 100%;
+      min-height: 100%; min-height: 100dvh;
+      background: var(--bg); color: var(--ink);
+      font: 14px/1.4 system-ui, sans-serif;
+      overflow: hidden; text-size-adjust: 100%; -webkit-text-size-adjust: 100%;
+      -webkit-tap-highlight-color: transparent;
+    }
     [hidden] { display: none !important; }
-    #map { position: absolute; inset: 0; width: 100%; height: 100%; }
+    #map { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; }
+    /* Critical boot/menu chrome inline so iOS PWA still works if nord-shell is stale/blocked. */
+    #bootOverlay {
+      position: fixed; inset: 0; z-index: 40;
+      background:
+        radial-gradient(120% 80% at 50% -10%, rgba(255, 122, 26, 0.22), transparent 55%),
+        radial-gradient(80% 60% at 100% 100%, rgba(201, 162, 39, 0.12), transparent 50%),
+        #0a0a0a;
+      color: #f5f5f7;
+      display: flex; flex-direction: column; align-items: stretch; justify-content: center;
+      padding: calc(24px + env(safe-area-inset-top, 0px)) 20px calc(24px + env(safe-area-inset-bottom, 0px));
+      overflow-x: hidden; overflow-y: auto; -webkit-overflow-scrolling: touch;
+      -webkit-transform: translateZ(0); transform: translateZ(0);
+      touch-action: manipulation; pointer-events: auto;
+    }
+    #bootOverlay[hidden] { display: none !important; }
+    #bootOverlay.boot-out { opacity: 0; visibility: hidden; pointer-events: none; }
+    .boot-stage { width: min(420px, 100%); max-width: 100%; margin: 0 auto; flex-shrink: 0; }
+    .menu-panel {
+      width: 100%; max-width: 100%;
+      background: #1c1c1e; background: rgba(28, 28, 30, 0.96);
+      border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 22px;
+      padding: 18px 16px 14px; box-shadow: 0 16px 48px rgba(0, 0, 0, 0.45);
+      overflow: hidden; position: relative; z-index: 1; pointer-events: auto;
+      backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+    }
+    .menu-btn {
+      display: flex; align-items: center; gap: 12px; width: 100%; max-width: 100%;
+      min-height: 52px; padding: 0 16px; border: 1px solid rgba(255,255,255,.08);
+      border-radius: 14px; background: rgba(255,255,255,.04); color: #f5f5f7;
+      font: 650 15px/1.2 system-ui, sans-serif; text-align: left; cursor: pointer;
+      text-decoration: none; overflow: hidden; touch-action: manipulation;
+      -webkit-tap-highlight-color: rgba(255, 122, 26, 0.25); pointer-events: auto;
+      position: relative; z-index: 2;
+    }
+    .menu-btn.primary {
+      background: linear-gradient(180deg, #ff8a33, #ff7a1a); border-color: transparent;
+      color: #1a0e04; font-weight: 800;
+    }
     .maplibregl-ctrl-logo,
     .maplibregl-ctrl-attrib,
     .maplibregl-compact,
@@ -63,7 +108,7 @@
     }
     .search-pill input::placeholder { color: #5f6368; }
     .who-stamp.gold-hang {
-      position: absolute; z-index: 4;
+      position: fixed; z-index: 12;
       left: max(12px, env(safe-area-inset-left, 0px));
       bottom: calc(28px + env(safe-area-inset-bottom, 0px));
       width: 52px; height: 52px; min-width: 52px; min-height: 52px;
@@ -73,9 +118,13 @@
       color: #1a140c;
       font: 700 18px/1 "Iowan Old Style", "Palatino Linotype", Palatino, serif;
       cursor: pointer;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: rgba(201, 162, 39, 0.35);
       box-shadow: 0 2px 8px rgba(0,0,0,.28), inset 0 0 0 2px rgba(255,236,190,.45);
       display: flex; align-items: center; justify-content: center;
       overflow: visible;
+      -webkit-transform: translateZ(0); transform: translateZ(0);
+      pointer-events: auto;
     }
     .who-stamp.gold-hang[aria-expanded="true"] { background: #d4a24e; }
     .who-stamp.gold-hang.has-photo {
@@ -158,16 +207,17 @@
     .search-hits strong { display: block; font-size: 14px; }
     .search-hits span { color: #5f6368; font-size: 12px; }
     #accountScrim {
-      position: absolute; inset: 0; z-index: 13;
+      position: fixed; inset: 0; z-index: 13;
       background: rgba(8,10,14,.46);
       opacity: 0; pointer-events: none; visibility: hidden;
       transition: opacity .24s ease, visibility .24s;
+      -webkit-transform: translateZ(0); transform: translateZ(0);
     }
     #accountScrim.open { opacity: 1; pointer-events: auto; visibility: visible; }
     #accountSheet {
-      position: absolute; z-index: 14; left: 0; right: 0; bottom: 0;
-      max-height: min(72vh, 640px);
-      background: rgba(20, 20, 22, 0.96);
+      position: fixed; z-index: 14; left: 0; right: 0; bottom: 0;
+      max-height: min(72vh, 72dvh, 640px);
+      background: #141416; background: rgba(20, 20, 22, 0.96);
       color: #f5f5f7;
       border-radius: 22px 22px 0 0;
       box-shadow: 0 -12px 40px rgba(0,0,0,.55);
@@ -182,6 +232,7 @@
       transition: transform .24s cubic-bezier(.2,.8,.2,1), visibility .24s;
       box-sizing: border-box;
       overflow: hidden;
+      touch-action: manipulation;
     }
     #accountSheet.open {
       transform: translateY(0);
@@ -454,33 +505,47 @@
       display: flex; flex-direction: column; height: 100%; min-height: 0;
       background: #f7f1e4; color: #2a241c;
     }
-    .dossier-head { padding: 0 16px 8px; border-bottom: 1px solid #d8cbb4; flex-shrink: 0; }
+    .dossier-head {
+      padding: 0 12px 8px; border-bottom: 1px solid #d8cbb4;
+      flex-shrink: 0; position: relative; min-width: 0;
+    }
+    .dossier-head-row {
+      display: flex; align-items: flex-start; gap: 8px; min-width: 0;
+    }
+    .dossier-head-text { flex: 1 1 auto; min-width: 0; }
     .dossier-mark {
       display: block; font-size: 11px; letter-spacing: 0.14em;
       text-transform: uppercase; color: #8a7a62; font-weight: 650;
     }
     .dossier-head h2 {
-      margin: 4px 110px 0 0; font-size: clamp(15px, 4.2vw, 18px); line-height: 1.25;
-      font-weight: 700; color: #1f1a14; overflow-wrap: anywhere;
+      margin: 4px 0 0; font-size: clamp(15px, 4.2vw, 18px); line-height: 1.25;
+      font-weight: 700; color: #1f1a14; max-width: 100%;
+      overflow: hidden; text-overflow: ellipsis;
+      display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+      overflow-wrap: anywhere; word-break: break-word;
     }
     .dossier-tabs {
       display: flex; gap: 2px; padding: 4px 6px 0;
       background: #e6dcc6; border-bottom: 1px solid #c9bba3;
       flex-shrink: 0; overflow-x: auto; -webkit-overflow-scrolling: touch;
+      overscroll-behavior-x: contain; scrollbar-width: none;
     }
+    .dossier-tabs::-webkit-scrollbar { display: none; }
     .dossier-tabs button {
-      flex: 1 0 auto; min-width: 0; min-height: 44px; border: 0; background: transparent;
-      color: #5c5346; font: 650 12px/1.1 system-ui, sans-serif;
+      flex: 1 1 0; min-width: 3.4em; max-width: none; min-height: 44px; border: 0;
+      background: transparent; color: #5c5346;
+      font: 650 12px/1.1 system-ui, sans-serif;
       border-radius: 8px 8px 0 0; padding: 8px 4px; cursor: pointer;
-      white-space: nowrap;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
     .dossier-tabs button[aria-selected="true"] {
       background: #f7f1e4; color: #1f1a14;
     }
-    .dossier-pages { flex: 1; min-height: 0; overflow: hidden; }
+    .dossier-pages { flex: 1; min-height: 0; overflow: hidden; min-width: 0; }
     .dossier-page {
-      display: none; padding: 12px 16px calc(16px + env(safe-area-inset-bottom, 0px)); height: 100%;
-      overflow: auto; -webkit-overflow-scrolling: touch;
+      display: none; padding: 12px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+      height: 100%; max-height: 100%; box-sizing: border-box;
+      overflow: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
     }
     .dossier-page.active { display: block; }
     .dossier-page .row-label {
@@ -488,13 +553,19 @@
       text-transform: uppercase; color: #8a7a62; font-weight: 650;
     }
     .dossier-page .row-label:first-child { margin-top: 0; }
-    .dossier-page .row-value { margin: 0; font-size: 15px; color: #1f1a14; overflow-wrap: anywhere; }
-    .dossier-page .note { margin: 10px 0 0; font-size: 14px; color: #4a4338; overflow-wrap: anywhere; }
+    .dossier-page .row-value { margin: 0; font-size: 15px; color: #1f1a14; overflow-wrap: anywhere; word-break: break-word; }
+    .dossier-page .note { margin: 10px 0 0; font-size: 14px; color: #4a4338; overflow-wrap: anywhere; word-break: break-word; }
     .dossier-photo {
       display: flex; align-items: center; justify-content: center;
-      min-height: 72px; margin: 0 0 8px; border-radius: 4px;
+      position: relative; overflow: hidden;
+      min-height: 96px; max-height: 160px; margin: 0 0 8px; border-radius: 8px;
       background: #e8dcc6; color: #6d6250; font-size: 13px;
+      flex-shrink: 0;
     }
+    .dossier-photo-ph {
+      padding: 12px; text-align: center; overflow-wrap: anywhere;
+    }
+    .dossier-photo.has-thumb { background: #1a1a1a; }
     .sheet.doc button.claim,
     .sheet.doc-exp button.claim { margin-top: 16px; }
     .sheet.doc .dossier-head h2 { font-size: clamp(15px, 4vw, 17px); }
@@ -502,11 +573,11 @@
     .sheet.doc-exp .dossier-tabs button {
       min-height: 44px; font-size: 12px; padding: 8px 4px;
     }
-    .dossier-head { position: relative; }
     .track-toggle {
-      position: absolute; right: 48px; top: 0;
-      color: #3a3228;
+      position: static; flex: 0 0 auto; align-self: flex-start;
+      color: #3a3228; max-width: 46%; min-width: 0;
     }
+    .track-toggle .sw-ctl-name { overflow: hidden; text-overflow: ellipsis; }
     .pay-wait { color: #8a5a16; }
     #trackChip {
       margin-top: 8px;
@@ -742,7 +813,10 @@
       color: #f0c14b; font-size: 12px; margin: 8px 0 0; white-space: pre-wrap;
     }
     #googleBlocker[hidden] { display: none; }
-    .dossier-photo img { width: 100%; max-height: 160px; object-fit: cover; border-radius: 4px; }
+    .dossier-photo img {
+      display: block; width: 100%; height: 100%; min-height: 96px; max-height: 160px;
+      object-fit: cover; border-radius: 8px;
+    }
     #toast {
       position: absolute; z-index: 15; left: 50%;
       bottom: calc(var(--lvfe-chrome-bottom, 28px) + 60px + env(safe-area-inset-bottom, 0px));
@@ -752,7 +826,7 @@
       padding: 8px 12px; font-size: 13px; max-width: min(80%, 360px);
       pointer-events: none; overflow-wrap: anywhere; text-align: center;
     }
-    #gameBanner {
+    #gameBanner, #pwaInstallBanner {
       position: absolute; z-index: 16; left: 12px; right: 12px;
       top: calc(66px + env(safe-area-inset-top, 0px));
       background: rgba(28, 28, 30, 0.94); color: #f5f5f7;
@@ -760,16 +834,19 @@
       padding: 12px 14px; box-shadow: 0 8px 28px rgba(0,0,0,.35);
       backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
     }
-    #gameBanner[hidden] { display: none !important; }
-    #gameBanner strong { display: block; font-size: 14px; margin: 0 0 4px; }
-    #gameBanner p { margin: 0 0 10px; font-size: 12px; color: #9aa0a6; }
-    #gameBanner .ban-acts { display: flex; gap: 8px; flex-wrap: wrap; }
-    #gameBanner .ban-acts button {
+    #pwaInstallBanner { z-index: 17; }
+    #gameBanner[hidden], #pwaInstallBanner[hidden] { display: none !important; }
+    #gameBanner strong, #pwaInstallBanner strong { display: block; font-size: 14px; margin: 0 0 4px; }
+    #gameBanner p, #pwaInstallBanner p { margin: 0 0 10px; font-size: 12px; color: #9aa0a6; }
+    #gameBanner .ban-acts, #pwaInstallBanner .ban-acts { display: flex; gap: 8px; flex-wrap: wrap; }
+    #gameBanner .ban-acts button, #pwaInstallBanner .ban-acts button {
       flex: 1; min-height: 40px; border-radius: 10px; border: 0; cursor: pointer;
       font: 650 13px/1 system-ui, sans-serif;
+      -webkit-tap-highlight-color: rgba(255, 122, 26, 0.25);
+      touch-action: manipulation;
     }
-    #gameBanner .ban-acts .primary { background: #ff7a1a; color: #1a140c; }
-    #gameBanner .ban-acts .ghost { background: #2a2a2e; color: #f5f5f7; }
+    #gameBanner .ban-acts .primary, #pwaInstallBanner .ban-acts .primary { background: #ff7a1a; color: #1a140c; }
+    #gameBanner .ban-acts .ghost, #pwaInstallBanner .ban-acts .ghost { background: #2a2a2e; color: #f5f5f7; }
     .mark-acts { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 4px; }
     .mark-acts .mark-btn { min-height: 44px; }
     .mark-acts .mark-btn[aria-pressed="true"] { border-color: #ff7a1a; color: #ff7a1a; }
@@ -1035,6 +1112,7 @@
           <button type="button" id="btnImportSave">Import save</button>
         </div>
         <button type="button" class="acct-row" id="btnSyncNow"><span class="mark">↻</span> Sync now<span class="go">›</span></button>
+        <a class="acct-row" id="btnInstallApp" href="install.html"><span class="mark">⬇</span> Install / download game<span class="go">›</span></a>
         <button type="button" class="acct-row" id="btnAbout"><span class="mark">i</span> About the map<span class="go">›</span></button>
       </section>
     </div>
@@ -1054,6 +1132,7 @@
     <div class="hub-scroll" id="hubBody"></div>
   </div>
   <div id="gameBanner" hidden></div>
+  <div id="pwaInstallBanner" hidden role="dialog" aria-label="Install Lvfe"></div>
   <div class="sheet collapsed" id="sheet" hidden>
     <div class="sheet-bar">
       <button type="button" class="sheet-expand" id="sheetExpand" aria-label="Expand place" hidden>▴</button>
@@ -1144,6 +1223,7 @@
           <a class="menu-btn" id="menuCatalog" href="catalog.html"><span class="mark">▦</span> Check Catalog<span class="go">›</span></a>
           <a class="menu-btn" id="menuRules" href="rules.html"><span class="mark">▸</span> How to play<span class="go">›</span></a>
           <a class="menu-btn" id="menuAssets" href="assets.html"><span class="mark">◈</span> My places<span class="go">›</span></a>
+          <a class="menu-btn" id="menuInstall" href="install.html"><span class="mark">⬇</span> Install app<span class="go">›</span></a>
           <button type="button" class="menu-btn" id="menuAccount"><span class="mark">◎</span> Account<span class="go">›</span></button>
         </div>
         <p class="menu-foot" id="menuAuthLine">Not signed in with Google</p>
@@ -1157,6 +1237,7 @@
   <script src="js/claim-rules.js"></script>
   <script src="js/conquest.js"></script>
   <script src="js/dossier.js"></script>
+  <script src="js/place-thumb.js"></script>
   <script src="js/game-notify.js"></script>
   <script src="js/pass-toll.js"></script>
   <script src="js/game-marks.js"></script>
@@ -1182,6 +1263,7 @@
   <script src="js/save-api.config.js"></script>
   <script src="js/save-sync.js"></script>
   <script src="js/pwa-register.js"></script>
+  <script src="js/pwa-install.js"></script>
   <script src="ar-overlay.js"></script>
   <script>
     const QUALITY_COLOR = {
@@ -1406,12 +1488,18 @@
       if (sheet) {
         sheet.hidden = false;
         sheet.removeAttribute("aria-hidden");
+        /* iOS: force layout before .open or transform stays off-screen. */
+        try { void sheet.offsetWidth; } catch (err) { /* */ }
         window.requestAnimationFrame(function () {
           sheet.classList.add("open");
+          window.requestAnimationFrame(function () {
+            sheet.classList.add("open");
+          });
         });
       }
       if (scrim) {
         scrim.hidden = false;
+        try { void scrim.offsetWidth; } catch (err2) { /* */ }
         window.requestAnimationFrame(function () {
           scrim.classList.add("open");
         });
@@ -1580,8 +1668,8 @@
         focusSearch();
       });
       const btnMore = document.getElementById("btnMore");
-      if (btnMore) btnMore.addEventListener("click", (e) => {
-        e.stopPropagation();
+      if (btnMore) onActivate(btnMore, (e) => {
+        if (e && e.stopPropagation) e.stopPropagation();
         if (accountOpen()) closeAccountSheet();
         else openAccountSheet();
       });
@@ -2217,31 +2305,62 @@
         overlay.hidden = true;
         overlay.classList.remove("boot-out");
         if (typeof fitMap === "function") fitMap();
+        if (window.LvfePwaInstall && typeof window.LvfePwaInstall.maybeAfterSplashOrPlay === "function") {
+          window.LvfePwaInstall.maybeAfterSplashOrPlay({ delayMs: 1800 });
+        }
       }, 280);
+    }
+
+    function paintInstallEntryPoints() {
+      const P = window.LvfePwaInstall;
+      const hide = P && (P.isNativeApk() || P.isStandalone());
+      ["menuInstall", "btnInstallApp"].forEach(function (id) {
+        const el = document.getElementById(id);
+        if (el) el.hidden = !!hide;
+      });
+    }
+
+    function onActivate(el, handler) {
+      if (!el || typeof handler !== "function") return;
+      let last = 0;
+      const run = function (e) {
+        const now = Date.now();
+        if (now - last < 350) {
+          if (e && e.cancelable) e.preventDefault();
+          return;
+        }
+        last = now;
+        handler(e);
+      };
+      el.addEventListener("click", run);
+      /* iOS standalone sometimes drops click on overlays; pointerup recovers. */
+      el.addEventListener("pointerup", function (e) {
+        if (e.pointerType === "touch" || e.pointerType === "pen") run(e);
+      });
     }
 
     function bindBootChrome() {
       if (bindBootChrome.done) return;
       bindBootChrome.done = true;
       const play = document.getElementById("menuPlay");
-      if (play) play.addEventListener("click", function () { enterPlayFromMenu(); });
+      if (play) onActivate(play, function () { enterPlayFromMenu(); });
       const save = document.getElementById("menuSave");
-      if (save) save.addEventListener("click", function () { menuSaveAction(); });
+      if (save) onActivate(save, function () { menuSaveAction(); });
       const restart = document.getElementById("menuRestart");
-      if (restart) restart.addEventListener("click", function () { restartLocalRun(); });
+      if (restart) onActivate(restart, function () { restartLocalRun(); });
       const acct = document.getElementById("menuAccount");
-      if (acct) acct.addEventListener("click", function () {
+      if (acct) onActivate(acct, function () {
         enterPlayFromMenu();
         window.setTimeout(function () { openAccountSheet(); }, 300);
       });
       const mainMenu = document.getElementById("btnMainMenu");
-      if (mainMenu) mainMenu.addEventListener("click", function () {
+      if (mainMenu) onActivate(mainMenu, function () {
         closeAccountSheet();
         showMainMenu();
       });
       const signOut = document.getElementById("btnGoogleSignOut");
-      if (signOut) signOut.addEventListener("click", function (e) {
-        e.preventDefault();
+      if (signOut) onActivate(signOut, function (e) {
+        if (e && e.preventDefault) e.preventDefault();
         signOutGoogle();
       });
     }
@@ -2256,11 +2375,15 @@
       try { sessionPlay = sessionStorage.getItem("lvfe.sessionPlay") === "1"; } catch (err) { /* */ }
       const forceMenu = params.get("menu") === "1";
       const forcePlay = params.get("play") === "1" || params.get("open") || params.get("track");
+      paintInstallEntryPoints();
       if (forcePlay && !forceMenu) {
         if (splash) splash.hidden = true;
         if (menu) menu.hidden = true;
         overlay.hidden = true;
         try { sessionStorage.setItem("lvfe.sessionPlay", "1"); } catch (err2) { /* */ }
+        if (window.LvfePwaInstall && typeof window.LvfePwaInstall.maybeAfterSplashOrPlay === "function") {
+          window.LvfePwaInstall.maybeAfterSplashOrPlay({ delayMs: 2200 });
+        }
         return;
       }
       if (sessionPlay && !forceMenu) {
@@ -2276,6 +2399,8 @@
         if (splash) splash.hidden = true;
         if (menu) menu.hidden = false;
         paintGoogleAuthUi();
+        paintInstallEntryPoints();
+        /* Auto-banner waits for Play (boot overlay sits above #pwaInstallBanner). */
       }, splashMs);
     }
 
@@ -2559,19 +2684,39 @@
       });
     }
 
+    function paintPlaceSnapshot(featOrProps) {
+      const card = document.getElementById("placeCard");
+      const box = card && card.querySelector(".dossier-photo");
+      if (!box || !window.LvfePlaceThumb) return;
+      const props = featOrProps && featOrProps.properties ? featOrProps.properties : featOrProps;
+      const coords = featOrProps && featOrProps.geometry && featOrProps.geometry.coordinates;
+      const lat = coords ? Number(coords[1]) : Number(props && props.lat);
+      const lon = coords ? Number(coords[0]) : Number(props && (props.lon != null ? props.lon : props.lng));
+      window.LvfePlaceThumb.fill(box, {
+        placeId: (props && props.id) || box.getAttribute("data-place-id") || "",
+        lat: Number.isFinite(lat) ? lat : Number(box.getAttribute("data-lat")),
+        lon: Number.isFinite(lon) ? lon : Number(box.getAttribute("data-lon")),
+        title: (props && window.LvfeRules && window.LvfeRules.placeTitle(props)) || box.getAttribute("data-title") || "Place",
+      });
+    }
+
     function paintPhotoThumb(placeId) {
       const box = document.querySelector(".dossier-photo");
-      if (!box || !placeId || !window.LvfePhotoStore) return;
+      if (!box || !placeId) return;
+      paintPlaceSnapshot(placeById(placeId) || { properties: { id: placeId } });
+      if (!window.LvfePhotoStore) return;
       window.LvfePhotoStore.objectUrl(placeId, PLAYER_KEY).then(function (url) {
         if (!url) return;
         const still = document.querySelector(".dossier-photo");
-        if (!still) {
+        if (!still || still.getAttribute("data-place-id") !== String(placeId)) {
           URL.revokeObjectURL(url);
           return;
         }
+        still.setAttribute("data-visit-photo", "1");
         still.innerHTML = "";
+        still.classList.add("has-thumb");
         const img = document.createElement("img");
-        img.alt = "Place photo";
+        img.alt = "Visit photo";
         img.src = url;
         still.appendChild(img);
       }).catch(function () { /* none */ });
@@ -3918,8 +4063,9 @@
         }
       } catch (e2) { /* keep disabled CTA so the sheet is never actionless */ }
       return `<div class="dossier">` +
-        `<div class="dossier-head"><span class="dossier-mark">File</span>` +
-        `<h2>${esc(placeName(p))}</h2></div>` +
+        `<div class="dossier-head"><div class="dossier-head-row"><div class="dossier-head-text">` +
+        `<span class="dossier-mark">File</span>` +
+        `<h2 title="${esc(placeName(p))}">${esc(placeName(p))}</h2></div></div></div>` +
         dossierTabsHtml() +
         `<div class="dossier-pages">` +
         `<section class="${dossierPageClass("place")}" data-page="place" role="tabpanel">` +
@@ -3948,10 +4094,14 @@
     function openPlacePopup(feat) {
       const card = document.getElementById("placeCard");
       if (!feat || !card) return;
-      const p = feat.properties || {};
+      const p = Object.assign({}, feat.properties || {});
       const coords = feat.geometry && feat.geometry.coordinates;
       const lon = coords && Number(coords[0]);
       const lat = coords && Number(coords[1]);
+      if (Number.isFinite(lat) && Number.isFinite(lon)) {
+        p.lat = lat;
+        p.lon = lon;
+      }
       const dist = userPos && Number.isFinite(lat) && Number.isFinite(lon)
         ? haversineM(userPos.lat, userPos.lon, lat, lon)
         : Infinity;

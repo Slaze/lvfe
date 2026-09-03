@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0a0a0a" />
+  <meta name="description" content="Install Lvfe: Add to Home Screen on iPhone, Android Chrome, or desktop Chrome/Edge. Sign in with Google to sync saves." />
+  <title>Lvfe — Install / download the game</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" type="image/png" sizes="192x192" href="assets/brand/pwa-icon-192.png" />
+  <link rel="apple-touch-icon" href="assets/brand/pwa-icon-192.png" />
+  <link rel="stylesheet" href="css/lvfe.css" />
+  <link rel="stylesheet" href="css/nord-shell-v2.css" />
+  <style>
+    .install-hero {
+      display: flex; align-items: center; gap: 14px;
+      margin: 0 0 16px;
+    }
+    .install-hero img {
+      width: 64px; height: 64px; border-radius: 16px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.4);
+    }
+    .install-hero h2 { margin: 0 0 4px; font-size: 18px; font-weight: 800; letter-spacing: -0.02em; }
+    .install-hero p { margin: 0; color: var(--muted); font-size: 13px; }
+    .install-cta-row {
+      display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 18px;
+    }
+    .install-cta-row button, .install-cta-row a.btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-height: 44px; padding: 0 16px; border-radius: 12px; border: 0;
+      font: 700 14px/1 system-ui, sans-serif; cursor: pointer; text-decoration: none;
+      -webkit-tap-highlight-color: rgba(255,122,26,.25); touch-action: manipulation;
+    }
+    .install-cta-row .primary {
+      background: linear-gradient(180deg, #ff8a33, #ff7a1a); color: #1a0e04;
+      box-shadow: 0 6px 20px rgba(255,122,26,.35);
+    }
+    .install-cta-row .ghost {
+      background: rgba(255,255,255,.06); color: var(--ink);
+      border: 1px solid var(--line);
+    }
+    .install-nav {
+      display: flex; gap: 8px; overflow-x: auto; -webkit-overflow-scrolling: touch;
+      margin: 0 0 16px; padding-bottom: 2px;
+    }
+    .install-nav a {
+      flex: 0 0 auto; text-decoration: none; color: var(--muted);
+      border: 1px solid var(--line); border-radius: 999px;
+      padding: 10px 14px; min-height: 44px; font: 650 13px/1 system-ui, sans-serif;
+      display: inline-flex; align-items: center; background: transparent;
+    }
+    .install-nav a:hover, .install-nav a:focus { color: var(--ink); }
+    .platform {
+      scroll-margin-top: 88px;
+      background: rgba(28,28,30,.92);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 16px;
+      margin: 0 0 14px;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+    .platform h2 {
+      margin: 0 0 6px; font-size: 16px; font-weight: 800;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .platform .lede { margin: 0 0 12px; color: var(--muted); font-size: 13px; }
+    .plat-icon {
+      width: 28px; height: 28px; border-radius: 8px;
+      display: inline-flex; align-items: center; justify-content: center;
+      background: rgba(255,122,26,.16); color: #ff7a1a; font-size: 15px; flex-shrink: 0;
+    }
+    .steps { margin: 0; padding: 0; list-style: none; counter-reset: step; }
+    .steps li {
+      position: relative;
+      padding: 12px 12px 12px 52px;
+      margin: 0 0 8px;
+      background: rgba(255,255,255,.03);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      counter-increment: step;
+    }
+    .steps li::before {
+      content: counter(step);
+      position: absolute; left: 12px; top: 12px;
+      width: 28px; height: 28px; border-radius: 50%;
+      background: #ff7a1a; color: #1a0e04;
+      font: 800 13px/28px system-ui, sans-serif; text-align: center;
+    }
+    .steps li strong { display: block; margin: 0 0 4px; font-size: 14px; }
+    .steps li span { color: var(--muted); font-size: 12px; line-height: 1.4; display: block; }
+    .chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 10px; border-radius: 999px;
+      background: rgba(255,255,255,.06); border: 1px solid var(--line);
+      font: 650 12px/1.2 system-ui, sans-serif; color: var(--ink);
+      margin: 2px 4px 2px 0; vertical-align: middle;
+    }
+    .chip .sym { color: #ff7a1a; font-weight: 800; }
+    .note {
+      margin: 10px 0 0; padding: 10px 12px; border-radius: 10px;
+      background: rgba(52,199,89,.1); border: 1px solid rgba(52,199,89,.25);
+      color: #c8f0d2; font-size: 12px; line-height: 1.4;
+    }
+    .warn {
+      margin: 10px 0 0; padding: 10px 12px; border-radius: 10px;
+      background: rgba(255,122,26,.1); border: 1px solid rgba(255,122,26,.28);
+      color: #ffd2b0; font-size: 12px; line-height: 1.4;
+    }
+    #after {
+      scroll-margin-top: 88px;
+    }
+  </style>
+</head>
+<body>
+  <div class="nav">
+    <h1>Install / download</h1>
+    <div class="links">
+      <a href="index.html?play=1">Play</a>
+      <a href="index.html?menu=1">Menu</a>
+      <a href="install.html" aria-current="page">Install</a>
+      <a href="rules.html">Rules</a>
+      <a href="catalog.html">Catalog</a>
+    </div>
+  </div>
+  <div class="wrap">
+    <div class="install-hero">
+      <img src="assets/brand/pwa-icon-192.png" width="64" height="64" alt="Lvfe app icon" />
+      <div>
+        <h2>Get Lvfe on your home screen</h2>
+        <p>Real Add to Home Screen / Install app — not a fake store link. Works offline for the shell; map tiles need the network.</p>
+      </div>
+    </div>
+
+    <div class="install-cta-row" id="ctaRow">
+      <button type="button" class="primary" id="btnInstallNow" hidden>Install now</button>
+      <a class="btn ghost" href="index.html?play=1">Back to play</a>
+    </div>
+    <p class="sub" id="statusLine">Pick your device below for step-by-step instructions.</p>
+
+    <nav class="install-nav" aria-label="Platforms">
+      <a href="#ios">iPhone / iPad</a>
+      <a href="#android">Android Chrome</a>
+      <a href="#desktop">Desktop</a>
+      <a href="#after">After install</a>
+    </nav>
+
+    <section class="platform" id="ios">
+      <h2><span class="plat-icon" aria-hidden="true"></span> iPhone / iPad (Safari)</h2>
+      <p class="lede">iOS does not show a browser install popup. Use Safari’s Share sheet. Chrome on iOS cannot add PWAs the same way — open this page in Safari.</p>
+      <ol class="steps">
+        <li>
+          <strong>Open this game in Safari</strong>
+          <span>Use <code>https://iconiaglobal.com/lvfe/</code> in Safari (not inside Instagram / WhatsApp in-app browsers).</span>
+        </li>
+        <li>
+          <strong>Tap Share</strong>
+          <span>The <span class="chip"><span class="sym">⇧</span> Share</span> icon is at the bottom (iPhone) or top (iPad).</span>
+        </li>
+        <li>
+          <strong>Add to Home Screen</strong>
+          <span>Scroll the share sheet and tap <span class="chip"><span class="sym">＋</span> Add to Home Screen</span>. Confirm <strong>Add</strong>.</span>
+        </li>
+        <li>
+          <strong>Launch from the icon</strong>
+          <span>Lvfe opens full-screen (standalone). Use that icon next time — not a random Safari tab.</span>
+        </li>
+      </ol>
+      <p class="warn">If you do not see Add to Home Screen, you are probably not in Safari. Copy the URL → open Safari → paste → Share.</p>
+    </section>
+
+    <section class="platform" id="android">
+      <h2><span class="plat-icon" aria-hidden="true">▶</span> Android (Chrome)</h2>
+      <p class="lede">Chrome can show an Install banner. You can also install from the browser menu.</p>
+      <ol class="steps">
+        <li>
+          <strong>Open in Chrome</strong>
+          <span>Visit <code>https://iconiaglobal.com/lvfe/</code> over HTTPS in Chrome.</span>
+        </li>
+        <li>
+          <strong>Install from the banner or menu</strong>
+          <span>Tap <span class="chip"><span class="sym">⬇</span> Install</span> if prompted, or Chrome menu <span class="chip"><span class="sym">⋮</span></span> → <strong>Install app</strong> / <strong>Add to Home screen</strong>.</span>
+        </li>
+        <li>
+          <strong>Confirm</strong>
+          <span>Accept the install dialog. An Lvfe icon appears on your home screen / app drawer.</span>
+        </li>
+        <li>
+          <strong>Open the installed app</strong>
+          <span>It runs without the Chrome address bar (standalone display).</span>
+        </li>
+      </ol>
+      <p class="note">The separate Android APK (sideload) is optional. This PWA install is the HTTPS path that shares Google cloud saves.</p>
+    </section>
+
+    <section class="platform" id="desktop">
+      <h2><span class="plat-icon" aria-hidden="true">▣</span> Desktop Chrome / Edge</h2>
+      <p class="lede">Install from the address bar or the browser menu. Firefox support varies by OS.</p>
+      <ol class="steps">
+        <li>
+          <strong>Open the site</strong>
+          <span><code>https://iconiaglobal.com/lvfe/</code> in Chrome or Microsoft Edge.</span>
+        </li>
+        <li>
+          <strong>Install icon or menu</strong>
+          <span>Click the install icon in the address bar, or menu → <strong>Install Lvfe…</strong> / <strong>Apps → Install this site as an app</strong>.</span>
+        </li>
+        <li>
+          <strong>Confirm Install</strong>
+          <span>The app opens in its own window. Pin it to your dock or taskbar if you want.</span>
+        </li>
+      </ol>
+    </section>
+
+    <section class="platform" id="after">
+      <h2><span class="plat-icon" aria-hidden="true">☁</span> After install — sync saves</h2>
+      <p class="lede">Installing puts the game on your device. Progress still needs Google if you want the same save on phone + desktop + APK.</p>
+      <ol class="steps">
+        <li>
+          <strong>Sign in with Google</strong>
+          <span>Open Account (gold seal / profile) → <strong>Sign in with Google</strong>.</span>
+        </li>
+        <li>
+          <strong>Sync now</strong>
+          <span>Under This phone → <strong>Sync now</strong>. Guest play stays on that device only.</span>
+        </li>
+        <li>
+          <strong>Same Google on every client</strong>
+          <span>Use the same Google account on PWA and the Android APK so cloud save matches.</span>
+        </li>
+      </ol>
+      <p class="note">Privacy: <a href="https://iconiaglobal.com/privacy-policy">iconiaglobal.com/privacy-policy</a>. Terms: <a href="https://iconiaglobal.com/pages/terms-and-conditions">Terms and conditions</a>.</p>
+    </section>
+  </div>
+  <script src="js/pwa-register.js"></script>
+  <script src="js/pwa-install.js"></script>
+  <script>
+    (function () {
+      var btn = document.getElementById("btnInstallNow");
+      var status = document.getElementById("statusLine");
+      var P = window.LvfePwaInstall;
+      if (!P) return;
+      if (P.isStandalone()) {
+        if (status) status.textContent = "Lvfe is already installed on this device. Sign in with Google to sync saves.";
+        return;
+      }
+      if (P.isNativeApk()) {
+        if (status) status.textContent = "You are in the Android app package. Cloud sync uses Google Sign-In inside the APK.";
+        return;
+      }
+      window.addEventListener("beforeinstallprompt", function () {
+        if (btn) {
+          btn.hidden = false;
+          btn.addEventListener("click", function () {
+            P.triggerInstall().then(function (ok) {
+              if (!ok && status) status.textContent = "Install was cancelled — use the steps for your device below.";
+            });
+          });
+        }
+        if (status) status.textContent = "Your browser can install Lvfe directly. Tap Install now, or follow the steps below.";
+      });
+      /* Deep-link highlight */
+      if (location.hash) {
+        var el = document.querySelector(location.hash);
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    })();
+  </script>
+</body>
+</html>

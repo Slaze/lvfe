@@ -51,7 +51,27 @@
 
   function photoLine(p, rec) {
     const has = Boolean((rec && rec.hasPhoto) || (p && (Number(p.has_photo) || p.quality === "A")));
-    return has ? "Has a photo" : "No photo yet";
+    return has ? "Has a visit photo" : "Looking up place…";
+  }
+
+  function placeCoords(p, opts) {
+    let lat = Number(opts && opts.lat != null ? opts.lat : (p && p.lat));
+    let lon = Number(opts && opts.lon != null ? opts.lon : (p && (p.lon != null ? p.lon : p.lng)));
+    if ((!Number.isFinite(lat) || !Number.isFinite(lon)) && p && p.geometry && p.geometry.coordinates) {
+      lon = Number(p.geometry.coordinates[0]);
+      lat = Number(p.geometry.coordinates[1]);
+    }
+    return { lat: lat, lon: lon };
+  }
+
+  function photoBlock(p, rec, opts) {
+    const c = placeCoords(p, opts);
+    const title = R().placeTitle(p);
+    const latAttr = Number.isFinite(c.lat) ? String(c.lat) : "";
+    const lonAttr = Number.isFinite(c.lon) ? String(c.lon) : "";
+    const idAttr = p && p.id != null ? String(p.id) : "";
+    return `<div class="dossier-photo" data-place-id="${esc(idAttr)}" data-lat="${esc(latAttr)}" data-lon="${esc(lonAttr)}" data-title="${esc(title)}">` +
+      `<span class="dossier-photo-ph">${esc(photoLine(p, rec))}</span></div>`;
   }
 
   function missionCopy(p, rec, dist, ok, userPos, playerKey) {
@@ -259,12 +279,16 @@
     const bits = [
       `<div class="dossier">`,
       `<div class="dossier-head">`,
+      `<div class="dossier-head-row">`,
+      `<div class="dossier-head-text">`,
       `<span class="dossier-mark">File</span>`,
-      `<h2>${esc(title)}</h2>`,
+      `<h2 title="${esc(title)}">${esc(title)}</h2>`,
+      `</div>`,
       `<button type="button" class="track-toggle sw-ctl ghost" data-track="${esc(p.id)}" role="switch" aria-checked="${tracking ? "true" : "false"}" aria-label="Track">`,
       `<span class="sw-ctl-name">Track</span>`,
       `<span class="sw-ui" aria-hidden="true"></span>`,
       `</button>`,
+      `</div>`,
       `</div>`,
       tabsHtml(tab, visible),
       `<div class="dossier-pages">`,
@@ -273,7 +297,7 @@
     if (!visible || visible.place !== false) {
       bits.push(
         `<section class="${pageClass("place", tab)}" data-page="place" role="tabpanel">`,
-        `<div class="dossier-photo">${esc(photoLine(p, rec))}</div>`,
+        photoBlock(p, rec, opts),
         `<p class="row-label">Name</p><p class="row-value">${esc(title)}</p>`,
         `<p class="row-label">Type</p><p class="row-value">${esc(type)}</p>`,
         `<p class="row-label">Quality</p><p class="row-value">${esc(rules.qualityWords(p.quality))}</p>`,

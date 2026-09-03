@@ -1,12 +1,14 @@
 /* Lvfe PWA service worker.
-   Shell: cache-first (HTML/CSS/JS/icons under this scope).
+   HTML/CSS/JS/manifest: network-first (avoid stale Nord chrome + menus).
+   Images/icons: cache-first.
    API / cloud save / maps / GIS / tiles: network-first (never stale save). */
-const CACHE = "lvfe-shell-v1";
+const CACHE = "lvfe-shell-v3";
 const SHELL = [
   "./",
   "./index.html",
+  "./install.html",
   "./manifest.webmanifest",
-  "./css/nord-shell.css",
+  "./css/nord-shell-v2.css",
   "./css/switch.css",
   "./css/lvfe.css",
   "./map-3d.css",
@@ -15,6 +17,7 @@ const SHELL = [
   "./assets/brand/pwa-icon-512.png",
   "./js/lvfe-assets.js",
   "./js/pwa-register.js",
+  "./js/pwa-install.js",
   "./js/google-auth.config.js",
   "./js/google-auth.js",
   "./js/account.js",
@@ -29,7 +32,28 @@ function isNetworkFirst(url) {
   if (/openfreemap|arcgisonline|overpass|osrm|tile|maplibre/i.test(u)) return true;
   if (/paystack/i.test(u)) return true;
   if (/\/v1\//i.test(u)) return true;
+  /* Shell mutables — never stick on an old Nord theme / menu HTML. */
+  if (/\.(?:css|html|js|webmanifest)(?:\?|$)/i.test(u)) return true;
+  if (/\/lvfe\/?(?:\?|$|#)/i.test(u)) return true;
   return false;
+}
+
+function networkFirst(req) {
+  return fetch(req).then(function (res) {
+    if (res && res.ok && req.method === "GET") {
+      const copy = res.clone();
+      caches.open(CACHE).then(function (cache) {
+        try { cache.put(req, copy); } catch (err) { /* opaque / quota */ }
+      });
+    }
+    return res;
+  }).catch(function () {
+    return caches.match(req).then(function (hit) {
+      if (hit) return hit;
+      if (req.mode === "navigate") return caches.match("./index.html");
+      return Response.error();
+    });
+  });
 }
 
 self.addEventListener("install", function (event) {
@@ -58,16 +82,19 @@ self.addEventListener("activate", function (event) {
   );
 });
 
+self.addEventListener("message", function (event) {
+  const data = event && event.data;
+  if (data && data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
+});
+
 self.addEventListener("fetch", function (event) {
   const req = event.request;
   if (req.method !== "GET") return;
   const url = req.url;
-  if (isNetworkFirst(url)) {
-    event.respondWith(
-      fetch(req).catch(function () {
-        return caches.match(req);
-      })
-    );
+  if (isNetworkFirst(url) || req.mode === "navigate") {
+    event.respondWith(networkFirst(req));
     return;
   }
   event.respondWith(
