@@ -166,6 +166,14 @@
   height: 72px;
   margin: 0 auto 18px;
   border-radius: 50%;
+  object-fit: cover;
+  display: block;
+  background: transparent;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+}
+
+/* Legacy text seal (if any page still uses a div.splash-seal) */
+div.splash-seal {
   background: radial-gradient(circle at 35% 30%, #e8c56a, var(--nord-gold) 55%, #8a6a18);
   color: #1a140c;
   display: flex;
@@ -220,7 +228,6 @@
   width: 48px;
   height: 48px;
   margin: 0;
-  font-size: 20px;
 }
 
 .menu-head h1 {

@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 512" role="img" aria-label="Lvfe: The Xperience">
+  <defs>
+    <radialGradient id="disc" cx="38%" cy="32%" r="68%">
+      <stop offset="0%" stop-color="#2a2f38"/>
+      <stop offset="55%" stop-color="#1a1d23"/>
+      <stop offset="100%" stop-color="#0e1014"/>
+    </radialGradient>
+    <linearGradient id="goldRing" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f0d78c"/>
+      <stop offset="45%" stop-color="#d4af37"/>
+      <stop offset="100%" stop-color="#8a6a18"/>
+    </linearGradient>
+    <linearGradient id="pinGreen" x1="30%" y1="0%" x2="70%" y2="100%">
+      <stop offset="0%" stop-color="#4cd964"/>
+      <stop offset="55%" stop-color="#34c759"/>
+      <stop offset="100%" stop-color="#248a3d"/>
+    </linearGradient>
+  </defs>
+  <!-- white-friendly canvas for Google consent -->
+  <rect width="1024" height="512" fill="#ffffff"/>
+  <g transform="translate(72,96)">
+    <circle cx="160" cy="160" r="148" fill="url(#goldRing)"/>
+    <circle cx="160" cy="160" r="134" fill="url(#disc)"/>
+    <path fill="url(#pinGreen)" d="M160 52c-42 0-76 34-76 76 0 53 62 120 70 130a9 9 0 0 0 12 0c8-10 70-77 70-130 0-42-34-76-76-76z"/>
+    <circle cx="160" cy="122" r="30" fill="#1a1d23"/>
+    <path fill="url(#goldRing)" d="M147 104h32v12h-20v32h-12z"/>
+  </g>
+  <g transform="translate(420,168)" font-family="Inter, system-ui, -apple-system, Segoe UI, sans-serif">
+    <text x="0" y="72" fill="#1a1d23" font-size="96" font-weight="800" letter-spacing="-2">Lvfe</text>
+    <rect x="2" y="98" width="280" height="4" rx="2" fill="#d4af37"/>
+    <text x="2" y="148" fill="#6b7280" font-size="36" font-weight="600" letter-spacing="1.5">The Xperience</text>
+  </g>
+</svg>
