@@ -27,18 +27,26 @@
     const so = c.stakesOut || { total: 0, owned: 0, backed: 0, rows: [] };
     const activity = Array.isArray(c.activity) ? c.activity : [];
     const copy = (global.LvfeWalletEarn && global.LvfeWalletEarn.howEarnCopy()) || { short: "", long: "" };
+    const tollCopy = (global.LvfePassToll && global.LvfePassToll.formulaCopy()) || null;
     const buyCfg = global.LvfeBuyNcnConfig;
     const buyReady = Boolean(global.LvfeBuyNcn && buyCfg && buyCfg.isConfigured && buyCfg.isConfigured());
     const presets = (buyCfg && buyCfg.PRESETS) || [5, 10, 25, 50];
+    const watch = Array.isArray(c.watchList) ? c.watchList : [];
+    const takeovers = Array.isArray(c.takeovers) ? c.takeovers : [];
     const bits = [
       `<div class="hub-pane" data-hub="wallet">`,
       `<p class="hub-bal">${ncn(bal)}</p>`,
       `<p class="hub-meta">Stakes out ${ncn(so.total)} · ${so.owned} owned · ${so.backed} backed</p>`,
       `<p class="hub-note">${esc(copy.short)}</p>`,
+    ];
+    if (tollCopy) {
+      bits.push(`<p class="hub-meta">${esc(tollCopy.short)}</p>`);
+    }
+    bits.push(
       `<div class="hub-buy">`,
       `<h4>Buy NCN</h4>`,
       `<p class="hub-meta">1 NCN = USD $1 · Paystack Checkout</p>`,
-    ];
+    );
     if (!buyReady) {
       bits.push(
         `<p class="hub-empty">Sandbox / live keys not set yet. See docs/BUY_NCN.md.</p>`,
@@ -59,6 +67,7 @@
       }
     }
     bits.push(
+      `</div>`,
       `<button type="button" class="hub-cta" data-hub-tab="earn"><span class="mark">◎</span> Earn more</button>`,
       `<details class="hub-details"><summary>How the system works</summary><p>${esc(copy.long)}</p></details>`,
       `<h4>Recent activity</h4>`
@@ -73,6 +82,39 @@
           (a.amount != null ? ` · ${ncn(a.amount)}` : "") +
           (a.at ? `<span class="hub-time">${esc(String(a.at).slice(0, 16).replace("T", " "))}</span>` : "") +
           `</li>`
+        );
+      });
+      bits.push(`</ul>`);
+    }
+    bits.push(`<h4>Watchlist</h4>`);
+    if (!watch.length) {
+      bits.push(`<p class="hub-empty">Mark places from a dossier to watch value / owner.</p>`);
+    } else {
+      bits.push(`<ul class="hub-list">`);
+      watch.slice(0, 10).forEach(function (w) {
+        bits.push(
+          `<li><button type="button" class="hub-mission" data-open-place="${esc(w.placeId)}">` +
+          `<strong>${esc(w.name || w.placeId)}</strong>` +
+          `<span>watching` +
+          (w.lastValue != null ? ` · ${ncn(w.lastValue)}` : "") +
+          (w.lastOwnerName ? ` · ${esc(w.lastOwnerName)}` : "") +
+          `</span></button></li>`
+        );
+      });
+      bits.push(`</ul>`);
+    }
+    bits.push(`<h4>Takeover plan</h4>`);
+    if (!takeovers.length) {
+      bits.push(`<p class="hub-empty">Plan a takeover from an enemy dossier.</p>`);
+    } else {
+      bits.push(`<ul class="hub-list">`);
+      takeovers.slice(0, 10).forEach(function (t) {
+        bits.push(
+          `<li><button type="button" class="hub-mission" data-open-place="${esc(t.placeId)}" data-bid="1">` +
+          `<strong>${esc(t.name || t.placeId)}</strong>` +
+          `<span>${distLabel(t.dist)} · Bid CTA` +
+          (t.ownerName ? ` · ${esc(t.ownerName)}` : "") +
+          `</span></button></li>`
         );
       });
       bits.push(`</ul>`);
@@ -178,7 +220,11 @@
     const terr = Array.isArray(c.territory) ? c.territory : [];
     const claims = Array.isArray(c.claims) ? c.claims : [];
     const rivals = Array.isArray(c.rivals) ? c.rivals : [];
+    const watch = Array.isArray(c.watchList) ? c.watchList : [];
+    const threats = Array.isArray(c.threats) ? c.threats : [];
+    const takeovers = Array.isArray(c.takeovers) ? c.takeovers : [];
     const prefs = c.prefs || {};
+    const tollCopy = (global.LvfePassToll && global.LvfePassToll.formulaCopy()) || null;
     const bits = [
       `<div class="hub-pane" data-hub="analytics">`,
       `<h4>Territory control</h4>`,
@@ -210,6 +256,47 @@
       });
       bits.push(`</ul>`);
     }
+    bits.push(`<h4>Watchlist</h4>`);
+    if (!watch.length) {
+      bits.push(`<p class="hub-empty">No watched places.</p>`);
+    } else {
+      bits.push(`<ul class="hub-list">`);
+      watch.slice(0, 12).forEach(function (w) {
+        bits.push(
+          `<li><button type="button" class="hub-mission" data-open-place="${esc(w.placeId)}">` +
+          `<strong>${esc(w.name || w.placeId)}</strong>` +
+          `<span>value watch</span></button></li>`
+        );
+      });
+      bits.push(`</ul>`);
+    }
+    bits.push(`<h4>Threats</h4>`);
+    if (!threats.length) {
+      bits.push(`<p class="hub-empty">Mark rival owners as threats from a dossier.</p>`);
+    } else {
+      bits.push(`<ul class="hub-list">`);
+      threats.slice(0, 12).forEach(function (t) {
+        bits.push(
+          `<li><strong>${esc(t.name || t.playerId)}</strong>` +
+          `<span>watching stakes</span></li>`
+        );
+      });
+      bits.push(`</ul>`);
+    }
+    bits.push(`<h4>Takeover plan</h4>`);
+    if (!takeovers.length) {
+      bits.push(`<p class="hub-empty">None planned.</p>`);
+    } else {
+      bits.push(`<ul class="hub-list">`);
+      takeovers.slice(0, 12).forEach(function (t) {
+        bits.push(
+          `<li><button type="button" class="hub-mission" data-open-place="${esc(t.placeId)}" data-bid="1">` +
+          `<strong>${esc(t.name || t.placeId)}</strong>` +
+          `<span>${distLabel(t.dist)} · Bid</span></button></li>`
+        );
+      });
+      bits.push(`</ul>`);
+    }
     bits.push(`<h4>Rival pressure nearby</h4>`);
     if (!rivals.length) {
       bits.push(`<p class="hub-empty">${(c.noGps) ? "GPS off." : "No rival-owned places nearby."}</p>`);
@@ -224,13 +311,23 @@
       });
       bits.push(`</ul>`);
     }
+    if (tollCopy) {
+      bits.push(
+        `<h4>Pass-by toll</h4>`,
+        `<p class="hub-note">${esc(tollCopy.short)} ${esc(tollCopy.escape)} ${esc(tollCopy.empty)}</p>`
+      );
+    }
     bits.push(
       `<h4>Notifications</h4>`,
       `<label class="hub-check"><input type="checkbox" id="hubMuteAll" ${prefs.muted ? "checked" : ""}/> Mute all</label>`,
       `<label class="hub-check"><input type="checkbox" id="hubMuteClaims" ${prefs.allowClaims === false ? "checked" : ""}/> Mute claims</label>`,
       `<label class="hub-check"><input type="checkbox" id="hubMuteNearby" ${prefs.allowNearby === false ? "checked" : ""}/> Mute nearby opens</label>`,
       `<label class="hub-check"><input type="checkbox" id="hubMuteEnemy" ${prefs.allowEnemy === false ? "checked" : ""}/> Mute enemy assets</label>`,
+      `<label class="hub-check"><input type="checkbox" id="hubMuteToll" ${prefs.allowToll === false ? "checked" : ""}/> Mute pass-by tolls</label>`,
+      `<label class="hub-check"><input type="checkbox" id="hubMuteWatch" ${prefs.allowWatch === false ? "checked" : ""}/> Mute watchlist</label>`,
+      `<label class="hub-check"><input type="checkbox" id="hubMuteThreat" ${prefs.allowThreat === false ? "checked" : ""}/> Mute threats</label>`,
       `<button type="button" class="hub-cta ghost" id="hubTestNotify"><span class="mark">⌁</span> Test notification</button>`,
+      `<button type="button" class="hub-cta ghost" id="hubSimToll"><span class="mark">⌖</span> Simulate pass-by toll</button>`,
       `</div>`
     );
     return bits.join("");

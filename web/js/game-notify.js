@@ -8,6 +8,10 @@
     CLAIM_RIVAL: "claim_rival",
     NEARBY_CLAIMABLE: "nearby_claimable",
     ENEMY_NEARBY: "enemy_nearby",
+    PASS_TOLL: "pass_toll",
+    TOLL_OWNER: "toll_owner",
+    WATCH_CHANGE: "watch_change",
+    THREAT_ACT: "threat_act",
     TEST: "test",
   };
 
@@ -19,6 +23,10 @@
     claim_rival: 8 * 60 * 1000,
     nearby_claimable: 25 * 60 * 1000,
     enemy_nearby: 18 * 60 * 1000,
+    pass_toll: 0, /* place cooldown lives in LvfePassToll */
+    toll_owner: 2 * 60 * 1000,
+    watch_change: 10 * 60 * 1000,
+    threat_act: 8 * 60 * 1000,
     test: 0,
   };
   /** Same place + type not again for this long. */
@@ -60,6 +68,9 @@
       allowClaims: true,
       allowNearby: true,
       allowEnemy: true,
+      allowToll: true,
+      allowWatch: true,
+      allowThreat: true,
     };
   }
 
@@ -99,6 +110,9 @@
     if (type === TYPES.CLAIM_SELF || type === TYPES.CLAIM_RIVAL) return prefs.allowClaims !== false;
     if (type === TYPES.NEARBY_CLAIMABLE) return prefs.allowNearby !== false;
     if (type === TYPES.ENEMY_NEARBY) return prefs.allowEnemy !== false;
+    if (type === TYPES.PASS_TOLL || type === TYPES.TOLL_OWNER) return prefs.allowToll !== false;
+    if (type === TYPES.WATCH_CHANGE) return prefs.allowWatch !== false;
+    if (type === TYPES.THREAT_ACT) return prefs.allowThreat !== false;
     if (type === TYPES.TEST) return true;
     return true;
   }
@@ -119,18 +133,20 @@
     const day = dayKey(now);
     let dayCount = st.dayCount || 0;
     if (st.day !== day) dayCount = 0;
-    if (type !== TYPES.TEST && dayCount >= MAX_PER_DAY) return { ok: false, reason: "day_cap" };
+    /* Pass-toll is gameplay-critical — skip day cap / global gap (place cooldown in PassToll). */
+    const bypassThrottle = type === TYPES.PASS_TOLL || type === TYPES.TEST;
+    if (!bypassThrottle && dayCount >= MAX_PER_DAY) return { ok: false, reason: "day_cap" };
 
     const gapType = TYPE_GAP_MS[type] != null ? TYPE_GAP_MS[type] : GLOBAL_GAP_MS;
-    if (type !== TYPES.TEST && st.lastAnyAt && now - st.lastAnyAt < GLOBAL_GAP_MS) {
+    if (!bypassThrottle && st.lastAnyAt && now - st.lastAnyAt < GLOBAL_GAP_MS) {
       return { ok: false, reason: "global_gap" };
     }
     const lastT = Number(st.lastByType[type]) || 0;
-    if (type !== TYPES.TEST && lastT && now - lastT < gapType) {
+    if (type !== TYPES.TEST && type !== TYPES.PASS_TOLL && lastT && now - lastT < gapType) {
       return { ok: false, reason: "type_gap" };
     }
     const placeId = evt && evt.placeId ? String(evt.placeId) : "";
-    if (placeId && type !== TYPES.TEST) {
+    if (placeId && type !== TYPES.TEST && type !== TYPES.PASS_TOLL) {
       const pk = type + ":" + placeId;
       const lastP = Number(st.lastByPlace[pk]) || 0;
       if (lastP && now - lastP < PLACE_GAP_MS) return { ok: false, reason: "place_gap" };
@@ -148,8 +164,8 @@
       st.day = day;
       st.dayCount = 0;
     }
-    if (type !== TYPES.TEST) st.dayCount = (st.dayCount || 0) + 1;
-    st.lastAnyAt = now;
+    if (type !== TYPES.TEST && type !== TYPES.PASS_TOLL) st.dayCount = (st.dayCount || 0) + 1;
+    if (type !== TYPES.PASS_TOLL) st.lastAnyAt = now;
     st.lastByType = st.lastByType || {};
     st.lastByType[type] = now;
     const placeId = evt && evt.placeId ? String(evt.placeId) : "";
@@ -167,6 +183,10 @@
     if (t === TYPES.CLAIM_RIVAL) return "Rival claim";
     if (t === TYPES.NEARBY_CLAIMABLE) return "Place nearby";
     if (t === TYPES.ENEMY_NEARBY) return "Enemy asset nearby";
+    if (t === TYPES.PASS_TOLL) return "Pass-by toll";
+    if (t === TYPES.TOLL_OWNER) return "Toll on your place";
+    if (t === TYPES.WATCH_CHANGE) return "Watchlist update";
+    if (t === TYPES.THREAT_ACT) return "Threat moved";
     if (t === TYPES.TEST) return "Lvfe test";
     return "Lvfe";
   }
@@ -181,6 +201,18 @@
     if (t === TYPES.ENEMY_NEARBY) {
       return name + " is held by another side. Bid more NCN to contest, or ignore.";
     }
+    if (t === TYPES.PASS_TOLL) {
+      const amt = evt.charged != null ? evt.charged : evt.toll;
+      return "Charged " + amt + " NCN at " + name + ". Outpay to contest, Escape (fee) to refund, or Accept.";
+    }
+    if (t === TYPES.TOLL_OWNER) {
+      return (evt.passerName || "Someone") + " paid " + (evt.charged != null ? evt.charged : "?") +
+        " NCN toll at " + name + ".";
+    }
+    if (t === TYPES.WATCH_CHANGE) return name + " changed on your watchlist.";
+    if (t === TYPES.THREAT_ACT) {
+      return (evt.threatName || "Threat") + " staked at " + name + ".";
+    }
     if (t === TYPES.TEST) return evt.body || "Test notification.";
     return String(evt && evt.body || "Game update");
   }
@@ -190,7 +222,11 @@
     const type = String((evt && evt.type) || TYPES.TEST);
     const placeId = evt && evt.placeId ? String(evt.placeId) : "";
     const actions = [];
-    if (type === TYPES.ENEMY_NEARBY && placeId) {
+    if (type === TYPES.PASS_TOLL && placeId) {
+      actions.push({ id: "bid", label: "Outpay" });
+      actions.push({ id: "escape", label: "Escape" });
+      actions.push({ id: "ignore", label: "Accept" });
+    } else if (type === TYPES.ENEMY_NEARBY && placeId) {
       actions.push({ id: "bid", label: "Bid" });
       actions.push({ id: "ignore", label: "Ignore" });
     } else if (placeId) {
@@ -210,8 +246,9 @@
 
   function channelFor(type) {
     if (type === TYPES.CLAIM_SELF || type === TYPES.CLAIM_RIVAL) return "claims";
-    if (type === TYPES.NEARBY_CLAIMABLE) return "nearby";
-    if (type === TYPES.ENEMY_NEARBY) return "enemy";
+    if (type === TYPES.NEARBY_CLAIMABLE || type === TYPES.WATCH_CHANGE) return "nearby";
+    if (type === TYPES.ENEMY_NEARBY || type === TYPES.PASS_TOLL || type === TYPES.THREAT_ACT) return "enemy";
+    if (type === TYPES.TOLL_OWNER) return "claims";
     return "game";
   }
 

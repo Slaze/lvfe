@@ -121,6 +121,35 @@
     };
   }
 
+  function marksActionsHtml(p, rec, playerKey, opts) {
+    const M = global.LvfeGameMarks;
+    if (!M || !p || !p.id) return "";
+    const watching = M.isWatchingPlace(p.id);
+    const planned = M.isTakeover(p.id);
+    const ownerId = rec && rec.ownerId ? String(rec.ownerId) : "";
+    const threatOn = ownerId && ownerId !== playerKey && M.isThreat(ownerId);
+    const bits = [`<p class="row-label">Marks</p><div class="mark-acts">`];
+    bits.push(
+      `<button type="button" class="sw-ctl ghost mark-btn" data-mark-watch="${esc(p.id)}" aria-pressed="${watching ? "true" : "false"}">` +
+      `<span class="sw-ctl-name">${watching ? "Unwatch place" : "Mark place"}</span></button>`
+    );
+    if (ownerId && ownerId !== playerKey) {
+      bits.push(
+        `<button type="button" class="sw-ctl ghost mark-btn" data-mark-threat="${esc(ownerId)}" data-threat-name="${esc(ownerWords(rec))}" aria-pressed="${threatOn ? "true" : "false"}">` +
+        `<span class="sw-ctl-name">${threatOn ? "Clear threat" : "Mark as threat"}</span></button>`,
+        `<button type="button" class="sw-ctl ghost mark-btn" data-mark-takeover="${esc(p.id)}" aria-pressed="${planned ? "true" : "false"}">` +
+        `<span class="sw-ctl-name">${planned ? "Drop takeover" : "Plan takeover"}</span></button>`
+      );
+    }
+    bits.push(`</div>`);
+    const Toll = global.LvfePassToll;
+    if (Toll && Toll.formulaCopy && ownerId && ownerId !== playerKey) {
+      const copy = Toll.formulaCopy();
+      bits.push(`<p class="note">${esc(copy.short)}</p>`);
+    }
+    return bits.join("");
+  }
+
   function moneyValue(rec, p, counts) {
     if (!R().isOwnable(p)) return "Cannot be owned";
     const C = global.LvfeConquest;
@@ -266,6 +295,7 @@
         `<p class="row-label">Side</p><p class="row-value">${esc(landSide(rec))}</p>`,
         `<p class="row-label">Who owns it</p><p class="row-value">${esc(ownerWords(rec))}</p>`,
         `<p class="row-label">Status</p><p class="row-value">${esc(conqueredText(rec))}</p>`,
+        marksActionsHtml(p, rec, playerKey, opts),
         `</section>`
       );
     }

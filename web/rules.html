@@ -3,8 +3,12 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0a0a0a" />
   <title>Lvfe — How to play</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" type="image/png" sizes="192x192" href="assets/brand/pwa-icon-192.png" />
   <link rel="stylesheet" href="css/lvfe.css" />
+  <link rel="stylesheet" href="css/nord-shell.css" />
 </head>
 <body>
   <div class="nav">
@@ -58,10 +62,11 @@
     <p>Banks and ATMs show on the map so you can find them. You cannot put coins in or own them. Everything else with a pin can be backed.</p>
 
     <h2>Your record</h2>
-    <p>Your name, neighbourhood, coins, visits, and place photos live <strong>on this phone</strong>. Closing the app keeps them. Uninstalling wipes them. Sign in with Google (once wired) keys the same record to your Gmail so a reinstall can find the account — export a save from ⋯ until then, and import it after you reinstall. Your unique name stays your name; Gmail is only the key.</p>
+    <p>Your name, neighbourhood, coins, visits, and place photos live on this device. Guest play stays local. <strong>Sign in with Google</strong> on the phone APK or the HTTPS PWA (`https://iconiaglobal.com/lvfe/`) to pull/push the same cloud save pack via `lvfe-save`. Uninstall still wipes local storage until you sync or Export save.</p>
 
     <h2>What this is not</h2>
-    <p>This is not a step-counter that drips points for walking. Coins in a place are the whole game. Play on this phone — your name, your coins, your places live here unless you export a save or sign in with Google after it is wired.</p>
+    <p>This is not a step-counter that drips points for walking. Coins in a place are the whole game. Play as a guest on one device, or sign in with Google so APK and PWA share progress.</p>
   </div>
+  <script src="js/pwa-register.js"></script>
 </body>
 </html>

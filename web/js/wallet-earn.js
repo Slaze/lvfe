@@ -154,7 +154,7 @@
       short:
         "Claim a place by putting NCN in. Highest stake owns. When someone else backs your place, you earn ~10% of what they put in (mostly to you; a cut to your neighbourhood).",
       long:
-        "Territories are real map places. Banks and ATMs cannot be owned. Put NCN into a pin (photo + within 80 m). The highest backer owns it. A visitor’s stake funds the pin; 10% of their pay goes as yield — 80% of that yield to the owner, 20% to the owner’s neighbourhood pool. Neighbourhoods with more owned places raise display value / cost-to-back (up to +50%). To overturn an enemy place, deposit enough NCN so your stake total beats theirs. Ignore enemy assets if you prefer.",
+        "Territories are real map places. Banks and ATMs cannot be owned. Put NCN into a pin (photo + within 80 m). The highest backer owns it. A visitor’s stake funds the pin; 10% of their pay goes as yield — 80% of that yield to the owner, 20% to the owner’s neighbourhood pool. Neighbourhoods with more owned places raise display value / cost-to-back (up to +50%). Walking within 80 m of an enemy place charges a pass-by toll: max(2 NCN, 5% of the owner’s stake), once per place per 60 minutes. Escape pays 40% of what was taken (min 1) to refund that toll. Empty wallet → partial charge + debt flag. To overturn an enemy place, deposit enough NCN so your stake total beats theirs.",
     };
   }
 

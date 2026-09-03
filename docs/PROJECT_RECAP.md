@@ -32,11 +32,13 @@ Location-based territorial game. World data from OpenStreetMap (no paid Google M
 - `web/js/satellite.js` — Esri World Imagery overlay; SAT switch; never billed Google tiles; never `setStyle`. Source `maxzoom` **18** (Enugu z19 is Esri empty plate); raster **layer** `maxzoom` 24 so street zoom overscales last rooftops. `map.resize()` after style load and SAT toggle.
 - `web/rules.html` — player How to play (walk, photo, NairaCoin, 80 m, highest backer owns, faction, neighbourhood value bonus, Pay gate, beep/track, AR, catalog, banks, world Overpass).
 - `web/assets.html` + `web/js/assets.js` — owned/backed places, visit interest (10%), gap vs next backer; dossier-style section toggles.
-- `web/js/dossier.js` — one place-file HTML builder for map + catalog; **Bid to overturn** uses `LvfeWalletEarn.bidToOwn` (highest stake owns).
-- `web/js/game-notify.js` — throttled occasional notifications (`claim_self` / `claim_rival` / `nearby_claimable` / `enemy_nearby` / `test`); prefs + day cap; Android via `LvfeNative.showGameNotification`, else `#gameBanner`.
+- `web/js/dossier.js` — place-file HTML; Land mark actions (watch / threat / takeover); **Bid to overturn** via `LvfeWalletEarn.bidToOwn`.
+- `web/js/game-notify.js` — notifications (`claim_self` / `claim_rival` / `nearby_claimable` / `enemy_nearby` / `pass_toll` / `toll_owner` / `watch_change` / `threat_act` / `test`); prefs; Android `LvfeNative.showGameNotification` else `#gameBanner`.
+- `web/js/pass-toll.js` — pass-by toll ≤80 m enemy-owned: `max(2, floor(ownerStake×5%))`, 60 min/place, partial+debt, Escape refund fee, owner inbox.
+- `web/js/game-marks.js` — watchlist / threats / takeover plans (`lvfe.marks.v1` + save pack); ledger diff notifies.
 - `web/js/rankings.js` — live leaders from stakes / owned / faction score; faction who’s who.
 - `web/js/wallet-earn.js` — stakes out, activity log, earn missions near GPS, territory + rival pressure, `bidToOwn`.
-- `web/js/play-hub.js` — Nord hub panes: Wallet / Earn / Rankings / Analytics.
+- `web/js/play-hub.js` — Wallet (Buy NCN + watch/takeover) / Earn / Rankings / Analytics (threats + Simulate pass-by toll).
 - `web/js/track-guide.js` — marked pin, AudioContext + vibrate pulse, public OSRM **walking** (`alternatives=3`, plus via-point alt if demo returns one path) and **driving** for Car ETA labels only. Primary `#00e676` / `#00c853`; alts muted dashed; tap alt to activate; in-line Walk/Car labels; geodesic + 5 km/h fail-open. Gold 80 m `pay-ring`. `line-join`/`line-cap` in **layout**. No Google Directions.
 - `web/js/bus-stops.js` — viewport Overpass bus stops/platforms (45s rate-limit, fail soft); icons from z≈13.5, names from z15; tap tip not claimable.
 - `web/js/claim-rules.js` — `placeTitle`; `isUnknownPlace`; `ncn(n)` → `"12 NCN"` for player UI.
@@ -113,6 +115,34 @@ Location-based territorial game. World data from OpenStreetMap (no paid Google M
 - 2026-09-03: Buy NCN (Paystack) + rank sigils + Google profile FAB; PHP buy routes on Iconia.
 
 ## Sessions
+
+### 2026-09-03 — Pass-by toll + marks / threats / takeover (P0)
+
+**Goal:** Auto toll when local GPS enters 80 m of an enemy-owned place; contest notification actions (Outpay / Escape / Accept); persist watchlist, threat marks, takeover plans; tests; Nord install; commit+push `Slaze/lvfe`. Merge with Buy NCN hub (already on `main`) and do not revert splash/layout/terms. Co-landed sibling PWA script tags already in `index.html` so the page stays coherent.
+
+**What changed:**
+- `web/js/pass-toll.js` — formula, cooldown, partial/debt, escape refund, owner inbox, scan.
+- `web/js/game-marks.js` — watch / threat / takeover + ledger diff.
+- `web/js/game-notify.js` — `pass_toll` / `toll_owner` / `watch_change` / `threat_act` + Outpay/Escape/Accept actions.
+- `web/js/play-hub.js`, `wallet-earn.js`, `dossier.js`, `account.js` (marks + toll in save pack), `web/index.html` wiring + **Simulate pass-by toll** debug CTA.
+- `scripts/test_pass_toll_marks.js`.
+
+**Toll formula (player-facing):** `max(2 NCN, floor(5% of owner’s stake))`, once per place per **60 minutes**.
+**Escape:** pay `max(1, ceil(charged × 40%))` to refund the charged amount (net cost = escape fee). Charge is immediate on enter (no grace); Accept/Ignore leaves the charge.
+**Empty wallet:** soft fail — take what they have + `debtByPlace` flag for the remainder (documented; not auto-collected later).
+
+**How verified:**
+- `node scripts/test_pass_toll_marks.js` + `test_game_economy.js` + `test_buy_ncn_sigils.js` ok.
+- `./gradlew assembleDebug` SUCCESS; `adb -s bea6919f install -r`; force-stop; **`lastUpdateTime=2026-09-03 10:33:12`**.
+
+**Current state:** Toll + marks live on Nord APK. Owner notify is best-effort via save-pack inbox (same device / next sync), not live multiplayer push.
+
+**Next steps:** Optional debt repayment UX; true multiplayer presence for live owner push; Paystack keys for Buy NCN.
+
+**Blockers / risks — multiplayer:**
+- No dedicated presence/server for “someone just walked past your pin” in real time — owner sees toll only if inbox reaches their client via cloud save or same-device credit.
+- Rival threat/watch diffs need remote place ledger updates (save pull), not a live event bus.
+- Cross-player wallet credit on toll is same-device only (`W.credit(ownerId)`); remote owners are not paid until a shared economy exists.
 
 ### 2026-09-03 — Buy NCN, rank sigils, Google profile FAB
 

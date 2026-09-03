@@ -8,6 +8,10 @@
   const GOOGLE_MAP_KEY = "lvfe.google.v1";
   const FIELD_KEY = "lvfe.field.v1";
   const WALLET_PREFIX = "lvfe.nc.iou.v1.";
+  const MARKS_KEY = "lvfe.marks.v1";
+  const TOLL_STATE_KEY = "lvfe.toll.state.v1";
+  const TOLL_INBOX_KEY = "lvfe.toll.inbox.v1";
+  const ACTIVITY_KEY = "lvfe.activity.v1";
   const PACK_KIND = "lvfe.save.v1";
 
   function storage() {
@@ -218,6 +222,10 @@
       google: googleMap(),
       field: lsGet(FIELD_KEY, { type: "FeatureCollection", features: [] }),
       wallets: collectWallets(),
+      marks: lsGet(MARKS_KEY, { watchPlaces: {}, threats: {}, takeovers: {} }),
+      tollState: lsGet(TOLL_STATE_KEY, { lastByPlace: {}, pending: {}, debtByPlace: {} }),
+      tollInbox: lsGet(TOLL_INBOX_KEY, { items: [] }),
+      activity: lsGet(ACTIVITY_KEY, { items: [] }),
       photos: Array.isArray(o.photos) ? o.photos : [],
       note: "Lvfe save pack. Prefer cloud sync when SAVE_API_BASE is set; Export/Import remains the offline backup. Photos may be meta-only if over ~400KB.",
     };
@@ -236,6 +244,10 @@
     if (pack.factionPool && typeof pack.factionPool === "object") lsSet(FACTION_POOL_KEY, pack.factionPool);
     if (pack.google && typeof pack.google === "object") lsSet(GOOGLE_MAP_KEY, pack.google);
     if (pack.field) lsSet(FIELD_KEY, pack.field);
+    if (pack.marks && typeof pack.marks === "object") lsSet(MARKS_KEY, pack.marks);
+    if (pack.tollState && typeof pack.tollState === "object") lsSet(TOLL_STATE_KEY, pack.tollState);
+    if (pack.tollInbox && typeof pack.tollInbox === "object") lsSet(TOLL_INBOX_KEY, pack.tollInbox);
+    if (pack.activity && typeof pack.activity === "object") lsSet(ACTIVITY_KEY, pack.activity);
     const wallets = pack.wallets && typeof pack.wallets === "object" ? pack.wallets : {};
     Object.keys(wallets).forEach(function (k) {
       if (k.indexOf("lvfe.nc.iou.v1.") !== 0 && k.indexOf("lvfe.nairacoin.") !== 0) return;
@@ -254,6 +266,10 @@
     FACTION_POOL_KEY,
     GOOGLE_MAP_KEY,
     FIELD_KEY,
+    MARKS_KEY,
+    TOLL_STATE_KEY,
+    TOLL_INBOX_KEY,
+    ACTIVITY_KEY,
     PACK_KIND,
     playerKeyFromSub,
     normalizeName,

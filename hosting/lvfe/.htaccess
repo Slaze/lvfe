@@ -1,0 +1,30 @@
+# Lvfe PWA static tree under /lvfe/ — do not hand off to Yii.
+Options -Indexes +FollowSymLinks
+
+<IfModule mod_mime.c>
+  AddType application/manifest+json .webmanifest
+  AddType text/javascript .js
+  AddType application/javascript .mjs
+</IfModule>
+
+<IfModule mod_headers.c>
+  # Override apex Permissions-Policy so map GPS / camera work in the PWA.
+  Header always unset Permissions-Policy
+  Header always set Permissions-Policy "geolocation=(self), microphone=(), camera=(self)"
+  Header always set X-Content-Type-Options "nosniff"
+  # Service worker + manifest must revalidate so installs pick up new shells.
+  <FilesMatch "^(sw\.js|manifest\.webmanifest)$">
+    Header set Cache-Control "no-cache, max-age=0, must-revalidate"
+  </FilesMatch>
+</IfModule>
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /lvfe/
+  # Existing files/dirs serve as-is.
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+  # SPA-ish fallback for deep links under /lvfe/
+  RewriteRule ^ index.html [L]
+</IfModule>

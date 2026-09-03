@@ -3,7 +3,16 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Lvfe — Enugu catalog</title>
+  <meta name="theme-color" content="#0a0a0a" />
+  <meta name="color-scheme" content="dark" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Lvfe" />
+  <title>Lvfe: The Xperience</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" type="image/png" sizes="192x192" href="assets/brand/pwa-icon-192.png" />
+  <link rel="apple-touch-icon" href="assets/brand/pwa-icon-512.png" />
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.1/dist/maplibre-gl.css" />
   <link rel="stylesheet" href="map-3d.css" />
   <link rel="stylesheet" href="css/switch.css" />
@@ -761,6 +770,9 @@
     }
     #gameBanner .ban-acts .primary { background: #ff7a1a; color: #1a140c; }
     #gameBanner .ban-acts .ghost { background: #2a2a2e; color: #f5f5f7; }
+    .mark-acts { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 4px; }
+    .mark-acts .mark-btn { min-height: 44px; }
+    .mark-acts .mark-btn[aria-pressed="true"] { border-color: #ff7a1a; color: #ff7a1a; }
     #playHubScrim {
       position: absolute; inset: 0; z-index: 17;
       background: rgba(0,0,0,.45); border: 0; padding: 0; margin: 0; cursor: pointer;
@@ -968,6 +980,7 @@
         </div>
       </div>
       <button type="button" class="google-btn" id="btnGoogleSignInSheet">Sign in with Google</button>
+      <div data-gis-btn id="gisBtnHostSheet" hidden style="margin:0 14px 12px;min-height:44px"></div>
       <div class="acct-google-box" id="acctGoogleSigned" hidden>
         <p class="label">Google</p>
         <p class="who" id="acctGoogleWho">Signed in</p>
@@ -1085,6 +1098,7 @@
       </label>
       <button type="submit" class="claim">Enter Enugu</button>
       <button type="button" class="google-btn" id="btnGoogleSignIn">Sign in with Google</button>
+      <div data-gis-btn id="gisBtnHostGate" hidden style="margin-top:8px;min-height:44px"></div>
       <p id="gateGoogleSigned" class="iou-note" hidden></p>
       <p id="googleBlocker" hidden></p>
       <div class="save-row">
@@ -1144,6 +1158,8 @@
   <script src="js/conquest.js"></script>
   <script src="js/dossier.js"></script>
   <script src="js/game-notify.js"></script>
+  <script src="js/pass-toll.js"></script>
+  <script src="js/game-marks.js"></script>
   <script src="js/rankings.js"></script>
   <script src="js/rank-sigils.js"></script>
   <script src="js/wallet-earn.js"></script>
@@ -1165,6 +1181,7 @@
   <script src="js/world-catalog.js"></script>
   <script src="js/save-api.config.js"></script>
   <script src="js/save-sync.js"></script>
+  <script src="js/pwa-register.js"></script>
   <script src="ar-overlay.js"></script>
   <script>
     const QUALITY_COLOR = {
@@ -1683,8 +1700,17 @@
           const act = btn.getAttribute("data-ban-act");
           const placeId = btn.getAttribute("data-ban-place") || "";
           gameBanner.hidden = true;
-          if (act === "dismiss" || act === "ignore") {
-            toast("Ignored");
+          if (act === "dismiss") {
+            toast("Dismissed");
+            return;
+          }
+          if (act === "ignore") {
+            if (placeId && window.LvfePassToll) window.LvfePassToll.acceptToll(placeId);
+            toast("Accepted — charge stands");
+            return;
+          }
+          if (act === "escape" && placeId) {
+            handleTollEscape(placeId);
             return;
           }
           if (placeId) openPlaceFromHub(placeId, act === "bid");
@@ -2293,10 +2319,40 @@
       }
     }
 
+    function pullCloudAfterGoogle(pk) {
+      const Sync = window.LvfeSaveSync;
+      if (!Sync || !Sync.enabled()) return;
+      toast("Loading cloud save…");
+      Sync.pullAndMerge(pk, {
+        packOpts: syncPackOpts(),
+        afterImport: function (res) {
+          if (res && res.playerKey) switchPlayer(res.playerKey);
+          renderHud();
+          stampPlaceMarks();
+          refreshPlaceSource();
+          refreshNearby();
+        },
+      }).then(function (res) {
+        if (res && res.pulled) toast("Cloud save loaded for this Google account.");
+        else if (res && res.empty) {
+          return Sync.push(pk, syncPackOpts()).then(function (p) {
+            toast(p && p.ok ? "First cloud save uploaded." : ("Cloud save: " + ((p && p.error) || "push failed")));
+            paintProfileMenu();
+          });
+        } else if (res && res.ok === false && !res.skipped && !res.offline) {
+          toast("Cloud save: " + (res.error || "failed — sign-in token or server auth."));
+        }
+        paintProfileMenu();
+      });
+    }
+
     function applyGoogleAccount(result) {
       if (!result || !result.ok) {
         showGoogleBlocker(result);
-        toast((result && result.title) || "Google sign-in is not wired yet.");
+        toast((result && result.title) || (result && result.message) || "Google sign-in is not wired yet.");
+        if (window.LvfeGoogleAuth && window.LvfeGoogleAuth.renderButtons) {
+          window.LvfeGoogleAuth.renderButtons();
+        }
         return;
       }
       hideGoogleBlocker();
@@ -2320,6 +2376,7 @@
         renderHud();
         paintGoogleAuthUi();
         paintFabProfile();
+        pullCloudAfterGoogle(pk);
         return;
       }
       creatingProfile = false;
@@ -2327,6 +2384,23 @@
       showIdentityGate();
       paintGoogleAuthUi();
       toast("Signed into Google. Pick a unique name — not your email.");
+      pullCloudAfterGoogle(pk);
+    }
+
+    function requireGoogleForCloudSync() {
+      const g = googleSignedState();
+      if (g && g.sub && !g.mock) return true;
+      const msg = "Sign in with Google to sync the same save across phone APK and this PWA. Guest play stays on this device only.";
+      toast(msg);
+      const note = document.getElementById("acctGoogleNote");
+      if (note) {
+        note.hidden = false;
+        note.textContent = msg;
+      }
+      if (window.LvfeGoogleAuth && window.LvfeGoogleAuth.renderButtons) {
+        window.LvfeGoogleAuth.renderButtons();
+      }
+      return false;
     }
 
     function downloadSave() {
@@ -2419,6 +2493,10 @@
         const Sync = window.LvfeSaveSync;
         if (!Sync || !Sync.enabled()) {
           toast("Set ?saveApi=http://LAN:18787 or localStorage lvfe.saveApiBase first.");
+          paintProfileMenu();
+          return;
+        }
+        if (!requireGoogleForCloudSync()) {
           paintProfileMenu();
           return;
         }
@@ -2585,6 +2663,8 @@
     let savePushTimer = 0;
     function scheduleSavePush() {
       if (!window.LvfeSaveSync || !window.LvfeSaveSync.enabled()) return;
+      const g = googleSignedState();
+      if (!g || !g.sub || g.mock) return; /* guest stays local until Google */
       clearTimeout(savePushTimer);
       savePushTimer = setTimeout(function () {
         window.LvfeSaveSync.push(PLAYER_KEY, syncPackOpts()).then(function (res) {
@@ -2607,6 +2687,16 @@
     function bootCloudSave() {
       const Sync = window.LvfeSaveSync;
       if (!Sync || !Sync.enabled()) return;
+      const g = googleSignedState();
+      /* Guest: local-only until Google sign-in. Signed-in: pull shared pack. */
+      if (!g || !g.sub || g.mock) {
+        paintProfileMenu();
+        window.addEventListener("online", function () {
+          if (!requireGoogleForCloudSyncQuiet()) return;
+          Sync.flushQueue(PLAYER_KEY, syncPackOpts()).then(function () { paintProfileMenu(); });
+        });
+        return;
+      }
       ownershipSnap = ownershipMap();
       Sync.pullAndMerge(PLAYER_KEY, {
         packOpts: syncPackOpts(),
@@ -2632,6 +2722,11 @@
       window.addEventListener("online", function () {
         Sync.flushQueue(PLAYER_KEY, syncPackOpts()).then(function () { paintProfileMenu(); });
       });
+    }
+
+    function requireGoogleForCloudSyncQuiet() {
+      const g = googleSignedState();
+      return Boolean(g && g.sub && !g.mock);
     }
 
     function collectFactionColors(fc) {
@@ -2935,6 +3030,13 @@
         body.innerHTML = Hub.rankingsHtml({ global: global, factions: factions, who: who });
       } else if (hubTab === "analytics") {
         const prefs = N ? N.loadPrefs() : {};
+        const Marks = window.LvfeGameMarks;
+        const takeovers = Marks
+          ? Marks.enrichTakeovers(Marks.takeoverList(), {
+            lat: userPos && userPos.lat,
+            lon: userPos && userPos.lon,
+          })
+          : [];
         body.innerHTML = Hub.analyticsHtml({
           territory: Earn ? Earn.territoryControl(placesFc.features, places, FACTION_NAMES) : [],
           claims: Earn ? Earn.yourClaims(PLAYER_KEY, places, placesFc.features) : [],
@@ -2946,15 +3048,27 @@
               radiusM: 400,
             })
             : [],
+          watchList: Marks ? Marks.watchList() : [],
+          threats: Marks ? Marks.threatList() : [],
+          takeovers: takeovers,
           prefs: prefs,
           noGps: !userPos,
         });
         bindHubPrefs();
       } else {
+        const Marks = window.LvfeGameMarks;
+        const takeovers = Marks
+          ? Marks.enrichTakeovers(Marks.takeoverList(), {
+            lat: userPos && userPos.lat,
+            lon: userPos && userPos.lon,
+          })
+          : [];
         body.innerHTML = Hub.walletHtml({
           balance: walletWhole(),
           stakesOut: Earn ? Earn.stakesOut(PLAYER_KEY, places) : { total: 0, owned: 0, backed: 0, rows: [] },
           activity: Earn ? Earn.loadActivity() : [],
+          watchList: Marks ? Marks.watchList() : [],
+          takeovers: takeovers,
         });
         bindHubBuy();
       }
@@ -3033,35 +3147,296 @@
       const muteClaims = document.getElementById("hubMuteClaims");
       const muteNearby = document.getElementById("hubMuteNearby");
       const muteEnemy = document.getElementById("hubMuteEnemy");
+      const muteToll = document.getElementById("hubMuteToll");
+      const muteWatch = document.getElementById("hubMuteWatch");
+      const muteThreat = document.getElementById("hubMuteThreat");
       const testBtn = document.getElementById("hubTestNotify");
+      const simBtn = document.getElementById("hubSimToll");
       function save() {
         N.savePrefs({
           muted: Boolean(muteAll && muteAll.checked),
           allowClaims: !(muteClaims && muteClaims.checked),
           allowNearby: !(muteNearby && muteNearby.checked),
           allowEnemy: !(muteEnemy && muteEnemy.checked),
+          allowToll: !(muteToll && muteToll.checked),
+          allowWatch: !(muteWatch && muteWatch.checked),
+          allowThreat: !(muteThreat && muteThreat.checked),
         });
       }
       if (muteAll) muteAll.addEventListener("change", save);
       if (muteClaims) muteClaims.addEventListener("change", save);
       if (muteNearby) muteNearby.addEventListener("change", save);
       if (muteEnemy) muteEnemy.addEventListener("change", save);
+      if (muteToll) muteToll.addEventListener("change", save);
+      if (muteWatch) muteWatch.addEventListener("change", save);
+      if (muteThreat) muteThreat.addEventListener("change", save);
       if (testBtn) {
         testBtn.addEventListener("click", function () {
           emitGameNotify({
             type: N.TYPES.TEST,
-            body: "Test notification — Bid / Ignore / Open deep-links work from the system tray on Android.",
+            body: "Test notification — Outpay / Escape / Accept deep-links work from the system tray on Android.",
             placeId: (placesFc.features[0] && placesFc.features[0].properties && placesFc.features[0].properties.id) || "",
             placeName: "Test place",
           }, { force: true });
           toast("Test notification sent");
         });
       }
+      if (simBtn) {
+        simBtn.addEventListener("click", function () {
+          simulatePassToll();
+        });
+      }
     }
 
     function scheduleNotifyScan() {
       clearTimeout(notifyScanTimer);
-      notifyScanTimer = setTimeout(runNotifyScan, 1800);
+      notifyScanTimer = setTimeout(function () {
+        runPassTollScan();
+        runNotifyScan();
+        flushOwnerTollInbox();
+        runMarksDiff();
+      }, 1800);
+    }
+
+    function tollRowsFromMap() {
+      const places = loadPlaces();
+      const rows = [];
+      for (let i = 0; i < placesFc.features.length; i++) {
+        const f = placesFc.features[i];
+        const p = f.properties || {};
+        if (!isOwnable(p)) continue;
+        const coords = f.geometry && f.geometry.coordinates;
+        if (!coords) continue;
+        const rec = places[p.id] || {};
+        const ownerId = rec.ownerId || "";
+        const ownerStake = ownerId && rec.stakes && rec.stakes[ownerId]
+          ? Number(rec.stakes[ownerId].amount) || 0
+          : 0;
+        const C = window.LvfeConquest;
+        const displayValue = C ? C.displayValue(rec, p, C.get && C.get()) : (Number(rec.value) || 0);
+        rows.push({
+          id: p.id,
+          name: placeName(p),
+          lon: coords[0],
+          lat: coords[1],
+          ownable: true,
+          bankOrAtm: p.catalog_type === "bank" || p.catalog_type === "atm",
+          ownerId: ownerId,
+          ownerName: rec.ownerName || "",
+          ownerStake: ownerStake,
+          displayValue: displayValue,
+          factionId: rec.factionId || "",
+        });
+      }
+      return rows;
+    }
+
+    function applyPassTollHit(hit, opts) {
+      const Toll = window.LvfePassToll;
+      const N = window.LvfeGameNotify;
+      if (!Toll || !hit) return null;
+      const idn = loadIdentity();
+      const bal = walletWhole();
+      const result = Toll.applyToll({
+        placeId: hit.placeId,
+        placeName: hit.placeName,
+        playerKey: PLAYER_KEY,
+        passerName: (idn && idn.playerName) || PLAYER_KEY,
+        ownerId: hit.ownerId,
+        ownerName: hit.ownerName,
+        ownerStake: hit.ownerStake,
+        displayValue: hit.displayValue,
+        ownable: true,
+        bankOrAtm: false,
+        walletBefore: bal,
+        now: opts && opts.now,
+      }, {
+        getBalance: function () { return walletWhole(); },
+        debitFn: function (want) {
+          loadWallet();
+          const have = walletWhole();
+          const take = Math.min(want, Math.max(0, have));
+          if (take <= 0) return { ok: false, charged: 0 };
+          if (!W.debit(PLAYER_KEY, take)) return { ok: false, charged: 0 };
+          return { ok: true, charged: take };
+        },
+        creditOwnerFn: function (amt, pending) {
+          if (!pending || !pending.ownerId || amt <= 0) return;
+          try {
+            W.credit(pending.ownerId, amt);
+          } catch (err) { /* soft — owner may be another device */ }
+        },
+      });
+      if (!result || !result.ok) return result;
+      loadWallet();
+      renderHud();
+      if (window.LvfeWalletEarn) {
+        window.LvfeWalletEarn.appendActivity({
+          kind: "pass_toll",
+          placeId: hit.placeId,
+          amount: result.charged,
+          text: "Pass-by toll at " + (hit.placeName || hit.placeId) +
+            (result.debt > 0 ? " (debt " + result.debt + ")" : ""),
+        });
+      }
+      scheduleSavePush();
+      if (N) {
+        const body =
+          (result.reason === "debt_only"
+            ? "Wallet empty — " + result.calc.toll + " NCN debt at "
+            : result.reason === "partial"
+              ? "Took " + result.charged + " NCN (debt " + result.debt + ") at "
+              : "Charged " + result.charged + " NCN at ") +
+          (hit.placeName || hit.placeId) +
+          ". Formula: " + result.calc.formula +
+          ". Escape fee " + result.escapeFee + " NCN refunds this toll.";
+        emitGameNotify({
+          type: N.TYPES.PASS_TOLL,
+          placeId: hit.placeId,
+          placeName: hit.placeName,
+          charged: result.charged,
+          toll: result.calc.toll,
+          body: body,
+        }, { force: true });
+      }
+      return result;
+    }
+
+    function runPassTollScan(opts) {
+      const Toll = window.LvfePassToll;
+      const o = opts || {};
+      const lat = o.lat != null ? o.lat : (userPos && userPos.lat);
+      const lon = o.lon != null ? o.lon : (userPos && userPos.lon);
+      if (!Toll || !Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+      const hits = Toll.scanPass(tollRowsFromMap(), {
+        lat: lat,
+        lon: lon,
+        playerKey: PLAYER_KEY,
+        radiusM: CLAIM_RADIUS_M,
+        now: o.now,
+      });
+      const ready = hits.filter(function (h) { return !h.cooled; });
+      if (!ready.length) return null;
+      return applyPassTollHit(ready[0], o);
+    }
+
+    function simulatePassToll() {
+      const Toll = window.LvfePassToll;
+      if (!Toll) {
+        toast("Toll module missing");
+        return;
+      }
+      /* Clear cooldown on first enemy place so debug always fires. */
+      const rows = tollRowsFromMap().filter(function (r) {
+        return r.ownerId && r.ownerId !== PLAYER_KEY;
+      });
+      if (!rows.length) {
+        toast("No enemy-owned place on ledger — stake a rival place first (or import save).");
+        return;
+      }
+      const r = rows[0];
+      const st = Toll.loadState();
+      delete st.lastByPlace[r.id];
+      delete st.pending[r.id];
+      Toll.saveState(st);
+      const hit = {
+        placeId: r.id,
+        placeName: r.name,
+        ownerId: r.ownerId,
+        ownerName: r.ownerName,
+        ownerStake: r.ownerStake,
+        displayValue: r.displayValue,
+        dist: 0,
+        cooled: false,
+      };
+      const res = applyPassTollHit(hit, { now: Date.now() });
+      closePlayHub();
+      if (res && res.ok) toast("Simulated pass-by toll");
+      else toast((res && res.reason) || "Toll failed");
+    }
+
+    function handleTollEscape(placeId) {
+      const Toll = window.LvfePassToll;
+      if (!Toll) return;
+      const pending = Toll.getPending(placeId);
+      if (!pending) {
+        toast("No active toll to escape");
+        return;
+      }
+      const res = Toll.escapeToll(placeId, {
+        getBalance: function () { return walletWhole(); },
+        debitEscapeFn: function (fee) {
+          loadWallet();
+          if (walletWhole() < fee) return false;
+          return Boolean(W.debit(PLAYER_KEY, fee));
+        },
+        creditRefundFn: function (amt) {
+          if (amt > 0) W.credit(PLAYER_KEY, amt);
+        },
+      });
+      if (!res.ok) {
+        if (res.reason === "cannot_afford_escape") {
+          toast("Need " + res.fee + " NCN to escape (have " + res.wallet + ")");
+        } else {
+          toast("Cannot escape: " + (res.reason || "failed"));
+        }
+        return;
+      }
+      loadWallet();
+      renderHud();
+      if (window.LvfeWalletEarn) {
+        window.LvfeWalletEarn.appendActivity({
+          kind: "toll_escape",
+          placeId: placeId,
+          amount: res.fee,
+          text: "Escaped toll (fee " + res.fee + " NCN, refunded " + res.refunded + ")",
+        });
+      }
+      scheduleSavePush();
+      toast("Escaped — net cost " + res.fee + " NCN");
+    }
+
+    function flushOwnerTollInbox() {
+      const Toll = window.LvfePassToll;
+      const N = window.LvfeGameNotify;
+      if (!Toll || !N) return;
+      const items = Toll.takeOwnerInbox(PLAYER_KEY);
+      if (!items.length) return;
+      const it = items[0];
+      emitGameNotify({
+        type: N.TYPES.TOLL_OWNER,
+        placeId: it.placeId,
+        placeName: it.placeName,
+        passerName: it.passerName,
+        charged: it.charged,
+      });
+    }
+
+    function runMarksDiff() {
+      const Marks = window.LvfeGameMarks;
+      const N = window.LvfeGameNotify;
+      if (!Marks || !N) return;
+      const events = Marks.diffWatches(loadPlaces(), { playerKey: PLAYER_KEY });
+      if (!events.length) return;
+      const ev = events[0];
+      if (ev.kind === "threat_act") {
+        emitGameNotify({
+          type: N.TYPES.THREAT_ACT,
+          placeId: ev.placeId,
+          placeName: ev.placeName,
+          threatName: ev.threatName,
+          body: (ev.threatName || "Threat") + " put +" + ev.delta + " NCN at " + (ev.placeName || ev.placeId),
+        });
+      } else {
+        emitGameNotify({
+          type: N.TYPES.WATCH_CHANGE,
+          placeId: ev.placeId,
+          placeName: ev.placeName,
+          body: ev.kind === "watch_owner"
+            ? (ev.placeName + " owner: " + (ev.fromOwner || "open") + " → " + (ev.toOwner || "open"))
+            : (ev.placeName + " value: " + ev.from + " → " + ev.to + " NCN"),
+        });
+      }
     }
 
     function runNotifyScan() {
@@ -3095,6 +3470,11 @@
         factionId: (idn && idn.factionId) || "",
         radiusM: 400,
       });
+      /* Prefer pass-toll (80 m) over soft enemy-nearby when both apply. */
+      const pending = window.LvfePassToll && window.LvfePassToll.getPending
+        ? Object.keys((window.LvfePassToll.loadState().pending) || {}).length
+        : 0;
+      if (pending) return;
       if (scan.enemy) emitGameNotify(scan.enemy);
       else if (scan.claimable) emitGameNotify(scan.claimable);
     }
@@ -3116,6 +3496,7 @@
         ownerNames: ownerNames,
       });
       if (events[0]) emitGameNotify(events[0]);
+      runMarksDiff();
     }
 
     function openPlaceFromHub(placeId, bid) {
@@ -3147,10 +3528,20 @@
     window.lvfeDeepLink = function (payload) {
       const p = payload || {};
       const action = String(p.action || "open");
-      if (action === "ignore" || action === "dismiss") {
+      if (action === "dismiss") {
         const ban = document.getElementById("gameBanner");
         if (ban) ban.hidden = true;
-        toast("Ignored");
+        return;
+      }
+      if (action === "ignore") {
+        const ban = document.getElementById("gameBanner");
+        if (ban) ban.hidden = true;
+        if (p.placeId && window.LvfePassToll) window.LvfePassToll.acceptToll(String(p.placeId));
+        toast("Accepted — charge stands");
+        return;
+      }
+      if (action === "escape" && p.placeId) {
+        handleTollEscape(String(p.placeId));
         return;
       }
       if (p.placeId) openPlaceFromHub(String(p.placeId), action === "bid");
@@ -3788,6 +4179,72 @@
           if (!userPos) askLocation();
           if (dossierPlaceId) refreshOpenDossier();
         }
+        return;
+      }
+      const markWatch = e.target.closest("[data-mark-watch]");
+      if (markWatch && window.LvfeGameMarks) {
+        e.preventDefault();
+        const id = markWatch.getAttribute("data-mark-watch");
+        const feat = placeById(id);
+        const M = window.LvfeGameMarks;
+        if (M.isWatchingPlace(id)) {
+          M.unmarkPlace(id);
+          toast("Removed from watchlist");
+        } else {
+          const rec = placeRec(id);
+          const coords = feat && feat.geometry && feat.geometry.coordinates;
+          M.markPlace(id, {
+            name: feat ? placeName(feat.properties) : id,
+            lat: coords ? coords[1] : undefined,
+            lon: coords ? coords[0] : undefined,
+            lastValue: rec ? Number(rec.value) || 0 : 0,
+            lastOwnerId: rec && rec.ownerId || "",
+            lastOwnerName: rec && rec.ownerName || "",
+          });
+          toast("Watching place");
+        }
+        scheduleSavePush();
+        if (dossierPlaceId) refreshOpenDossier();
+        return;
+      }
+      const markThreat = e.target.closest("[data-mark-threat]");
+      if (markThreat && window.LvfeGameMarks) {
+        e.preventDefault();
+        const tid = markThreat.getAttribute("data-mark-threat");
+        const M = window.LvfeGameMarks;
+        if (M.isThreat(tid)) {
+          M.unmarkThreat(tid);
+          toast("Threat cleared");
+        } else {
+          M.markThreat(tid, { name: markThreat.getAttribute("data-threat-name") || tid });
+          toast("Marked as threat");
+        }
+        scheduleSavePush();
+        if (dossierPlaceId) refreshOpenDossier();
+        return;
+      }
+      const markTake = e.target.closest("[data-mark-takeover]");
+      if (markTake && window.LvfeGameMarks) {
+        e.preventDefault();
+        const id = markTake.getAttribute("data-mark-takeover");
+        const feat = placeById(id);
+        const M = window.LvfeGameMarks;
+        if (M.isTakeover(id)) {
+          M.unplanTakeover(id);
+          toast("Takeover plan dropped");
+        } else {
+          const rec = placeRec(id);
+          const coords = feat && feat.geometry && feat.geometry.coordinates;
+          M.planTakeover(id, {
+            name: feat ? placeName(feat.properties) : id,
+            lat: coords ? coords[1] : undefined,
+            lon: coords ? coords[0] : undefined,
+            ownerName: rec && rec.ownerName || "",
+          });
+          toast("Takeover planned");
+        }
+        scheduleSavePush();
+        if (dossierPlaceId) refreshOpenDossier();
         return;
       }
       const walk = e.target.closest("[data-walk-closer]");

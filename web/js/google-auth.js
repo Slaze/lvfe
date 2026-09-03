@@ -1,5 +1,5 @@
-/* Sign in with Google. Native Android WebView first; GIS only if a real
-   Web client ID exists. Never pretends login worked. Identity, not Maps. */
+/* Sign in with Google. Native Android WebView first; GIS on browsers with a real
+   Web client ID. Never pretends login worked. Identity, not Maps. */
 (function (global) {
   const C = global.LvfeGoogleAuthConfig;
   if (!C) throw new Error("google-auth.config.js must load first");
@@ -8,6 +8,7 @@
   let gisReady = false;
   let lastToken = "";
   let lastPhotoUrl = "";
+  let pendingCb = null;
 
   function nativeBridge() {
     return typeof global.LvfeNative !== "undefined" ? global.LvfeNative : null;
@@ -16,6 +17,15 @@
   function hasNativeSignIn() {
     const n = nativeBridge();
     return Boolean(n && typeof n.signInWithGoogle === "function");
+  }
+
+  function isWebBrowser() {
+    if (hasNativeSignIn()) return false;
+    try {
+      if (location.hostname === "appassets.androidplatform.net") return false;
+      if (location.protocol === "file:") return false;
+    } catch (err) { /* */ }
+    return true;
   }
 
   function configured() {
@@ -74,44 +84,6 @@
     };
   }
 
-  function signInGis(cb) {
-    if (!C.isConfigured()) return fail(cb);
-    if (!gisReady || !global.google || !global.google.accounts || !global.google.accounts.id) {
-      return fail(cb, {
-        code: "gis_unavailable",
-        message: "Google sign-in script did not load. On the phone, use the Lvfe app. On desktop, check the network, then paste a Web client ID.",
-      });
-    }
-    try {
-      global.google.accounts.id.initialize({
-        client_id: C.WEB_CLIENT_ID,
-        callback: function (resp) {
-          inflight = false;
-          const payload = decodeJwt(resp && resp.credential);
-          if (!payload) return fail(cb, { code: "bad_token", message: "Google token did not parse." });
-          cb(okPayload({
-            sub: payload.sub,
-            email: payload.email,
-            idToken: resp.credential,
-            picture: payload.picture || "",
-          }));
-        },
-      });
-      global.google.accounts.id.prompt(function (n) {
-        if (n && n.isNotDisplayed && n.isNotDisplayed()) {
-          inflight = false;
-          fail(cb, {
-            code: "gis_prompt_blocked",
-            message: "Browser blocked the Google prompt. Use the Android app after the Web client ID is pasted, or Export save.",
-          });
-        }
-      });
-    } catch (err) {
-      inflight = false;
-      fail(cb, { code: "gis_error", message: String(err && err.message ? err.message : err) });
-    }
-  }
-
   function decodeJwt(token) {
     try {
       const parts = String(token || "").split(".");
@@ -120,6 +92,105 @@
       return JSON.parse(json);
     } catch (err) {
       return null;
+    }
+  }
+
+  function onCredential(resp, cb) {
+    inflight = false;
+    pendingCb = null;
+    const payload = decodeJwt(resp && resp.credential);
+    if (!payload) return fail(cb, { code: "bad_token", message: "Google token did not parse." });
+    const done = typeof cb === "function" ? cb : function () {};
+    done(okPayload({
+      sub: payload.sub,
+      email: payload.email,
+      idToken: resp.credential,
+      picture: payload.picture || "",
+    }));
+  }
+
+  function ensureGisInit(cb) {
+    if (!C.isConfigured()) return fail(cb);
+    if (!gisReady || !global.google || !global.google.accounts || !global.google.accounts.id) {
+      return fail(cb, {
+        code: "gis_unavailable",
+        message: "Google sign-in script did not load. Check the network, confirm this origin is listed under Authorized JavaScript origins in Google Cloud Console, then retry.",
+      });
+    }
+    try {
+      global.google.accounts.id.initialize({
+        client_id: C.WEB_CLIENT_ID,
+        callback: function (resp) {
+          const target = pendingCb || cb;
+          onCredential(resp, target);
+        },
+        auto_select: false,
+        cancel_on_tap_outside: true,
+      });
+      return true;
+    } catch (err) {
+      fail(cb, { code: "gis_error", message: String(err && err.message ? err.message : err) });
+      return false;
+    }
+  }
+
+  function renderButtons() {
+    if (!gisReady || !global.google || !global.google.accounts || !global.google.accounts.id) return;
+    if (!C.isConfigured()) return;
+    try {
+      global.google.accounts.id.initialize({
+        client_id: C.WEB_CLIENT_ID,
+        callback: function (resp) {
+          onCredential(resp, pendingCb);
+        },
+        auto_select: false,
+      });
+    } catch (err) { /* */ }
+    const hosts = typeof document !== "undefined"
+      ? document.querySelectorAll("[data-gis-btn]")
+      : [];
+    for (let i = 0; i < hosts.length; i++) {
+      const host = hosts[i];
+      if (host.getAttribute("data-gis-mounted") === "1") continue;
+      try {
+        host.innerHTML = "";
+        global.google.accounts.id.renderButton(host, {
+          type: "standard",
+          theme: "outline",
+          size: "large",
+          text: "signin_with",
+          shape: "rectangular",
+          logo_alignment: "left",
+          width: Math.min(320, Math.max(240, host.clientWidth || 280)),
+        });
+        host.setAttribute("data-gis-mounted", "1");
+        host.hidden = false;
+      } catch (err) { /* */ }
+    }
+  }
+
+  function signInGis(cb) {
+    pendingCb = typeof cb === "function" ? cb : null;
+    if (!ensureGisInit(cb)) return;
+    inflight = true;
+    try {
+      global.google.accounts.id.prompt(function (n) {
+        if (!n) return;
+        const blocked = (n.isNotDisplayed && n.isNotDisplayed()) ||
+          (n.isSkippedMoment && n.isSkippedMoment()) ||
+          (n.isDismissedMoment && n.isDismissedMoment());
+        if (blocked) {
+          inflight = false;
+          renderButtons();
+          fail(cb, {
+            code: "gis_prompt_blocked",
+            message: "One Tap was blocked. Use the Google button below (or check Authorized JavaScript origins includes this site’s HTTPS origin).",
+          });
+        }
+      });
+    } catch (err) {
+      inflight = false;
+      fail(cb, { code: "gis_error", message: String(err && err.message ? err.message : err) });
     }
   }
 
@@ -158,7 +229,12 @@
       if (typeof cb === "function") cb(false);
       return;
     }
+    if (!isWebBrowser()) {
+      if (typeof cb === "function") cb(false);
+      return;
+    }
     if (gisReady) {
+      renderButtons();
       if (typeof cb === "function") cb(true);
       return;
     }
@@ -167,6 +243,7 @@
     s.async = true;
     s.onload = function () {
       gisReady = true;
+      renderButtons();
       if (typeof cb === "function") cb(true);
     };
     s.onerror = function () {
@@ -178,8 +255,10 @@
   const api = {
     configured,
     hasNativeSignIn,
+    isWebBrowser,
     signIn,
     loadGis,
+    renderButtons,
     okPayload,
     lastIdToken: function () { return lastToken || global.__lvfeGoogleIdToken || ""; },
     lastPhotoUrl: function () { return lastPhotoUrl; },
@@ -190,4 +269,12 @@
     module.exports = api;
   }
   global.LvfeGoogleAuth = api;
+
+  if (typeof document !== "undefined" && isWebBrowser() && C.isConfigured()) {
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", function () { loadGis(); });
+    } else {
+      loadGis();
+    }
+  }
 })(typeof window !== "undefined" ? window : globalThis);
