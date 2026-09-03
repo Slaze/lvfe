@@ -17,6 +17,9 @@
   --nord-radius-pill: 999px;
 }
 
+/* Padding must stay inside width:100% rows (menu buttons, pills, cards). */
+*, *::before, *::after { box-sizing: border-box; }
+
 .nord-page {
   margin: 0;
   min-height: 100%;
@@ -72,13 +75,16 @@
 
 .nord-pills a {
   flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   text-decoration: none;
   color: var(--nord-muted);
   background: transparent;
   border: 1px solid var(--nord-line);
   border-radius: var(--nord-radius-pill);
-  padding: 8px 14px;
-  min-height: 36px;
+  padding: 10px 14px;
+  min-height: 44px;
   font: 650 13px/1 system-ui, sans-serif;
 }
 
@@ -128,6 +134,9 @@
   align-items: stretch;
   justify-content: center;
   padding: calc(24px + env(safe-area-inset-top, 0px)) 20px calc(24px + env(safe-area-inset-bottom, 0px));
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   transition: opacity 0.28s ease, visibility 0.28s;
 }
 
@@ -143,7 +152,9 @@
 
 .boot-stage {
   width: min(420px, 100%);
+  max-width: 100%;
   margin: 0 auto;
+  flex-shrink: 0;
 }
 
 #splashStage {
@@ -185,9 +196,10 @@ div.splash-seal {
 
 .splash-brand {
   margin: 0;
-  font-size: 34px;
+  font-size: clamp(28px, 8vw, 34px);
   font-weight: 800;
   letter-spacing: -0.03em;
+  overflow-wrap: anywhere;
 }
 
 .splash-tag {
@@ -208,6 +220,8 @@ div.splash-seal {
 }
 
 .menu-panel {
+  width: 100%;
+  max-width: 100%;
   background: var(--nord-card);
   border: 1px solid var(--nord-line);
   border-radius: 22px;
@@ -215,6 +229,7 @@ div.splash-seal {
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
 }
 
 .menu-head {
@@ -230,11 +245,14 @@ div.splash-seal {
   margin: 0;
 }
 
+.menu-head > div { min-width: 0; flex: 1; }
+
 .menu-head h1 {
   margin: 0;
-  font-size: 20px;
+  font-size: clamp(18px, 5vw, 20px);
   font-weight: 800;
   letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
 }
 
 .menu-head p {
@@ -254,6 +272,7 @@ div.splash-seal {
   align-items: center;
   gap: 12px;
   width: 100%;
+  max-width: 100%;
   min-height: 52px;
   padding: 0 16px;
   border: 1px solid var(--nord-line);
@@ -264,6 +283,7 @@ div.splash-seal {
   text-align: left;
   cursor: pointer;
   text-decoration: none;
+  overflow: hidden;
 }
 
 .menu-btn .mark {

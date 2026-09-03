@@ -82,6 +82,13 @@
     return mins + " min walk";
   }
 
+  /** Player-facing coin amount. Prefer "12 NCN" in UI; ledger keys stay NairaCoin. */
+  function ncn(amount) {
+    const n = Math.round(Number(amount));
+    if (!Number.isFinite(n)) return "0 NCN";
+    return n + " NCN";
+  }
+
   function headingWords(deviceHeading, bearing) {
     if (!Number.isFinite(deviceHeading) || !Number.isFinite(bearing)) return "Walk toward it";
     const delta = ((bearing - deviceHeading + 540) % 360) - 180;
@@ -179,6 +186,7 @@
     noOwnerYet,
     walkMinutes,
     walkEtaText,
+    ncn,
     headingWords,
     typeLabel,
     placeTitle,

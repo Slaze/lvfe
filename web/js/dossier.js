@@ -54,16 +54,22 @@
     return has ? "Has a photo" : "No photo yet";
   }
 
-  function missionCopy(p, rec, dist, ok, userPos) {
+  function missionCopy(p, rec, dist, ok, userPos, playerKey) {
     const rules = R();
     if (!rules.isOwnable(p)) return rules.farmMsg();
-    if (!userPos) return "Walk closer — get within 80 m, then take a photo and put NairaCoin in to back it.";
+    if (!userPos) return "Walk closer — get within 80 m, then take a photo and put NCN in to back it.";
     if (!ok) {
       const away = Number.isFinite(dist) ? Math.round(dist) + " m away. " : "";
-      return away + "Walk closer — within 80 m — then take a photo and put NairaCoin in to back it.";
+      return away + "Walk closer — within 80 m — then take a photo and put NCN in to back it.";
     }
-    if (optsPhotoRequired(p, rec)) return "Take a photo, then put NairaCoin in to back this place.";
-    return "Put NairaCoin in to back this place.";
+    const pk = playerKey || (global.LvfeCatalogWallet && global.LvfeCatalogWallet.playerKey()) || "default";
+    if (rec && rec.ownerId && rec.ownerId !== pk) {
+      const need = minNeed(p, rec, pk, conquestCounts({}));
+      const coin = rules.ncn ? rules.ncn(need.min) : (need.min + " NCN");
+      return "Enemy-held. Deposit " + coin + " so your stake beats theirs (highest stake owns). Or ignore this asset.";
+    }
+    if (optsPhotoRequired(p, rec)) return "Take a photo, then put NCN in to back this place.";
+    return "Put NCN in to back this place.";
   }
 
   function optsPhotoRequired(p, rec) {
@@ -90,7 +96,29 @@
     if (C && min > 0) min = C.costToBack(min, p, counts);
     const mine = rec && rec.stakes && rec.stakes[playerKey];
     const first = !(mine && mine.amount > 0);
-    return { min: first ? min : 1, first: first, mine: mine, needPhoto: optsPhotoRequired(p, rec) };
+    const Earn = global.LvfeWalletEarn;
+    let add = first ? min : 1;
+    let overturn = false;
+    let ownerStake = 0;
+    if (Earn && typeof Earn.bidToOwn === "function") {
+      const bid = Earn.bidToOwn(rec, playerKey, min);
+      add = bid.add;
+      overturn = Boolean(bid.overturn);
+      ownerStake = Number(bid.ownerStake) || 0;
+    } else if (rec && rec.ownerId && rec.ownerId !== playerKey) {
+      ownerStake = Number(rec.stakes[rec.ownerId] && rec.stakes[rec.ownerId].amount) || 0;
+      const mineAmt = Number(mine && mine.amount) || 0;
+      add = Math.max(first ? min : 1, ownerStake + 1 - mineAmt);
+      overturn = true;
+    }
+    return {
+      min: add,
+      first: first,
+      mine: mine,
+      needPhoto: optsPhotoRequired(p, rec),
+      overturn: overturn,
+      ownerStake: ownerStake,
+    };
   }
 
   function moneyValue(rec, p, counts) {
@@ -98,8 +126,9 @@
     const C = global.LvfeConquest;
     const ledger = rec ? Number(rec.value) || 0 : 0;
     const v = C ? C.displayValue(rec, p, counts) : ledger;
-    if (v > 0 && ledger <= 0) return v + " NairaCoin · no one has backed this yet";
-    return v > 0 ? v + " NairaCoin" : "No one has backed this yet";
+    const coin = R().ncn ? R().ncn(v) : (v + " NCN");
+    if (v > 0 && ledger <= 0) return coin + " · no one has backed this yet";
+    return v > 0 ? coin : "No one has backed this yet";
   }
 
   function moneyInterest(p, rec, playerKey, counts) {
@@ -112,10 +141,11 @@
     if (C && min > 0) min = C.costToBack(min, p, counts);
     const n = L ? L.yieldFromIncoming(min) : Math.max(1, Math.round(min * 0.1));
     const who = rec && rec.ownerId === playerKey ? "You earn" : "Owner earns";
-    return who + " " + n + " NairaCoin from visits when someone else backs (10% of what they put in).";
+    const coin = R().ncn ? R().ncn(n) : (n + " NCN");
+    return who + " " + coin + " from visits when someone else backs (10% of what they put in).";
   }
 
-  /** Pay is the gated button. Label is always Pay. Disabled unless GPS and dist <= 80. */
+  /** Pay is the gated button. Label is Pay / Bid to overturn. Disabled unless GPS and dist <= 80. */
   function payHtml(p, rec, ok, playerKey, counts) {
     if (!R().isOwnable(p)) {
       return `<button type="button" class="claim" disabled>Cannot be owned</button>`;
@@ -125,7 +155,12 @@
         `<p class="note pay-wait">Walk within 80 m to pay.</p>`;
     }
     const need = minNeed(p, rec, playerKey, counts);
+    const label = need.overturn ? "Bid to overturn" : "Pay";
     const bits = [`<form class="visit-form" data-place="${esc(p.id)}" data-kind="stake">`];
+    if (need.overturn) {
+      const coin = R().ncn ? R().ncn(need.min) : (need.min + " NCN");
+      bits.push(`<p class="note">Deposit at least ${coin} so your stake beats ${esc(ownerWords(rec))} (${need.ownerStake} NCN).</p>`);
+    }
     if (need.needPhoto) {
       bits.push(`<input type="file" accept="image/*" capture="environment" class="photo-in" name="photo" />`);
     } else if (need.mine && need.mine.photo) {
@@ -134,7 +169,7 @@
     bits.push(
       `<div class="stake-row">` +
       `<input type="number" name="amount" min="${need.min}" step="1" value="${need.min}" />` +
-      `<button type="submit" class="claim" data-pay="1">Pay</button>` +
+      `<button type="submit" class="claim" data-pay="1">${label}</button>` +
       `</div></form>`
     );
     return bits.join("");
@@ -189,7 +224,7 @@
     const counts = conquestCounts(opts);
     let costN = ownable ? (W ? W.minStake(pts, p.catalog_type) : 5) : 0;
     if (ownable && global.LvfeConquest && costN > 0) costN = global.LvfeConquest.costToBack(costN, p, counts);
-    const cost = ownable ? (costN + " NairaCoin") : "Cannot be owned";
+    const cost = ownable ? (rules.ncn ? rules.ncn(costN) : (costN + " NCN")) : "Cannot be owned";
     const walkLine = (opts && opts.walkLine) || "";
 
     const bits = [
@@ -219,7 +254,7 @@
     if (!visible || visible.mission !== false) {
       bits.push(
         `<section class="${pageClass("mission", tab)}" data-page="mission" role="tabpanel">`,
-        `<p class="note">${esc(missionCopy(p, rec, dist, ok, userPos))}</p>`,
+        `<p class="note">${esc(missionCopy(p, rec, dist, ok, userPos, opts && opts.playerKey))}</p>`,
         missionCta(p, rec, ok, playerKey, counts),
         `</section>`
       );
@@ -250,7 +285,7 @@
     if (!visible || visible.wallet !== false) {
       bits.push(
         `<section class="${pageClass("wallet", tab)}" data-page="wallet" role="tabpanel">`,
-        `<p class="row-label">Wallet</p><p class="row-value">${wallet} NairaCoin</p>`,
+        `<p class="row-label">Wallet</p><p class="row-value">${rules.ncn ? rules.ncn(wallet) : (wallet + " NCN")}</p>`,
         `<p class="row-label">This place</p><p class="row-value">${esc(title)}</p>`
       );
       if (walkLine) bits.push(`<p class="note">${esc(walkLine)}</p>`);

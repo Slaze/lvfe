@@ -69,32 +69,32 @@
     const myAmt = mine ? mine.amt : 0;
     const owned = rec.ownerId === pk;
     if (!ranks.length) {
-      return "No one has put NairaCoin in yet.";
+      return "No one has put NCN in yet.";
     }
     if (owned) {
       const second = ranks.find((s) => s.pid !== pk);
       if (!second) {
         return "You’re the only backer. Someone else would need more than " +
-          myAmt + " NairaCoin to take this place.";
+          myAmt + " NCN to take this place.";
       }
       const gap = myAmt - second.amt;
       return "You’re ahead of " + second.name + " by " + gap +
-        " NairaCoin. They need " + (gap + 1) + " more than they have now to take it.";
+        " NCN. They need " + (gap + 1) + " more than they have now to take it.";
     }
     const leader = ranks[0];
     const gap = leader.amt - myAmt;
     if (!(myAmt > 0)) {
       return leader.name + " owns it with " + leader.amt +
-        " NairaCoin. Put in more than that to take it.";
+        " NCN. Put in more than that to take it.";
     }
-    return "You need " + gap + " more NairaCoin than " + leader.name + " to own this place.";
+    return "You need " + gap + " more NCN than " + leader.name + " to own this place.";
   }
 
   function earnCopy(owned) {
     if (owned) {
-      return "When someone else walks up and puts NairaCoin in, you earn visit interest — about 10% of what they put in.";
+      return "When someone else walks up and puts NCN in, you earn visit interest — about 10% of what they put in.";
     }
-    return "You don’t earn visit interest here. The owner does — whoever has put the most NairaCoin in.";
+    return "You don’t earn visit interest here. The owner does — whoever has put the most NCN in.";
   }
 
   function rowsFrom(placesFc, stored, pk) {
@@ -141,7 +141,7 @@
     const showBacked = visible.backed;
     const filtered = rows.filter((r) => (r.owned && showOwned) || (!r.owned && showBacked));
     if (!filtered.length) {
-      box.innerHTML = "<p class='meta'>None yet. Walk up, take a photo, and put NairaCoin into a place.</p>";
+      box.innerHTML = "<p class='meta'>None yet. Walk up, take a photo, and put NCN into a place.</p>";
       return;
     }
     box.innerHTML = filtered.map((a) => {

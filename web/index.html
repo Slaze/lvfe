@@ -15,7 +15,9 @@
       --ink: #f5f5f7;
       --muted: #9aa0a6;
       --nord-accent: #ff7a1a;
+      --lvfe-chrome-bottom: 28px;
     }
+    *, *::before, *::after { box-sizing: border-box; }
     html, body { margin: 0; width: 100%; height: 100%; background: var(--bg); color: var(--ink); font: 14px/1.4 system-ui, sans-serif; overflow: hidden; text-size-adjust: 100%; -webkit-text-size-adjust: 100%; }
     [hidden] { display: none !important; }
     #map { position: absolute; inset: 0; width: 100%; height: 100%; }
@@ -31,28 +33,54 @@
       left: 12px; right: 12px;
     }
     .search-pill {
-      display: flex; align-items: center; gap: 8px;
+      display: flex; align-items: center; gap: 6px;
       background: #fff; color: #202124;
       border-radius: 24px;
       box-shadow: 0 1px 3px rgba(0,0,0,.24), 0 4px 8px rgba(0,0,0,.12);
-      padding: 0 6px 0 14px; height: 48px;
+      padding: 0 12px 0 4px; height: 48px;
     }
+    .search-pill .search-mag {
+      width: 44px; height: 44px; min-width: 44px; min-height: 44px;
+      border: 0; margin: 0; padding: 0;
+      border-radius: 50%;
+      background: transparent; color: #1a73e8;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+    }
+    .search-pill .search-mag svg { width: 22px; height: 22px; display: block; }
     .search-pill input {
       flex: 1; border: 0; background: transparent; outline: none;
       font: 16px/1.3 system-ui, sans-serif; color: #202124; min-width: 0;
     }
     .search-pill input::placeholder { color: #5f6368; }
-    .search-pill .who-stamp {
-      width: 44px; height: 44px; min-width: 44px; min-height: 44px;
+    .who-stamp.gold-hang {
+      position: absolute; z-index: 4;
+      left: max(12px, env(safe-area-inset-left, 0px));
+      bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+      width: 52px; height: 52px; min-width: 52px; min-height: 52px;
       border: 0; margin: 0; padding: 0;
       border-radius: 50%;
       background: #b8893a;
       color: #1a140c;
-      font: 700 16px/1 "Iowan Old Style", "Palatino Linotype", Palatino, serif;
+      font: 700 18px/1 "Iowan Old Style", "Palatino Linotype", Palatino, serif;
       cursor: pointer;
-      box-shadow: inset 0 0 0 2px rgba(255,236,190,.45);
+      box-shadow: 0 2px 8px rgba(0,0,0,.28), inset 0 0 0 2px rgba(255,236,190,.45);
     }
-    .search-pill .who-stamp[aria-expanded="true"] { background: #d4a24e; }
+    .who-stamp.gold-hang[aria-expanded="true"] { background: #d4a24e; }
+    .map-hint {
+      position: absolute; z-index: 3;
+      left: max(12px, env(safe-area-inset-left, 0px));
+      top: calc(66px + env(safe-area-inset-top, 0px));
+      max-width: min(220px, 46vw);
+      padding: 6px 10px;
+      border-radius: 10px;
+      background: rgba(255,255,255,.88);
+      color: #3c4043;
+      font: 650 11px/1.35 system-ui, sans-serif;
+      box-shadow: 0 1px 3px rgba(0,0,0,.16);
+      pointer-events: none;
+    }
+    .map-hint[hidden] { display: none !important; }
     .search-hits {
       margin-top: 8px;
       background: #fff; color: #202124;
@@ -92,6 +120,8 @@
       display: flex; flex-direction: column;
       padding-bottom: env(safe-area-inset-bottom, 10px);
       transition: transform .24s cubic-bezier(.2,.8,.2,1), visibility .24s;
+      box-sizing: border-box;
+      overflow: hidden;
     }
     #accountSheet.open {
       transform: translateY(0);
@@ -117,11 +147,12 @@
       width: 44px; height: 44px; border: 0; background: transparent;
       color: #e8edf4; font-size: 28px; line-height: 1; cursor: pointer;
     }
-    .acct-scroll { overflow: auto; -webkit-overflow-scrolling: touch; padding: 0 0 12px; }
+    .acct-scroll { overflow: auto; -webkit-overflow-scrolling: touch; padding: 0 0 12px; flex: 1; min-height: 0; }
     .acct-hero {
       display: flex; align-items: center; gap: 14px;
       padding: 4px 16px 16px;
     }
+    .acct-hero > div { min-width: 0; flex: 1; }
     .acct-seal {
       width: 56px; height: 56px; border-radius: 50%;
       background: #b8893a; color: #1a140c;
@@ -131,10 +162,10 @@
       flex-shrink: 0;
     }
     .acct-hero h2 {
-      margin: 0; font: 700 20px/1.15 "Iowan Old Style", Palatino, serif;
-      color: #f3ead6;
+      margin: 0; font: 700 clamp(17px, 4.8vw, 20px)/1.15 "Iowan Old Style", Palatino, serif;
+      color: #f3ead6; overflow-wrap: anywhere;
     }
-    .acct-hero p { margin: 4px 0 0; font-size: 13px; color: #9aa6b2; }
+    .acct-hero p { margin: 4px 0 0; font-size: 13px; color: #9aa6b2; overflow-wrap: anywhere; }
     .acct-hero .coin { color: #34c759; font-variant-numeric: tabular-nums; }
     .acct-sec {
       margin: 0 12px 12px;
@@ -241,6 +272,7 @@
       visibility: hidden;
       padding-bottom: env(safe-area-inset-bottom, 8px);
       touch-action: pan-y;
+      box-sizing: border-box;
     }
     .sheet.collapsed,
     .sheet[hidden] {
@@ -250,7 +282,7 @@
       pointer-events: none !important;
       visibility: hidden !important;
     }
-    .sheet.peek, .sheet.half, .sheet.full, .sheet.doc, .sheet.doc-exp {
+    .sheet.peek, .sheet.half, .sheet.full {
       display: block;
       pointer-events: auto;
       visibility: visible;
@@ -262,10 +294,16 @@
     .sheet.full { height: 72vh; max-height: 72vh; overflow: auto; }
     /* Place file: compact peek first (~34vh) so the map stays majority-visible. */
     .sheet.doc, .sheet.doc-exp {
+      display: flex;
+      flex-direction: column;
+      pointer-events: auto;
+      visibility: visible;
+      transform: translateY(0);
+      transition: transform .24s cubic-bezier(.2,.8,.2,1), height .24s cubic-bezier(.2,.8,.2,1), max-height .24s cubic-bezier(.2,.8,.2,1);
       overflow: hidden;
       background: #f3ead6;
       color: #2a241c;
-      border-radius: 0 14px 0 0;
+      border-radius: 14px 14px 0 0;
       box-shadow: 0 -6px 28px rgba(0,0,0,.28);
     }
     .sheet.doc {
@@ -276,7 +314,7 @@
     }
     .sheet-bar {
       display: flex; align-items: center; justify-content: center;
-      position: relative; min-height: 44px;
+      position: relative; min-height: 44px; flex-shrink: 0;
     }
     .sheet-handle {
       display: block; width: 44px; min-width: 44px; height: 44px; min-height: 44px;
@@ -333,41 +371,44 @@
       display: block;
       padding: 0;
       max-height: none;
+      flex: 1 1 auto;
+      min-height: 0;
+      height: auto;
       overflow: hidden;
       background: #f3ead6;
     }
-    .sheet.doc .sheet-scroll { height: calc(34vh - 44px); }
-    .sheet.doc-exp .sheet-scroll { height: calc(70vh - 44px); }
     .sheet.doc #placeCard,
-    .sheet.doc-exp #placeCard { height: 100%; }
+    .sheet.doc-exp #placeCard { height: 100%; min-height: 0; }
     .dossier {
-      display: flex; flex-direction: column; height: 100%;
+      display: flex; flex-direction: column; height: 100%; min-height: 0;
       background: #f7f1e4; color: #2a241c;
     }
-    .dossier-head { padding: 0 16px 10px; border-bottom: 1px solid #d8cbb4; }
+    .dossier-head { padding: 0 16px 8px; border-bottom: 1px solid #d8cbb4; flex-shrink: 0; }
     .dossier-mark {
       display: block; font-size: 11px; letter-spacing: 0.14em;
       text-transform: uppercase; color: #8a7a62; font-weight: 650;
     }
     .dossier-head h2 {
-      margin: 4px 110px 0 0; font-size: 20px; line-height: 1.25;
-      font-weight: 700; color: #1f1a14;
+      margin: 4px 110px 0 0; font-size: clamp(15px, 4.2vw, 18px); line-height: 1.25;
+      font-weight: 700; color: #1f1a14; overflow-wrap: anywhere;
     }
     .dossier-tabs {
-      display: flex; gap: 2px; padding: 6px 8px 0;
+      display: flex; gap: 2px; padding: 4px 6px 0;
       background: #e6dcc6; border-bottom: 1px solid #c9bba3;
+      flex-shrink: 0; overflow-x: auto; -webkit-overflow-scrolling: touch;
     }
     .dossier-tabs button {
-      flex: 1; min-height: 44px; border: 0; background: transparent;
-      color: #5c5346; font: 650 12px/1 system-ui, sans-serif;
-      border-radius: 8px 8px 0 0; padding: 8px 2px; cursor: pointer;
+      flex: 1 0 auto; min-width: 0; min-height: 44px; border: 0; background: transparent;
+      color: #5c5346; font: 650 12px/1.1 system-ui, sans-serif;
+      border-radius: 8px 8px 0 0; padding: 8px 4px; cursor: pointer;
+      white-space: nowrap;
     }
     .dossier-tabs button[aria-selected="true"] {
       background: #f7f1e4; color: #1f1a14;
     }
     .dossier-pages { flex: 1; min-height: 0; overflow: hidden; }
     .dossier-page {
-      display: none; padding: 16px 16px 20px; height: 100%;
+      display: none; padding: 12px 16px calc(16px + env(safe-area-inset-bottom, 0px)); height: 100%;
       overflow: auto; -webkit-overflow-scrolling: touch;
     }
     .dossier-page.active { display: block; }
@@ -376,8 +417,8 @@
       text-transform: uppercase; color: #8a7a62; font-weight: 650;
     }
     .dossier-page .row-label:first-child { margin-top: 0; }
-    .dossier-page .row-value { margin: 0; font-size: 16px; color: #1f1a14; }
-    .dossier-page .note { margin: 10px 0 0; font-size: 14px; color: #4a4338; }
+    .dossier-page .row-value { margin: 0; font-size: 15px; color: #1f1a14; overflow-wrap: anywhere; }
+    .dossier-page .note { margin: 10px 0 0; font-size: 14px; color: #4a4338; overflow-wrap: anywhere; }
     .dossier-photo {
       display: flex; align-items: center; justify-content: center;
       min-height: 72px; margin: 0 0 8px; border-radius: 4px;
@@ -385,10 +426,10 @@
     }
     .sheet.doc button.claim,
     .sheet.doc-exp button.claim { margin-top: 16px; }
-    .sheet.doc .dossier-head h2 { font-size: 17px; }
+    .sheet.doc .dossier-head h2 { font-size: clamp(15px, 4vw, 17px); }
     .sheet.doc .dossier-tabs button,
     .sheet.doc-exp .dossier-tabs button {
-      min-height: 44px; font-size: 11px; padding: 8px 2px;
+      min-height: 44px; font-size: 12px; padding: 8px 4px;
     }
     .dossier-head { position: relative; }
     .track-toggle {
@@ -398,16 +439,17 @@
     .pay-wait { color: #8a5a16; }
     #trackChip {
       margin-top: 8px;
-      display: flex; align-items: center; gap: 8px;
+      display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
       background: #fff8e1; color: #3a2a10;
       border: 2px solid #f4c430; border-radius: 16px;
       box-shadow: 0 2px 8px rgba(0,0,0,.18);
       padding: 8px 10px 8px 14px;
+      max-width: 100%;
     }
     #trackChip[hidden] { display: none !important; }
-    #trackChip .track-copy { flex: 1; min-width: 0; }
-    #trackChip strong { display: block; font-size: 14px; }
-    #trackChip span { display: block; font-size: 12px; color: #5c4a28; }
+    #trackChip .track-copy { flex: 1 1 140px; min-width: 0; }
+    #trackChip strong { display: block; font-size: 14px; overflow-wrap: anywhere; }
+    #trackChip span { display: block; font-size: 12px; color: #5c4a28; overflow-wrap: anywhere; }
     #trackChip #trackStop {
       border: 0; border-radius: 16px; min-height: 48px; padding: 6px 10px;
       font: 650 12px/1 system-ui, sans-serif; cursor: pointer;
@@ -474,15 +516,15 @@
       position: absolute; left: 0; top: 0;
       pointer-events: auto;
       transform: translate(-50%, -118%);
-      min-width: 128px; max-width: 220px;
+      min-width: 112px; max-width: min(220px, 70vw);
       text-align: center;
       background: rgba(14,17,22,0.88);
       border: 0; border-radius: 12px;
       color: #e8edf4; padding: 8px 12px; cursor: pointer; font: inherit;
       box-shadow: 0 2px 10px rgba(0,0,0,.35);
     }
-    #arPins .ar-pin strong { display: block; font-size: 14px; }
-    #arPins .ar-pin span { color: #b4c0cc; font-size: 12px; }
+    #arPins .ar-pin strong { display: block; font-size: 14px; overflow-wrap: anywhere; }
+    #arPins .ar-pin span { color: #b4c0cc; font-size: 12px; overflow-wrap: anywhere; }
     #arPins .ar-pin .ar-glyph {
       display: block; width: 18px; height: 18px; margin: 0 auto 6px; position: relative;
     }
@@ -631,12 +673,13 @@
     #googleBlocker[hidden] { display: none; }
     .dossier-photo img { width: 100%; max-height: 160px; object-fit: cover; border-radius: 4px; }
     #toast {
-      position: absolute; z-index: 5; left: 50%; bottom: 72px;
+      position: absolute; z-index: 15; left: 50%;
+      bottom: calc(var(--lvfe-chrome-bottom, 28px) + 60px + env(safe-area-inset-bottom, 0px));
       transform: translateX(-50%);
       background: #1e2833; color: var(--ink);
       border: 1px solid #2a3340; border-radius: 8px;
-      padding: 8px 12px; font-size: 13px; max-width: 80%;
-      pointer-events: none;
+      padding: 8px 12px; font-size: 13px; max-width: min(80%, 360px);
+      pointer-events: none; overflow-wrap: anywhere; text-align: center;
     }
     #arStage[hidden] { display: none !important; }
     #mapFail {
@@ -688,10 +731,13 @@
   </div>
   <div class="top-chrome">
     <div class="search-pill">
-      <input id="searchQ" type="search" placeholder="Search Enugu places" autocomplete="off" />
-      <button type="button" class="who-stamp" id="btnMore" aria-label="Account" aria-expanded="false">
-        <span id="stampGlyph">+</span>
+      <button type="button" class="search-mag" id="btnSearch" aria-label="Search places">
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="2.2"/>
+          <path d="M16.2 16.2 L20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+        </svg>
       </button>
+      <input id="searchQ" type="search" placeholder="Search places" autocomplete="off" enterkeyhint="search" />
     </div>
     <div id="searchHits" class="search-hits" hidden></div>
     <div id="trackChip" hidden>
@@ -706,6 +752,10 @@
       <button type="button" id="trackStop">Stop</button>
     </div>
   </div>
+  <div class="map-hint" id="mapHint">Green = walk · dashed = alt · blue B = bus</div>
+  <button type="button" class="who-stamp gold-hang" id="btnMore" aria-label="Account menu" aria-expanded="false">
+    <span id="stampGlyph">+</span>
+  </button>
   <input type="checkbox" id="toggleAr" hidden />
   <input type="checkbox" id="toggle3d" hidden />
   <div class="fabs" id="fabs">
@@ -734,7 +784,7 @@
         <div class="acct-seal" id="acctSeal" aria-hidden="true">+</div>
         <div>
           <h2 id="acctName">No name yet</h2>
-          <p id="acctMeta">Set a name to back places · <span class="coin" id="acctCoin">0</span> NairaCoin</p>
+          <p id="acctMeta">Set a name to back places · <span class="coin" id="acctCoin">0</span> NCN</p>
         </div>
       </div>
       <button type="button" class="google-btn" id="btnGoogleSignInSheet">Sign in with Google</button>
@@ -801,7 +851,7 @@
     </div>
     <div class="sheet-peek">
       <span id="gpsLabel">Location off</span>
-      <span>NairaCoin <strong id="ncTotal">0</strong></span>
+      <span>NCN <strong id="ncTotal">0</strong></span>
     </div>
     <div class="sheet-scroll">
       <div class="who" id="whoLine">Name needed to back a place.</div>
@@ -849,7 +899,7 @@
   <div id="about" hidden>
     <div class="card">
       <h2>About Lvfe</h2>
-      <p>Walk up. Photo + put NairaCoin into the place. Highest backer owns.</p>
+      <p>Walk up. Photo + put NCN into the place. Highest backer owns.</p>
       <p>Map data © OpenStreetMap contributors, ODbL. Streets: OpenFreeMap. Satellite: Esri World Imagery (Esri, Maxar, Earthstar Geographics). Terrain: AWS / Mapzen.</p>
       <button type="button" class="claim" id="aboutClose">Close</button>
     </div>
@@ -864,7 +914,7 @@
       <img class="splash-seal" src="assets/brand/lvfe-mark-512.png" width="72" height="72" alt="" aria-hidden="true" />
       <p class="splash-brand">Lvfe</p>
       <p class="splash-tag">The Xperience</p>
-      <p class="splash-sub">Walk the real city. Photo. Back places with NairaCoin.</p>
+      <p class="splash-sub">Walk the real city. Photo. Back places with NCN.</p>
     </div>
     <div id="menuStage" class="boot-stage" hidden>
       <div class="menu-panel">
@@ -896,6 +946,7 @@
   <script src="js/conquest.js"></script>
   <script src="js/dossier.js"></script>
   <script src="js/track-guide.js"></script>
+  <script src="js/bus-stops.js"></script>
   <script src="js/satellite.js"></script>
   <script src="nairacoin/protocol.js"></script>
   <script src="nairacoin/iou-ledger.js"></script>
@@ -1001,7 +1052,7 @@
 
     function layoutFabs() {
       const fabs = document.getElementById("fabs");
-      if (!fabs) return;
+      const gold = document.getElementById("btnMore");
       let bottom = 28;
       const sheet = document.getElementById("sheet");
       if (sheet && sheetMode !== "collapsed" && !sheet.hidden) {
@@ -1013,7 +1064,10 @@
       else if (sheetMode === "full" || sheetMode === "doc-exp") {
         bottom = Math.round(window.innerHeight * 0.70) + 12;
       }
-      fabs.style.bottom = "calc(" + bottom + "px + env(safe-area-inset-bottom, 0px))";
+      document.documentElement.style.setProperty("--lvfe-chrome-bottom", bottom + "px");
+      const bottomCss = "calc(" + bottom + "px + env(safe-area-inset-bottom, 0px))";
+      if (fabs) fabs.style.bottom = bottomCss;
+      if (gold) gold.style.bottom = bottomCss;
     }
 
     function toggleDocSheet() {
@@ -1257,6 +1311,15 @@
       }
     }
 
+    function focusSearch() {
+      closeAccountSheet();
+      const search = document.getElementById("searchQ");
+      if (!search) return;
+      search.focus();
+      try { search.select(); } catch (err) { /* */ }
+      renderSearchHits(search.value);
+    }
+
     function bindChrome() {
       if (bindChrome.done) return;
       bindChrome.done = true;
@@ -1271,11 +1334,22 @@
           renderSearchHits(search.value);
         });
       }
-      document.getElementById("btnMore").addEventListener("click", (e) => {
+      const btnSearch = document.getElementById("btnSearch");
+      if (btnSearch) btnSearch.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        focusSearch();
+      });
+      const btnMore = document.getElementById("btnMore");
+      if (btnMore) btnMore.addEventListener("click", (e) => {
         e.stopPropagation();
         if (accountOpen()) closeAccountSheet();
         else openAccountSheet();
       });
+      window.setTimeout(function () {
+        const hint = document.getElementById("mapHint");
+        if (hint) hint.hidden = true;
+      }, 9000);
       const acctClose = document.getElementById("acctClose");
       if (acctClose) acctClose.addEventListener("click", (e) => {
         e.preventDefault();
@@ -1659,8 +1733,8 @@
       if (meta) {
         const fac = idn && idn.factionId ? (FACTION_NAMES[idn.factionId] || idn.factionId) : "no neighbourhood";
         meta.innerHTML = idn
-          ? esc(fac) + " · <span class=\"coin\" id=\"acctCoin\">" + whole + "</span> NairaCoin"
-          : "Set a name to back places · <span class=\"coin\" id=\"acctCoin\">" + whole + "</span> NairaCoin";
+          ? esc(fac) + " · <span class=\"coin\" id=\"acctCoin\">" + whole + "</span> NCN"
+          : "Set a name to back places · <span class=\"coin\" id=\"acctCoin\">" + whole + "</span> NCN";
       } else {
         const coin = document.getElementById("acctCoin");
         if (coin) coin.textContent = String(whole);
@@ -2423,7 +2497,7 @@
       if (idn && idn.factionId) {
         facLine.hidden = false;
         facLine.textContent = FACTION_NAMES[idn.factionId] + " earns from visits · " +
-          factionPool(idn.factionId) + " NairaCoin";
+          factionPool(idn.factionId) + " NCN";
       } else {
         facLine.hidden = true;
       }
@@ -2553,8 +2627,8 @@
     }
 
     function placeValueLine(rec, p) {
-      if (!isOwnable(p)) return "0 NairaCoin · cannot be owned";
-      return `${shownValue(rec, p)} NairaCoin in this place`;
+      if (!isOwnable(p)) return "0 NCN · cannot be owned";
+      return `${shownValue(rec, p)} NCN in this place`;
     }
 
     function ctaButtonHtml(p, rec, distOk) {
@@ -2587,7 +2661,7 @@
         const mine = rec.stakes[PLAYER_KEY];
         bits.push(
           `<p class="meta">${ownerLine(rec)}<br>${esc(propertyLabel(rec))}` +
-          `<br>Cost to back this place: ${minStake(p)} NairaCoin · ${shownValue(rec, p)} NairaCoin in this place` +
+          `<br>Cost to back this place: ${minStake(p)} NCN · ${shownValue(rec, p)} NCN in this place` +
           (rec.ownerId && rec.ownerId !== PLAYER_KEY
             ? `<br>Owner earns from visits` +
               (rec.factionId ? ` · ${esc(factionLabel(rec.factionId))} gets a cut` : "")
@@ -2658,26 +2732,26 @@
 
     function missionCopy(p, rec, dist, distOk) {
       if (!isOwnable(p)) return farmMsg();
-      if (!userPos) return "Walk closer — get within 80 m, then take a photo and put NairaCoin in to back it.";
+      if (!userPos) return "Walk closer — get within 80 m, then take a photo and put NCN in to back it.";
       if (!distOk) {
         const away = Number.isFinite(dist) ? Math.round(dist) + " m away. " : "";
-        return away + "Walk closer — within 80 m — then take a photo and put NairaCoin in to back it.";
+        return away + "Walk closer — within 80 m — then take a photo and put NCN in to back it.";
       }
-      if (photoRequired(p, rec)) return "Take a photo, then put NairaCoin in to back this place.";
-      return "Put NairaCoin in to back this place.";
+      if (photoRequired(p, rec)) return "Take a photo, then put NCN in to back this place.";
+      return "Put NCN in to back this place.";
     }
 
     function moneyValueText(rec, p) {
       if (!isOwnable(p)) return "Cannot be owned";
       const v = shownValue(rec, p);
-      return v > 0 ? v + " NairaCoin" : "No one has backed this yet";
+      return v > 0 ? v + " NCN" : "No one has backed this yet";
     }
 
     function moneyInterestText(p, rec) {
       if (!isOwnable(p)) return "";
       const n = yieldOnStake(minStake(p));
       const who = rec && rec.ownerId === PLAYER_KEY ? "You earn" : "Owner earns";
-      return who + " " + n + " NairaCoin from visits when someone else backs (10% of what they put in).";
+      return who + " " + n + " NCN from visits when someone else backs (10% of what they put in).";
     }
 
     function dossierTabsHtml() {
@@ -2747,7 +2821,7 @@
         `<p class="row-value">${isOwnable(p) ? "No one has backed this yet" : farmMsg()}</p>` +
         `</section>` +
         `<section class="${dossierPageClass("wallet")}" data-page="wallet" role="tabpanel">` +
-        `<p class="row-label">Wallet</p><p class="row-value">${walletWhole()} NairaCoin</p>` +
+        `<p class="row-label">Wallet</p><p class="row-value">${walletWhole()} NCN</p>` +
         cta +
         `</section></div></div>`;
     }
@@ -2858,17 +2932,17 @@
       const amount = Math.floor(Number(opts && opts.amount));
       const need = first ? minStake(p) : 1;
       if (!Number.isFinite(amount) || amount < need) {
-        toast(`Need ${need} NairaCoin to back this place.`);
+        toast(`Need ${need} NCN to back this place.`);
         return;
       }
       loadWallet();
       if (walletWhole() < amount) {
-        toast(`Need ${amount} NairaCoin · you have ${walletWhole()}.`);
+        toast(`Need ${amount} NCN · you have ${walletWhole()}.`);
         return;
       }
 
       if (!W.debit(PLAYER_KEY, amount)) {
-        toast(`Need ${amount} NairaCoin · you have ${walletWhole()}.`);
+        toast(`Need ${amount} NCN · you have ${walletWhole()}.`);
         return;
       }
 
@@ -2915,7 +2989,7 @@
       openPlacePopup(feat);
 
       const youOwn = rec.ownerId === PLAYER_KEY;
-      const parts = [`Put ${split.intoPlace} NairaCoin into this place`];
+      const parts = [`Put ${split.intoPlace} NCN into this place`];
       if (youOwn) parts.push(first || split.prevOwner !== PLAYER_KEY ? "you own this place" : "still yours");
       else parts.push(`owner ${rec.ownerName}`);
       if (split.yieldPaid) {
@@ -3253,6 +3327,7 @@
       if (pinsUp) {
         layersReady = true;
         if (window.LvfeTrack) window.LvfeTrack.ensureLayers(map);
+        if (window.LvfeBusStops) window.LvfeBusStops.ensureLayers(map);
         if (window.LvfeSatellite) {
           window.LvfeSatellite.ensure(map);
           window.LvfeSatellite.stack(map);
@@ -3416,6 +3491,32 @@
         },
       });
       addLy({
+        id: "places-label",
+        type: "symbol",
+        source: "places",
+        minzoom: 14.2,
+        layout: {
+          "text-field": ["coalesce", ["get", "name"], ["get", "catalog_type"]],
+          "text-size": 11,
+          "text-font": ["Noto Sans Regular"],
+          "text-offset": [0, 1.2],
+          "text-anchor": "top",
+          "text-optional": true,
+          "text-max-width": 9,
+          "text-allow-overlap": false,
+        },
+        paint: {
+          "text-color": "#202124",
+          "text-halo-color": "#ffffff",
+          "text-halo-width": 1.35,
+          "text-opacity": [
+            "interpolate", ["linear"], ["zoom"],
+            14.2, 0.0,
+            14.8, 0.9,
+          ],
+        },
+      });
+      addLy({
         id: "places-nearby",
         type: "circle",
         source: "nearby",
@@ -3440,6 +3541,7 @@
         },
       });
       if (window.LvfeTrack) window.LvfeTrack.bindMap(map);
+      if (window.LvfeBusStops) window.LvfeBusStops.bindMap(map);
       if (window.LvfeSatellite) {
         window.LvfeSatellite.ensure(map);
         window.LvfeSatellite.stack(map);
@@ -3447,6 +3549,12 @@
 
       function openPlaceAtPoint(point) {
         if (!map || !point) return false;
+        if (map.getLayer("bus-stops-dot")) {
+          try {
+            const busHits = map.queryRenderedFeatures(point, { layers: ["bus-stops-dot"] });
+            if (busHits && busHits.length) return false;
+          } catch (err) { /* */ }
+        }
         const pad = 18;
         const bbox = [
           [point.x - pad, point.y - pad],
@@ -3494,6 +3602,10 @@
       if (window.LvfeTrack) {
         window.LvfeTrack.ensureLayers(map);
         window.LvfeTrack.bindMap(map);
+      }
+      if (window.LvfeBusStops) {
+        window.LvfeBusStops.ensureLayers(map);
+        window.LvfeBusStops.bindMap(map);
       }
       setYouSource();
       if (window.LvfeSatellite) window.LvfeSatellite.stack(map);

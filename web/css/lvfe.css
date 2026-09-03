@@ -9,6 +9,7 @@
   --accent: var(--nord-accent, #ff7a1a);
   --link: #ffb070;
 }
+*, *::before, *::after { box-sizing: border-box; }
 html, body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
 a { color: var(--link); }
 .nav {
@@ -20,15 +21,16 @@ a { color: var(--link); }
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
 }
-.nav h1 { font-size: 18px; margin: 0 0 10px; font-weight: 800; letter-spacing: -0.02em; }
+.nav h1 { font-size: clamp(16px, 4.5vw, 18px); margin: 0 0 10px; font-weight: 800; letter-spacing: -0.02em; overflow-wrap: anywhere; }
 .nav .links {
   display: flex; gap: 8px; overflow-x: auto; -webkit-overflow-scrolling: touch;
   margin: 0; padding-bottom: 2px;
 }
 .nav .links a {
-  flex: 0 0 auto; text-decoration: none; color: var(--muted);
+  flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center;
+  text-decoration: none; color: var(--muted);
   border: 1px solid var(--line); border-radius: 999px;
-  padding: 8px 14px; min-height: 36px; font: 650 13px/1 system-ui, sans-serif;
+  padding: 10px 14px; min-height: 44px; font: 650 13px/1 system-ui, sans-serif;
   background: transparent;
 }
 .nav .links a[aria-current="page"],
@@ -45,7 +47,7 @@ a { color: var(--link); }
 .filters label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--muted); }
 .filters input, .filters select {
   background: #0e1116; color: var(--ink); border: 1px solid var(--line);
-  border-radius: 6px; padding: 6px 8px; font: inherit; min-width: 120px;
+  border-radius: 6px; padding: 8px 10px; font: inherit; min-width: 120px; min-height: 44px;
 }
 .filters input[type="search"] { min-width: 180px; }
 .meta { color: var(--muted); font-size: 12px; margin: 0 0 8px; }
@@ -59,7 +61,7 @@ table.cat tr:hover td { background: #1a212b; }
 .pager { display: flex; gap: 8px; align-items: center; margin-top: 12px; }
 .pager button, button.claim, button.ghost {
   background: var(--accent); color: #0e1116; border: 0; border-radius: 6px;
-  padding: 8px 10px; font-weight: 650; cursor: pointer; font: inherit;
+  padding: 10px 12px; min-height: 44px; font-weight: 650; cursor: pointer; font: inherit;
 }
 button.ghost { background: var(--line); color: var(--ink); }
 .pager button:disabled, button.claim:disabled, button.claimed {
@@ -93,48 +95,54 @@ button.ghost { background: var(--line); color: var(--ink); }
   border-radius: 14px 14px 0 0;
   box-shadow: 0 -6px 28px rgba(0,0,0,.35);
   overflow: hidden;
+  display: flex; flex-direction: column;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  box-sizing: border-box;
 }
 #catFile[hidden] { display: none !important; }
 #catFile .sheet-bar {
   display: flex; align-items: center; justify-content: center;
-  position: relative; min-height: 36px;
+  position: relative; min-height: 44px; flex-shrink: 0;
 }
 #catFile .sheet-close {
   position: absolute; right: 4px; top: 0;
   width: 44px; height: 44px; border: 0; background: transparent;
   color: #3a3228; font-size: 28px; line-height: 1; cursor: pointer;
 }
-#catFile .dossier { display: flex; flex-direction: column; height: calc(78vh - 36px); background: #f7f1e4; }
-.dossier-head { padding: 0 16px 10px; border-bottom: 1px solid #d8cbb4; position: relative; }
+#catFile #catCard { flex: 1; min-height: 0; overflow: hidden; }
+#catFile .dossier { display: flex; flex-direction: column; flex: 1; min-height: 0; height: 100%; background: #f7f1e4; }
+.dossier-head { padding: 0 16px 8px; border-bottom: 1px solid #d8cbb4; position: relative; flex-shrink: 0; }
 .dossier-mark {
   display: block; font-size: 11px; letter-spacing: 0.14em;
   text-transform: uppercase; color: #8a7a62; font-weight: 650;
 }
-.dossier-head h2 { margin: 4px 110px 0 0; font-size: 20px; line-height: 1.25; font-weight: 700; color: #1f1a14; }
+.dossier-head h2 { margin: 4px 110px 0 0; font-size: clamp(15px, 4.2vw, 18px); line-height: 1.25; font-weight: 700; color: #1f1a14; overflow-wrap: anywhere; }
 .track-toggle {
   position: absolute; right: 8px; top: 0;
   color: #3a3228;
 }
 .dossier-tabs {
-  display: flex; gap: 2px; padding: 6px 8px 0;
+  display: flex; gap: 2px; padding: 4px 6px 0;
   background: #e6dcc6; border-bottom: 1px solid #c9bba3;
+  flex-shrink: 0; overflow-x: auto; -webkit-overflow-scrolling: touch;
 }
 .dossier-tabs button {
-  flex: 1; min-height: 40px; border: 0; background: transparent;
-  color: #5c5346; font: 650 12px/1 system-ui, sans-serif;
-  border-radius: 8px 8px 0 0; padding: 8px 2px; cursor: pointer;
+  flex: 1 0 auto; min-width: 0; min-height: 44px; border: 0; background: transparent;
+  color: #5c5346; font: 650 12px/1.1 system-ui, sans-serif;
+  border-radius: 8px 8px 0 0; padding: 8px 4px; cursor: pointer;
+  white-space: nowrap;
 }
 .dossier-tabs button[aria-selected="true"] { background: #f7f1e4; color: #1f1a14; }
 .dossier-pages { flex: 1; min-height: 0; overflow: hidden; }
-.dossier-page { display: none; padding: 16px 16px 20px; height: 100%; overflow: auto; }
+.dossier-page { display: none; padding: 12px 16px 20px; height: 100%; overflow: auto; -webkit-overflow-scrolling: touch; }
 .dossier-page.active { display: block; }
 .dossier-page .row-label {
   margin: 12px 0 2px; font-size: 11px; letter-spacing: 0.06em;
   text-transform: uppercase; color: #8a7a62; font-weight: 650;
 }
 .dossier-page .row-label:first-child { margin-top: 0; }
-.dossier-page .row-value { margin: 0; font-size: 16px; color: #1f1a14; }
-.dossier-page .note { margin: 10px 0 0; font-size: 14px; color: #4a4338; }
+.dossier-page .row-value { margin: 0; font-size: 15px; color: #1f1a14; overflow-wrap: anywhere; }
+.dossier-page .note { margin: 10px 0 0; font-size: 14px; color: #4a4338; overflow-wrap: anywhere; }
 .dossier-photo {
   display: flex; align-items: center; justify-content: center;
   min-height: 72px; margin: 0 0 8px; border-radius: 4px;

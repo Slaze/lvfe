@@ -40,7 +40,13 @@ assert(line.paint["line-color"] !== "#f4c430", "walk line is not gold");
 const map = makeMap();
 assert(T.ensureLayers(map) === true, "first attach");
 assert(map.getLayer("guide-line") && map.getLayer("guide-casing"), "green walk layers attach");
+assert(map.getLayer("guide-alt-line") && map.getLayer("guide-alt-casing"), "alt walk layers attach");
 assert(map.getLayer("pay-ring") && map.getLayer("pay-fill"), "80 m ring attaches");
+assert(T.OSRM_WALK.indexOf("router.project-osrm.org/route/v1/walking") >= 0, "walk OSRM");
+assert(T.OSRM_DRIVE.indexOf("router.project-osrm.org/route/v1/driving") >= 0, "drive OSRM");
+const alt = T.guideAltLineSpec();
+assert(alt.layout["line-join"] === "round" && alt.layout["line-cap"] === "round", "alt join/cap in layout");
+assert(Array.isArray(alt.paint["line-dasharray"]), "alt dashed");
 
 const retry = makeMap();
 retry.addSource("guide", { type: "geojson", data: { type: "FeatureCollection", features: [] } });

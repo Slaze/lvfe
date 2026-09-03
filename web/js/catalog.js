@@ -141,7 +141,7 @@
       const note = farm ? "cannot be owned" : (owned ? "owner" : (stake ? "backed" : "No owner yet"));
       let money = "";
       if (!farm && C) {
-        if (shown > 0) money = " · " + shown + " NairaCoin";
+        if (shown > 0) money = " · " + shown + " NCN";
         else {
           const cost = C.costToBack(W.minStake(p.claim_nairacoin || p.claim_points, p.catalog_type), p, counts);
           if (cost > 0) money = " · " + cost + " to back";
@@ -238,11 +238,11 @@
       need = window.LvfeConquest.costToBack(need, p, window.LvfeConquest.get());
     }
     if (!Number.isFinite(amount) || amount < need) {
-      toast("Need " + need + " NairaCoin to back this place.");
+      toast("Need " + need + " NCN to back this place.");
       return;
     }
     if (!W.debit(pk, amount)) {
-      toast("Need " + amount + " NairaCoin · you have " + W.getBalance() + ".");
+      toast("Need " + amount + " NCN · you have " + W.getBalance() + ".");
       return;
     }
     Ledger.applyIncomingStake(rec, {
@@ -262,7 +262,7 @@
     localStorage.setItem(PLACES_KEY, JSON.stringify(all));
     if (window.LvfeConquest) window.LvfeConquest.refresh(state.all, all);
     render();
-    toast("Put " + amount + " NairaCoin into this place");
+    toast("Put " + amount + " NCN into this place");
   }
 
   function loadCatalog(data) {
