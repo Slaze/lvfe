@@ -147,12 +147,15 @@ Location-based territorial game. World data from OpenStreetMap (no paid Google M
 - `node scripts/test_username_lock.js` — client rename reject + server `username_locked` / `username_taken`.
 - `node scripts/test_local_factions.js` — Enugu four; Lagos mock OSM → local list; travel chapter kept.
 - `node scripts/test_account_photo_field.js` + `node server/test.js` + `php -l hosting/lvfe-save/index.php`.
+- PWA FTP: live `sw.js` → `CACHE = "lvfe-shell-v5"`; `local-factions.js` **15121** bytes; index has `idNameLockNote` + `local-factions.js`.
+- PHP FTP: host `index.php` contains `enforce_username_lock` / `username_locked`.
+- Nord `bea6919f`: `assembleDebug` + `install -r`; **`lastUpdateTime=2026-09-03 11:27:46`**.
 
-**Current state:** See commit hash after push; PWA/PHP/Nord deploy status in How verified / blockers.
+**Current state:** Live on Iconia PWA + lvfe-save PHP. Feature commit **`6c85e54`** + SW v5 **`0a46186`** on `Slaze/lvfe` `main`.
 
-**Next steps:** Confirm live PWA `?lat=6.52&lon=3.38` shows local factions; Enugu GPS shows original four; Google sync rejects rename.
+**Next steps:** On-device smoke: identity gate with Lagos `?lat=6.52&lon=3.38` vs Enugu GPS; Sign in + Sync and attempt rename → 409.
 
-**Blockers / risks:** Overpass rate limits; sparse OSM → generic quarters; guest names not cloud-locked until Google + sync.
+**Blockers / risks:** Overpass rate limits; sparse OSM → generic quarters; guest names not cloud-locked until Google + sync; CF may briefly stale HEAD for JS (GET body was correct after deploy). Sibling dossier/catalog WIP may still be dirty on disk — not part of this feature commit.
 
 ### 2026-09-03 — Place dossier overlap + place snapshot thumbs (P0)
 
