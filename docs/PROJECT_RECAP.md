@@ -127,7 +127,7 @@ Location-based territorial game. World data from OpenStreetMap (no paid Google M
 
 **What changed:**
 - Code already on `main` in **`dc5eba5`** (co-landed with pass-toll): manifest, SW, pwa-register (skip `LvfeNative`/appassets), GIS button hosts, guest-local / Google-required Sync now, `/lvfe/` asset base, `docs/PWA.md`, OAUTH origins, stage/deploy scripts.
-- This session: FTP upload `dist/pwa` → `public_html/lvfe/`; patched apex `.htaccess` pass-through `lvfe`; recap + `.gitignore` `dist/`.
+- This session: FTP upload `dist/pwa` → `public_html/lvfe/`; patched apex `.htaccess` pass-through `lvfe`; recap + `.gitignore` `dist/`. Commit **`cff1325`**.
 
 **Why:** GIS + installability need a public HTTPS origin; APK WebView must not register the SW.
 
