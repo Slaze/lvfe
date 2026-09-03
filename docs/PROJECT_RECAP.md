@@ -145,6 +145,7 @@ Location-based territorial game. World data from OpenStreetMap (no paid Google M
 
 **How verified (Nord `bea6919f`):**
 - `assembleDebug` SUCCESS; `adb install -r`; **`lastUpdateTime=2026-09-03 09:25:56`**.
+- Commit **`510a64a`** pushed to `https://github.com/Slaze/lvfe` (`main`).
 - Screencaps: splash, menu, account signed-in (no Sign in button; “Signed in as ugidentity@gmail.com”), catalog pill nav.
 - WebView CDP: `bootHidden` false→true on Play; `googleBtnHidden:true`; `places-x` + `guide-line` present; `.sheet.doc` 34vh rule true; catalog URL loads.
 
