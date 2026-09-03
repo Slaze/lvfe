@@ -91,7 +91,7 @@ After deploy on iPhone (if an old SW was stuck):
 3. Force-quit the home-screen Lvfe app, then reopen it (or Add to Home Screen again).
 4. Confirm dark Nord splash/menu and that **Play Now** + the gold seal open.
 
-Alternatively open the PWA once and let `controllerchange` reload after `SKIP_WAITING` when `lvfe-shell-v3` installs.
+Alternatively open the PWA once and let `controllerchange` reload after `SKIP_WAITING` when `lvfe-shell-v4` installs.
 
 Shell CSS URL is **`css/nord-shell-v2.css`** (Cloudflare still immutably caches the old `nord-shell.css` path).
 

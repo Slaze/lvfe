@@ -166,9 +166,11 @@ Location-based territorial game. World data from OpenStreetMap (no paid Google M
 
 **Why:** Players need a discoverable install path on HTTPS; iOS has no install event; APK must not register SW.
 
-**How verified:** Live `install.html` / `pwa-install.js` / `sw.js` **200**; CACHE `lvfe-shell-v3`; HTML contains `pwaInstallBanner` + `menuInstall` + Nord v2 link.
+**How verified:**
+- FTP redeploy after SW **v4**; `curl` live `install.html` **200**; `sw.js` → `CACHE = "lvfe-shell-v4"`; `pwa-install.js` **8551** bytes; index has `menuInstall` / `pwaInstallBanner` / `nord-shell-v2.css`; manifest **200**.
+- Feature code co-landed on `main` in sibling **`d494a3c`**; this follow-up bumps SW id to match live + docs.
 
-**Current state:** Install prompt + iOS theme/menu fix live on `https://iconiaglobal.com/lvfe/`.
+**Current state:** Install prompt + guide + iOS theme/menu fix live on `https://iconiaglobal.com/lvfe/`.
 
 **Next steps:** Confirm Android Chrome install prompt + iOS Share path on a real device after Clear Website Data.
 
