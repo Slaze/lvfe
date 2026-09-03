@@ -19,6 +19,7 @@ Location-based territorial game. World data from OpenStreetMap (no paid Google M
 - `web/index.html` — Cold start **splash → main menu** (Play Now / Save / Restart / Check Catalog / Rules / My places / Account; splash/menu seals use `assets/brand/lvfe-mark-512.png`), then MapLibre + OpenFreeMap **GMaps-style chrome**: full-bleed map, top search pill with **magnifier** (`#btnSearch`), **gold seal hangs bottom-left** (`#btnMore` / `layoutFabs`, opens account/main-menu sheet), CSS bottom sheet (**hidden until pin tap**). **SAT / 3D / AR** are LTR/RTL slide switches on-map (`role="switch"`, green `#34c759` on / gray `#9aa0a6` off). **GPS is a locate action**, not a switch. `ensureLayers` uses valid `addLy({` (seven `addLy({)` SyntaxErrors fixed). `window.lvfeFitMap` → `map.resize()` after style/load, SAT toggle, `visualViewport`/`orientationchange`/`window.resize`, and delayed boot (WebView). Esri World Imagery `{z}/{y}/{x}` overlay (no `setStyle`). **Unclaimed named pins = red X** (`places-x`, `#ff3b30`); **unknown (quality D / civic_unknown / unmapped) = black X** (`places-x-unknown`, `#111111`); **owned pins = circle** (`places-circles`, self `#1d8cff` vs other/faction color). Invisible `places-hit` keeps taps at z12.2. Pins / green walk + dashed alts / 80 m ring / bus stops / you-dot re-attach via `reattachOverlays`; hybrid OSM labels in account **Map pins**; fail banner **Satellite couldn’t load**. Pin tap opens a **paper file / dossier** (`.sheet.doc` compact peek **34vh**, expand `.sheet.doc-exp` **70vh**) with **Place / Mission / Land / Money / Wallet** tabs (44px). Wallet **Pay** is `disabled` unless GPS and `dist <= 80`. Track chip + green OSRM walk line + muted dashed alts + in-line Walk/Car labels + 80 m pay ring. Player coin copy prefers **NCN**. ▴ / handle expands; × + swipe-down close fully. Idle map still auto-hides (`display:none`). Profile stamp → **grouped account sheet** (`#accountSheet`: You / Play [How to play, Catalog, My places, **Wallet**, **Earn more**, **Rankings**, **Analytics**] / Map pins / This phone + Google signed-in chip / Sign out / Main menu + export/import + **Sync now**). **`#playHub`** Nord sheet for Wallet balance/stakes/activity, Earn missions, Rankings, Analytics (territory / claims / rival pressure / mute prefs / Test notification). Catalog/rules/assets use Nord pill nav (not old flat chrome). No left `.panel`, no always-on `#hud`, no MapLibre Popup, no OSM/Esri wordmark on the map (About only). Default pitch **0**. 80 m GPS; photo + NairaCoin. **localStorage cache + optional cloud save** (`SAVE_API_BASE` / `?saveApi=`). Reinstall still wipes unless Export save **or** cloud sync. **Sign in with Google** uses Web client ID via native Credential Manager (Identity OAuth only — no Maps SKUs); when `googleSub` is present the Sign-in CTA is **hidden** and email is shown. Android OAuth client + SHA-1 still required in Console for fresh native sign-in on new devices.
 - `server/` — zero-dep Node save API (`PORT` default **18787**). `GET/PUT /v1/save/:playerKey`. Conflict: **last-write-wins** by `pack.updatedAt`. Auth: `Bearer lvfe-dev:<playerKey>` when `LVFE_ALLOW_DEV_AUTH=1`; `SAVE_SECRET`; `google:<id_token>` when `GOOGLE_WEB_CLIENT_ID` set (else production Gmail fails loud). Photos: max 8, dataURL >~400KB → meta-only; body ≤2.5 MiB. Env: see `server/.env.example` + `server/README.md`. Optional Netlify: `netlify.toml` + `netlify/functions/save.js`.
 - `hosting/lvfe-save/` — **public HTTPS save API** (PHP on Iconia Namecheap/cPanel). Live base **`https://iconiaglobal.com/lvfe-save`**. Same routes/auth as Node. Secrets in host-only `config.local.php` (gitignored). Preferred branded host `lvfe-save.iconiaglobal.com` needs Cloudflare DNS + cPanel subdomain (human).
+- `docs/ICONIA_TERMS.md` + `hosting/iconia/terms-content.html` — Iconia ToS (live CMS `https://iconiaglobal.com/pages/terms-and-conditions`, September 2026). Privacy remains `https://iconiaglobal.com/privacy-policy`.
 - `web/js/save-api.config.js` / `save-sync.js` — client pull after boot, push on stake/identity (debounced), offline queue, Export/Import kept. Default `SAVE_API_BASE` = public Iconia URL (override `?saveApi=` / `localStorage`).
 - `web/js/google-auth.config.js` / `google-auth.js` / `account.js` — Web OAuth `WEB_CLIENT_ID` set (`730640559588-…apps.googleusercontent.com`); native `LvfeNative.signInWithGoogle` on Android; unique username ≠ email; save pack `lvfe.save.v1` + `updatedAt`. On-screen blocker still lists Android client + SHA-1 steps if native sign-in fails.
 - `web/js/photo-store.js` — visit photo bytes in IndexedDB on Pay confirm; discard on sheet close / cancel; sync may send small dataURLs.
@@ -105,8 +106,32 @@ Location-based territorial game. World data from OpenStreetMap (no paid Google M
 - 2026-09-03: Nord reinstall ships `lvfe-mark-512.png` in www bundle; menu screencap confirms gold/green seal (`lastUpdateTime=2026-09-03 10:03:05`).
 - 2026-09-03: Game activity notifications + Wallet/Earn/Rankings/Analytics hub; Bid to overturn; NCN copy; sibling map chrome kept.
 - 2026-09-03: Overlay/layout audit — `box-sizing:border-box`, menu clip, dossier peek/expand px heights, FAB/toast chrome bottom; Nord CDP + screencaps.
+- 2026-09-03: Iconia CMS Terms filled (Lvfe + NCN + Google Identity; live `/pages/terms-and-conditions`).
 
 ## Sessions
+
+### 2026-09-03 — Iconia Terms and conditions (OAuth ToS)
+
+**Goal:** Replace live “Coming soon…” on `https://iconiaglobal.com/pages/terms-and-conditions` with enforceable Terms covering Iconia digital services and **Lvfe: The Xperience**; keep privacy links; save repo copy; commit+push `Slaze/lvfe`.
+
+**What changed:**
+- `docs/ICONIA_TERMS.md` — markdown source of record (effective 3 September 2026).
+- `hosting/iconia/terms-content.html` + `hosting/iconia/README.md` — CMS HTML body (Yii `html_purify`).
+- Live Yii MySQL `page` row `slug=terms-and-conditions` updated via operator FTP + one-shot PHP on the Iconia host (script deleted after run). Privacy page untouched.
+- `docs/OAUTH_CONSENT.md` — terms URL now live, not a blocker.
+
+**Why:** Google OAuth Production consent needs a real ToS URL on `iconiaglobal.com`. CMS page already existed; filling the DB row keeps `/pages/terms-and-conditions` without a parallel `/terms` rewrite.
+
+**How verified:**
+- One-shot apply: `affected:1`, content length 14 → 11494.
+- `curl`/fetch `https://iconiaglobal.com/pages/terms-and-conditions` HTTP 200; **Coming soon** absent; **Lvfe: The Xperience**, NCN, `lvfe-save`, Google Maps Platform disclosure, Enugu address, +234 703 547 4827 present. Cloudflare obfuscates mailto in HTML (`[email protected]`), same as footer.
+- `https://iconiaglobal.com/pages/privacy-policy` still the universal privacy policy.
+
+**Current state:** Live ToS usable for consent screen. Privacy unchanged.
+
+**Next steps:** Paste terms URL into Google Cloud OAuth consent if not already; publish consent to Production. Android OAuth client + SHA-1 still separate.
+
+**Blockers / risks:** None for ToS text. Host DB credentials stay on the server (`main-local.php`); not in this repo.
 
 ### 2026-09-03 — Overlay / layout audit + fix (Nord)
 
