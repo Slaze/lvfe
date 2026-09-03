@@ -2,14 +2,27 @@ package com.lvfe.xperience
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
 import android.net.Uri
 import android.graphics.Color
 import android.os.Bundle
 import android.provider.MediaStore
 import android.view.View
+import android.util.Base64
 import android.webkit.GeolocationPermissions
+import androidx.credentials.CredentialManager
+import androidx.credentials.GetCredentialRequest
+import androidx.lifecycle.lifecycleScope
+import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
+import kotlinx.coroutines.launch
+import org.json.JSONObject
 import android.webkit.JavascriptInterface
 import android.webkit.PermissionRequest
 import android.webkit.ValueCallback
@@ -45,6 +58,26 @@ class MainActivity : AppCompatActivity() {
     private var webMediaRequest: PermissionRequest? = null
     private var permLaunching = false
     private var launchAsked = false
+
+    private var sensorManager: SensorManager? = null
+    private var rotationSensor: Sensor? = null
+    private var headingListening = false
+    @Volatile private var deviceHeadingDeg: Float = Float.NaN
+    private val rotationMatrix = FloatArray(9)
+    private val orientationAngles = FloatArray(3)
+
+    private val headingListener = object : SensorEventListener {
+        override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
+        override fun onSensorChanged(event: SensorEvent?) {
+            if (event == null || event.sensor.type != Sensor.TYPE_ROTATION_VECTOR) return
+            SensorManager.getRotationMatrixFromVector(rotationMatrix, event.values)
+            SensorManager.getOrientation(rotationMatrix, orientationAngles)
+            // azimuth: radians, -π…π, 0 = north, clockwise positive in our map convention
+            var deg = Math.toDegrees(orientationAngles[0].toDouble()).toFloat()
+            deg = (deg + 360f) % 360f
+            deviceHeadingDeg = deg
+        }
+    }
 
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
@@ -96,12 +129,25 @@ class MainActivity : AppCompatActivity() {
 
         @JavascriptInterface
         fun startArCamera() {
-            runOnUiThread { bindRearPreview(CameraSelector.DEFAULT_BACK_CAMERA) }
+            runOnUiThread {
+                startHeadingUpdates()
+                bindRearPreview(CameraSelector.DEFAULT_BACK_CAMERA)
+            }
         }
 
         @JavascriptInterface
         fun stopArCamera() {
-            runOnUiThread { unbindRearPreview() }
+            runOnUiThread {
+                stopHeadingUpdates()
+                unbindRearPreview()
+            }
+        }
+
+        /** Device heading in degrees clockwise from north, or -1 if unknown. */
+        @JavascriptInterface
+        fun getDeviceHeading(): Double {
+            val h = deviceHeadingDeg
+            return if (h.isNaN()) -1.0 else h.toDouble()
         }
 
         @JavascriptInterface
@@ -114,6 +160,14 @@ class MainActivity : AppCompatActivity() {
             runOnUiThread {
                 bindRearPreview(if (on) CameraSelector.DEFAULT_FRONT_CAMERA else CameraSelector.DEFAULT_BACK_CAMERA)
             }
+        }
+
+        @JavascriptInterface
+        fun googleSignInReady(): Boolean = googleConfigured()
+
+        @JavascriptInterface
+        fun signInWithGoogle() {
+            runOnUiThread { startGoogleSignIn() }
         }
 
         @JavascriptInterface
@@ -175,6 +229,24 @@ class MainActivity : AppCompatActivity() {
         }
         loadGame()
         requestAllLaunchPerms()
+        sensorManager = getSystemService(Context.SENSOR_SERVICE) as? SensorManager
+        rotationSensor = sensorManager?.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
+    }
+
+    private fun startHeadingUpdates() {
+        val sm = sensorManager ?: return
+        val sensor = rotationSensor ?: return
+        if (headingListening) return
+        headingListening = true
+        sm.registerListener(headingListener, sensor, SensorManager.SENSOR_DELAY_GAME)
+    }
+
+    private fun stopHeadingUpdates() {
+        if (!headingListening) return
+        headingListening = false
+        try {
+            sensorManager?.unregisterListener(headingListener)
+        } catch (err: Exception) { /* */ }
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -204,6 +276,12 @@ class MainActivity : AppCompatActivity() {
 
         webView.addJavascriptInterface(NativeBridge(), "LvfeNative")
         webView.setBackgroundColor(Color.TRANSPARENT)
+        webView.addOnLayoutChangeListener { _, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom ->
+            if (right - left != oldRight - oldLeft || bottom - top != oldBottom - oldTop) {
+                notifyMapFit(webView)
+                webView.postDelayed({ notifyMapFit(webView) }, 50)
+            }
+        }
 
         webView.webViewClient = object : WebViewClient() {
             override fun shouldInterceptRequest(
@@ -217,6 +295,10 @@ class MainActivity : AppCompatActivity() {
                 if (hasLocationPermission()) allowWebGeo(null)
                 requestAllLaunchPerms()
                 notifyPagePerms()
+                notifyMapFit(view)
+                view?.post { notifyMapFit(view) }
+                view?.postDelayed({ notifyMapFit(view) }, 80)
+                view?.postDelayed({ notifyMapFit(view) }, 400)
             }
         }
 
@@ -418,6 +500,11 @@ class MainActivity : AppCompatActivity() {
         else request.deny()
     }
 
+    private fun notifyMapFit(view: WebView? = null) {
+        val wv = view ?: if (this::webView.isInitialized) webView else return
+        wv.evaluateJavascript("window.lvfeFitMap&&window.lvfeFitMap()", null)
+    }
+
     private fun notifyPagePerms() {
         if (!this::webView.isInitialized) return
         val loc = if (hasLocationPermission()) "1" else "0"
@@ -513,6 +600,99 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
+    private fun googleWebClientId(): String = getString(R.string.google_web_client_id).trim()
+
+    private fun googleConfigured(): Boolean {
+        val id = googleWebClientId()
+        if (id.isEmpty()) return false
+        if (id.contains("REPLACE", ignoreCase = true) ||
+            id.contains("YOUR_", ignoreCase = true) ||
+            id.contains("PASTE", ignoreCase = true)
+        ) {
+            return false
+        }
+        return id.endsWith(".apps.googleusercontent.com")
+    }
+
+    private fun startGoogleSignIn() {
+        if (!googleConfigured()) {
+            notifyGoogleSignIn(
+                JSONObject()
+                    .put("ok", false)
+                    .put("code", "oauth_not_configured")
+                    .put("title", "Google sign-in is not wired yet.")
+                    .put(
+                        "message",
+                        "Paste a Web OAuth client ID into google-auth.config.js and strings.xml google_web_client_id. Android package com.lvfe.xperience. SHA-1 from the debug keystore. Do not add Maps SDK, Places, or Photorealistic 3D.",
+                    ),
+            )
+            return
+        }
+        lifecycleScope.launch {
+            try {
+                val option = GetGoogleIdOption.Builder()
+                    .setFilterByAuthorizedAccounts(false)
+                    .setServerClientId(googleWebClientId())
+                    .setAutoSelectEnabled(false)
+                    .build()
+                val request = GetCredentialRequest.Builder()
+                    .addCredentialOption(option)
+                    .build()
+                val cm = CredentialManager.create(this@MainActivity)
+                val result = cm.getCredential(this@MainActivity, request)
+                val google = GoogleIdTokenCredential.createFrom(result.credential.data)
+                val parsed = parseIdToken(google.idToken)
+                if (parsed == null) {
+                    notifyGoogleSignIn(
+                        JSONObject()
+                            .put("ok", false)
+                            .put("code", "bad_token")
+                            .put("message", "Google token did not parse."),
+                    )
+                    return@launch
+                }
+                notifyGoogleSignIn(
+                    JSONObject()
+                        .put("ok", true)
+                        .put("sub", parsed.first)
+                        .put("email", parsed.second)
+                        .put("idToken", google.idToken),
+                )
+            } catch (err: Exception) {
+                notifyGoogleSignIn(
+                    JSONObject()
+                        .put("ok", false)
+                        .put("code", "native_fail")
+                        .put("message", err.message ?: "Google sign-in failed."),
+                )
+            }
+        }
+    }
+
+    private fun parseIdToken(token: String?): Pair<String, String>? {
+        if (token.isNullOrBlank()) return null
+        return try {
+            val parts = token.split(".")
+            if (parts.size < 2) return null
+            val body = String(
+                Base64.decode(parts[1], Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING),
+            )
+            val obj = JSONObject(body)
+            val sub = obj.optString("sub")
+            if (sub.isBlank()) null else sub to obj.optString("email")
+        } catch (err: Exception) {
+            null
+        }
+    }
+
+    private fun notifyGoogleSignIn(payload: JSONObject) {
+        if (!this::webView.isInitialized) return
+        webView.evaluateJavascript(
+            "window.lvfeOnGoogleSignIn&&window.lvfeOnGoogleSignIn($payload)",
+            null,
+        )
+    }
+
     companion object {
         private const val WEB_ORIGIN = "https://appassets.androidplatform.net"
     }
@@ -528,6 +708,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         arPreviewOn = false
+        stopHeadingUpdates()
         try {
             cameraProvider?.unbindAll()
         } catch (err: Exception) { /* */ }

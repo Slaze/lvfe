@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Lvfe — Catalog</title>
   <link rel="stylesheet" href="css/lvfe.css" />
+  <link rel="stylesheet" href="css/switch.css" />
 </head>
 <body>
   <div class="nav">
@@ -19,12 +20,17 @@
   </div>
   <div class="wrap">
     <p class="sub">Same place file as a map pin. Toggle which sections you need. Banks and ATMs cannot be owned.</p>
-    <div class="sec-toggles" id="secToggles">
-      <label><input type="checkbox" data-sec="place" checked /> Place</label>
-      <label><input type="checkbox" data-sec="mission" checked /> Mission</label>
-      <label><input type="checkbox" data-sec="land" checked /> Land</label>
-      <label><input type="checkbox" data-sec="money" checked /> Money</label>
-      <label><input type="checkbox" data-sec="wallet" checked /> Wallet</label>
+    <div class="sec-toggles sw-stack" id="secToggles">
+      <label class="sw-row">Place
+        <input type="checkbox" class="sw" role="switch" data-sec="place" aria-checked="true" checked /></label>
+      <label class="sw-row">Mission
+        <input type="checkbox" class="sw" role="switch" data-sec="mission" aria-checked="true" checked /></label>
+      <label class="sw-row">Land
+        <input type="checkbox" class="sw" role="switch" data-sec="land" aria-checked="true" checked /></label>
+      <label class="sw-row">Money
+        <input type="checkbox" class="sw" role="switch" data-sec="money" aria-checked="true" checked /></label>
+      <label class="sw-row">Wallet
+        <input type="checkbox" class="sw" role="switch" data-sec="wallet" aria-checked="true" checked /></label>
     </div>
     <div class="filters">
       <label>Search<input type="search" id="qSearch" placeholder="Name, type, neighbourhood" /></label>
@@ -64,6 +70,7 @@
   <div id="toast" hidden></div>
   <script src="js/lvfe-assets.js"></script>
   <script src="js/claim-rules.js"></script>
+  <script src="js/conquest.js"></script>
   <script src="js/dossier.js"></script>
   <script src="js/track-guide.js"></script>
   <script src="nairacoin/protocol.js"></script>
@@ -71,6 +78,7 @@
   <script src="nairacoin/rpc-stub.js"></script>
   <script src="js/nairacoin.js"></script>
   <script src="js/place-ledger.js"></script>
+  <script src="js/photo-store.js"></script>
   <script src="js/catalog.js"></script>
 </body>
 </html>

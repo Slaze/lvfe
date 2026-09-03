@@ -14,17 +14,24 @@ Location-based territorial game. World data from OpenStreetMap (no paid Google M
 - `scripts/ingest_places.py` — Overpass → cluster 80 m → `data/lvfe.sqlite`; points outside all polygons get `territory_id=unclaimed`.
 - `scripts/claim_points.py` — min stake: `round(BASE[type] * QUALITY[q] * ROLE[role])`, min 1. Not claim XP.
 - `scripts/export_catalog.py` — sqlite/geojson → `data/catalog.json` + `data/catalog.csv` (ownable **min stake**; bank/atm **0**).
-- `web/index.html` — MapLibre + OpenFreeMap **GMaps-style chrome**: full-bleed map, top search pill, CSS bottom sheet (**hidden until pin tap**). **SAT / MAP FAB** (top of the right stack) toggles free **Esri World Imagery** raster (`web/js/satellite.js`, `{z}/{y}/{x}`) over Liberty streets. No `setStyle`. Pins, gold walk, 80 m ring, you-dot re-attach via `reattachOverlays` / idempotent `ensureLayers`. Hybrid OSM road names optional (profile ⋯). Fail banner **Satellite couldn’t load** → stay on streets. Pin tap opens a **paper file / dossier** (`.sheet.doc`, ~70vh) with **Place / Mission / Land / Money / Wallet** tabs (tap or horizontal swipe). Wallet **Pay** is `disabled` unless GPS and `dist <= 80`. Track chip + gold OSRM walk line + 80 m pay ring. × + swipe-down close. **Open file or tracking:** map `movestart`/`dragstart` do **not** `closeSheet`. Idle map still auto-hides. No left `.panel`, no always-on `#hud`, no MapLibre Popup, no OSM/Esri wordmark on the map (About only). ⋯ is a **profile menu** (How to play, My assets, catalog, name switcher). Default pitch **0**. 80 m GPS; photo + NairaCoin. **localStorage, not a shared world.**
-- `web/js/satellite.js` — Esri World Imagery overlay; SAT FAB; never billed Google tiles; never `setStyle`.
-- `web/rules.html` — player How to play (walk, photo, NairaCoin, 80 m, highest backer owns, faction, Pay gate, beep/track, AR, catalog, banks).
+- `web/index.html` — MapLibre + OpenFreeMap **GMaps-style chrome**: full-bleed map, top search pill + **gold seal stamp** (opens account sheet), CSS bottom sheet (**hidden until pin tap**). **SAT / 3D / AR** are LTR/RTL slide switches on-map (`role="switch"`, green `#34c759` on / gray `#9aa0a6` off). **GPS is a locate action**, not a switch. `ensureLayers` uses valid `addLy({` (seven `addLy({)` SyntaxErrors fixed). `window.lvfeFitMap` → `map.resize()` after style/load, SAT toggle, `visualViewport`/`orientationchange`/`window.resize`, and delayed boot (WebView). Esri World Imagery `{z}/{y}/{x}` overlay (no `setStyle`). **Unclaimed named pins = red X** (`places-x`, `#ff3b30`); **unknown (quality D / civic_unknown / unmapped) = black X** (`places-x-unknown`, `#111111`); **owned pins = circle** (`places-circles`, self `#1d8cff` vs other/faction color). Invisible `places-hit` keeps taps at z12.2. Pins / green walk / 80 m ring / you-dot re-attach via `reattachOverlays`; hybrid OSM labels in account **Map pins**; fail banner **Satellite couldn’t load**. Pin tap opens a **paper file / dossier** (`.sheet.doc` compact peek **34vh**, expand `.sheet.doc-exp` **70vh**) with **Place / Mission / Land / Money / Wallet** tabs (44px). Wallet **Pay** is `disabled` unless GPS and `dist <= 80`. Track chip + green OSRM walk line + 80 m pay ring. ▴ / handle expands; × + swipe-down close fully. Idle map still auto-hides (`display:none`). Profile stamp → **grouped account sheet** (`#accountSheet`: You / Play / Map pins / This phone + Google + export/import + **Sync now**). No left `.panel`, no always-on `#hud`, no MapLibre Popup, no OSM/Esri wordmark on the map (About only). Default pitch **0**. 80 m GPS; photo + NairaCoin. **localStorage cache + optional cloud save** (`SAVE_API_BASE` / `?saveApi=`). Reinstall still wipes unless Export save **or** cloud sync. **Sign in with Google** fails loud until Web client ID is pasted (Identity OAuth only — no Maps SKUs).
+- `server/` — zero-dep Node save API (`PORT` default **18787**). `GET/PUT /v1/save/:playerKey`. Conflict: **last-write-wins** by `pack.updatedAt`. Auth: `Bearer lvfe-dev:<playerKey>` when `LVFE_ALLOW_DEV_AUTH=1`; `SAVE_SECRET`; `google:<id_token>` when `GOOGLE_WEB_CLIENT_ID` set (else production Gmail fails loud). Photos: max 8, dataURL >~400KB → meta-only; body ≤2.5 MiB. Env: see `server/.env.example` + `server/README.md`. Optional Netlify: `netlify.toml` + `netlify/functions/save.js`.
+- `web/js/save-api.config.js` / `save-sync.js` — client pull after boot, push on stake/identity (debounced), offline queue, Export/Import kept.
+- `web/js/google-auth.config.js` / `google-auth.js` / `account.js` — placeholder `WEB_CLIENT_ID`; native `LvfeNative.signInWithGoogle` on Android; unique username ≠ email; save pack `lvfe.save.v1` + `updatedAt`.
+- `web/js/photo-store.js` — visit photo bytes in IndexedDB on Pay confirm; discard on sheet close / cancel; sync may send small dataURLs.
+- `web/js/field-claim.js` — catalog bbox is Enugu; GPS fly-to; outside bbox → hinterland + OSM footprints + **world Overpass** merge. No planet download.
+- `web/js/world-catalog.js` — viewport Overpass (~0.012° pad) outside Enugu; rate-limit 45s; cell cache 30 min; mirrors overpass-api.de + kumi; quality tiers match ingest; banks/ATMs not ownable; fail banner → hinterland.
+- `web/js/conquest.js` — neighbourhood owned-count bonus: `displayValue = baseValue * (1 + 0.5 * count/max)`; hinterland `unclaimed` bonus 0. Does not mint into `rec.value`. **Unknown** (quality D / `civic_unknown` / `unmapped`) `baseValue = max(ledger, 100)` so it is the top quality tier; named empty stays 0. Red X `#ff3b30` vs black unknown `#111111`.
+- `web/js/satellite.js` — Esri World Imagery overlay; SAT switch; never billed Google tiles; never `setStyle`. Source `maxzoom` **18** (Enugu z19 is Esri empty plate); raster **layer** `maxzoom` 24 so street zoom overscales last rooftops. `map.resize()` after style load and SAT toggle.
+- `web/rules.html` — player How to play (walk, photo, NairaCoin, 80 m, highest backer owns, faction, neighbourhood value bonus, Pay gate, beep/track, AR, catalog, banks, world Overpass).
 - `web/assets.html` + `web/js/assets.js` — owned/backed places, visit interest (10%), gap vs next backer; dossier-style section toggles.
 - `web/js/dossier.js` — one place-file HTML builder for map + catalog.
-- `web/js/track-guide.js` — marked pin, AudioContext + `navigator.vibrate` pulse, OSRM walking (geodesic + 5 km/h fail-open). Gold `guide-line` / `guide-casing` + 80 m `pay-ring`. `line-join`/`line-cap` live in **layout**. `ensureLayers` adds missing layers even if the GeoJSON source already exists.
-- `web/js/claim-rules.js` — `placeTitle` (`"-"` / `undefined` / `Unnamed civic_unknown` → type words).
-- `android/…/MainActivity.kt` — FrameLayout: CameraX `PreviewView` (PERFORMANCE / SurfaceView) behind the WebView. On `onCreate` / first load, request **FINE + COARSE + CAMERA** if missing (skip OS dialog when granted). AR: software WebView layer + transparent CSS so the preview punches through. JS does not add a second grant wall; location grant auto-starts MapLibre geo.
+- `web/js/track-guide.js` — marked pin, AudioContext + `navigator.vibrate` pulse, OSRM walking (geodesic + 5 km/h fail-open). Bright green `guide-line` `#00e676` / `guide-casing` `#00c853` + gold 80 m `pay-ring` (unchanged). `line-join`/`line-cap` live in **layout**. `ensureLayers` adds missing layers even if the GeoJSON source already exists.
+- `web/js/claim-rules.js` — `placeTitle` (`"-"` / `undefined` / `Unnamed civic_unknown` → type words). `isUnknownPlace` = quality D / `civic_unknown` / `unmapped`.
+- `android/…/MainActivity.kt` — FrameLayout: CameraX `PreviewView` (PERFORMANCE / SurfaceView) behind the WebView. On `onCreate` / first load, request **FINE + COARSE + CAMERA** if missing (skip OS dialog when granted). AR: software WebView layer + transparent CSS so the preview punches through. **`LvfeNative.getDeviceHeading()`** from rotation vector while AR runs. JS does not add a second grant wall; location grant auto-starts MapLibre geo. After `onPageFinished` / layout change / short delay, `evaluateJavascript` `lvfeFitMap()` so the MapLibre canvas matches `#map`. **Google Sign-In** via Credential Manager + `google_web_client_id` (empty placeholder). File chooser: gallery + `ACTION_IMAGE_CAPTURE` → `cacheDir/capture/visit.jpg`. No Play Maps SDK.
 - `web/catalog.html` — same dossier as pin tap; section toggles (Place / Mission / Land / Money / Wallet); compact list (not table-only). Default **My places**.
-- `web/ar-overlay.js` — map-page AR (not `ar.html`). **Nord/Android:** CameraX `PreviewView` under a transparent WebView (`LvfeNative.startArCamera`); no getUserMedia (rear WebView stream is #000). `#arThree` hidden. HTML pins (FOV + compass). Marked-pin HUD (`#arTrackHud`) live metres + heading every tick, even outside 80 m. Empty-range / GPS-off copy, × → map. **Desktop:** visible `<video id="arCam">` (opacity 1); canvas2d `drawImage` optional via `lvfeArUseCanvas`. Pin labels do **not** touch `LvfeCatalogWallet` (`W`). `web/ar.html` leftover.
-- `web/map-3d.js` / `web/map-3d.css` — pitch/tilt, OSM-true Liberty extrusion (no 9 m city), AWS/Mapzen Terrarium DEM + hillshade, **3D buildings** toggle (not AR). Boots on **style-ready** (not only `load`). 3D FAB pressed iff toggle on **or** `getPitch() > 1` (unpressed at boot pitch 0). Not stale `lvfe.map3d.v2`. No Three.js.
+- `web/ar-overlay.js` — map-page AR (not `ar.html`). **Nord/Android:** CameraX `PreviewView` under a transparent WebView (`LvfeNative.startArCamera`); no getUserMedia (rear WebView stream is #000). `#arThree` hidden. HTML pin glyphs (red X / black unknown / claimed circles) within **~120 m**, FOV + compass (native heading preferred). Marked-pin HUD (`#arTrackHud`) live metres + heading every tick. Debug: `?arMock=1` or `localStorage.lvfe.arMock=1` places a mock pin ~45 m north. Empty-range / GPS-off copy, × → map. **Desktop:** visible `<video id="arCam">`. Pin labels do **not** touch `LvfeCatalogWallet` (`W`). `web/ar.html` leftover.
+- `web/map-3d.js` / `web/map-3d.css` — **one** `#btn3d` switch (green only when live 3D: pitch ~52 + terrain). Tap 3D from idle 12.2 → pitch 52 **and zoom ≥ 14.2**. Every OSM footprint is a box (tagged height/levels; untagged **OMT 5 m**; cap 80). **SAT-off opacity 1** (solid box city). **SAT+3D opacity 0.35** (ghost walls so draped Esri roofs read). SAT restacks above Liberty beige, under extrusion, under pins. 2D `building` fill hidden while extruded. No skip-filter. Terrain **1.0×** + sky; DEM fail → banner, switch off, stay flat. Labels `text-pitch-alignment: viewport`. Pins billboard (X/circle); no −16 px; no chimney poles. NavigationControl `visualizePitch` off. No Google 3D SKU. No Three.js.
 - `data/places.geojson` — typed pins. Place value/owner live in `lvfe.places.v1`.
 - `web/js/lvfe-assets.js` — URL helper so `/data` and `/geojson` work from the python server **and** the APK (`https://appassets.androidplatform.net/assets/www/`).
 - `android/` — debug WebView APK (`com.lvfe.xperience`, minSdk 24). `sync-www.sh` bundles `web/` + `data/places.geojson` + `data/catalog.json` + `geojson/enugu-factions.geojson` + MapLibre JS/CSS. OpenFreeMap tiles still need the network. No Google Maps SDK. Not the Don Maseratte shop.
@@ -69,8 +76,408 @@ Location-based territorial game. World data from OpenStreetMap (no paid Google M
 - 2026-09-02: Independent re-score of `c2cb1cc7` / `46b2a779` vs builder `6bbb8245` / Nord `bea6919f` 23:03 — **pass**. P0-3 and P0-6 closed on live WebView CDP. No remaining P0s on this gate.
 - 2026-09-03: Independent critic — satellite toggle vs Google Maps satellite feel. **FAIL.** Feature absent on disk.
 - 2026-09-03: SAT/MAP FAB + Esri World Imagery overlay; How to play + My assets; profile ⋯. Closed critic `d819a262` absence.
+- 2026-09-03: Independent satellite vs GMaps re-score of builder `d85b8646` / commit `87a7e44` / Nord 05:34 APK — **FAIL.** Map JS does not parse (`addLy({)`). SAT is a sticker. Esri tiles themselves are live rooftops.
+- 2026-09-03: Unclaimed map pins are X; owned pins are circles (self vs other color). Neighbourhood with most owned places boosts display value / cost-to-back (max +50%).
+- 2026-09-03: Independent critic — 3D map vs Google Maps 3D feel (switch + extrusion + DEM). **FAIL.** No Photorealistic 3D SKU. Free MapLibre path still a tilted paper city.
+- 2026-09-03: 3D box city for critic `a07cc0ab`: every footprint extruded (untagged 5 m), zoom ≥ 14.2, terrain 1.0× + sky, one `#btn3d` switch.
+- 2026-09-03: Independent satellite vs GMaps re-score of builder `01f3fae6` / Nord 05:44 APK vs last FAIL `fd537fd2` — **FAIL.** Parse is closed. SAT paints Enugu at z12 in a 400×300 postage stamp; z17 showed Esri empty-tile copy.
+- 2026-09-03: SAT critic `dd0212ef` P0s: `map.resize()` full-bleed canvas; Esri source maxzoom 18 (overzoom rooftops; do not fetch z19 empty plate).
+- 2026-09-03: Independent SAT vs GMaps re-score of builder `be0a49ea` / Nord 05:56 APK vs last FAIL `dd0212ef` — **PASS.** Full-bleed canvas + street-zoom rooftops (not z19 empty plate).
+- 2026-09-03: Independent GMaps 3D re-score of builder `533ca9ea` / Nord 05:56 APK vs last FAIL `a07cc0ab` — **pass.** Loop-exit 1–6 all true on live WebView + adb screencap.
+- 2026-09-03: $0 photoreal-look — drape Esri SAT on Terrarium + ghost extrusion (0.35) when SAT+3D; SAT-off stays solid boxes. Not Google Photorealistic 3D.
+- 2026-09-03: Independent SAT-on-terrain + ghost-walls critic of builder `c92a3d55` / Nord 06:16 APK — **PASS.** Photo ground through 0.35 boxes; SAT-off still solid; SAT-on 3D-off full-bleed; X pins; no Google SKU.
+- 2026-09-03: Auth is device-local (username + faction). Gmail Sign-In UI + Android Credential Manager with **placeholder** Web client ID (fails loud). Photo bytes IndexedDB on Pay confirm. GPS fly-to + hinterland claim outside Enugu catalog.
+- 2026-09-03: Map chrome — green OSRM walk (`#00e676` / `#00c853`); unclaimed named red X (`#ff3b30`); unknown quality D black X (`#111111`) + display/cost floor 100.
+- 2026-09-03: Place-tap dossier opens at **34vh** peek (map majority); expand to **70vh** via ▴ / handle / swipe-up; × / swipe-down closes fully.
+- 2026-09-03: Menu/nav — gold seal stamp + grouped account sheet; closed incomplete `365af887` chrome (missing `bindAccountSwipe`).
+- 2026-09-03: Server-backed saves (`server/` + optional Netlify), AR pin overlays with native heading, world Overpass catalog outside Enugu.
 
 ## Sessions
+
+### 2026-09-03 — Server saves + AR pins + world catalog (ordered delivery)
+
+**Goal:** (1) Progress survives reinstall / cross-device via save API. (2) AR shows pin glyphs on CameraX when within claim range. (3) Outside Enugu, named Overpass POIs near GPS. Then commit+push to `Slaze/lvfe`. Zero billed Google Maps SKUs. Do not revert SAT 0.35 / green walk / red·black X / dossier 34·70 / account sheet / Esri / `addLy({` / `lvfeFitMap` / CameraX / hinterland / photo IDB.
+
+**What changed:**
+- `server/index.js` + `.env.example` + `README.md` + `test.js` — localhost save API on **18787**; LWW by `updatedAt`; `lvfe-dev:` auth; Google token path fails loud until `GOOGLE_WEB_CLIENT_ID`.
+- `netlify.toml` + `netlify/functions/save.js` — optional deploy (env: `SAVE_SECRET`, `LVFE_ALLOW_DEV_AUTH=0`, `GOOGLE_WEB_CLIENT_ID`).
+- `web/js/save-api.config.js`, `save-sync.js`; `account.js` `updatedAt`; `index.html` pull/push/queue/Sync now.
+- `web/ar-overlay.js` + `MainActivity.kt` `getDeviceHeading` — FOV billboards ~120 m; glyphs match map; `?arMock=1` debug pin ~45 m north.
+- `web/js/world-catalog.js` + `field-claim.js` — Overpass viewport outside Enugu bbox; cache + rate-limit; hinterland fallback.
+- Tests: `scripts/test_save_world_ar.js`; `server/test.js`; existing account/conquest/etc.
+
+**Why:** Local-only saves wiped on reinstall. AR had live camera but unverified building pins. Hinterland alone was unnamed outside Enugu. Chose Node+files (simplest verify) over inventing FTP; Netlify as optional host.
+
+**How verified:**
+- `node server/test.js` + curl PUT/GET round-trip on `:18787` ok.
+- `node scripts/test_save_world_ar.js` + account/conquest/track/sat/map3d ok.
+- Live Overpass Lagos `6.52,3.38` → **74** features (e.g. Chicken Republic/food/B).
+- `./gradlew assembleDebug` SUCCESS; `adb -s bea6919f install -r` Success; **`lastUpdateTime=2026-09-03 07:12:49`**.
+
+**Current state:** Cloud save works when `SAVE_API_BASE` / `?saveApi=` / `localStorage.lvfe.saveApiBase` points at `http://<lan>:18787` (or Netlify). Default APK has empty base → local+Export only until configured. AR heading bridged; mock pin for desk test. World catalog live outside Enugu.
+
+**Env vars (recap):** `PORT`, `SAVE_SECRET`, `LVFE_ALLOW_DEV_AUTH`, `GOOGLE_WEB_CLIENT_ID`, `SAVE_DIR`, `MAX_BODY_BYTES` (server); Netlify same names via site UI / `Netlify.env`.
+
+**Next steps:** Human sets Google Web client ID + (optional) Netlify deploy / LAN save URL on Nord. Walk within 80 m of a real pin with AR on, or use `arMock=1`. Simulate GPS outside Enugu (`?lat=&lon=`) for named Overpass pins.
+
+**Blockers / risks:** Google Web client ID still empty — production Gmail sync/sign-in fails loud by design. Public save host not deployed (local `server/` verified). Cleartext HTTP from WebView to LAN may need cleartext permission if using http://LAN (document; prefer HTTPS Netlify for production).
+
+### 2026-09-03 — Menu + navigation critic/builder (resume after `365af887`)
+
+**Goal:** Critic → fix P0s → Nord install → re-score map-game nav (GMaps / Pokémon GO class). Do not revert green walk / red X / black unknown / SAT ghost 0.35 / Google auth / photo-store / field-claim. Merge with place-dossier compact peek (~28–40%) — do not revert.
+
+**Critic P0s (pre-fix, disk after dead agent `365af887`):**
+1. **`bindAccountSwipe` called but never defined** — `bindChrome()` threw; GPS / SAT / 3D / AR / sheet handlers after that call never bound.
+2. **Account hero dead** — `paintProfileMenu` still wrote `#menuWho` (removed from DOM); seal/name/coin/stamp never updated.
+3. **`#btnGoogleSignInSheet` unwired** — Google button in the new sheet did nothing.
+4. **Handle / tab targets &lt; 44px** — 36×4 drag pills; compact doc tabs had been forced to **36px**.
+
+Not P0 here (sibling / preserved): place `.sheet.doc` **34vh** + `.doc-exp` **70vh**; green walk / red+black X / SAT 0.35.
+
+**What changed:**
+- `web/index.html` — `bindAccountSwipe` (swipe-down dismiss); `paintProfileMenu` paints stamp/seal/name/coin/Google note; wired sheet Google button; About + identity-edit close account first; 44px handle hit areas; dossier tabs **min-height 44px**; `layoutFabs` prefers measured sheet height.
+- Left sibling place-sheet heights / expand control alone.
+- No commit/push.
+
+**Why:** Prior agent shipped account-sheet markup but died mid-JS. Completing that sheet + unblocking `bindChrome` was the smallest path to the six gates.
+
+**How verified:**
+- `node --check` inline script ok; `./gradlew assembleDebug` SUCCESS; `adb -s bea6919f install -r` + `am force-stop`.
+- **`lastUpdateTime=2026-09-03 06:53:40`** (reinstall after sibling dossier peek merge).
+- Nord CDP + PNG `/tmp/lvfe-nav-rescore/{idle,menu,doc}-final.png`: idle sheet height 0; account sections You/Play/Map pins/This phone; handles/rows ≥44–48px; pin dossier **34%** + five tabs tabH **44**; SAT/3D toggle; APK still `#00e676` + `SAT_EXTRUSION_OPACITY=0.35`.
+
+**Current state:** **PASS** on the six menu/nav gates. Map-first idle. On-map SAT/3D/AR/GPS. Grouped account sheet. Motion ~240ms + swipe dismiss. Place peek from sibling intact.
+
+**Next steps:** Tap gold seal → account → ×/swipe; tap pin → ~⅓ paper file → ▴ expand. Optional: rename device test identity off “The Architect” (localStorage, not chrome copy).
+
+**Blockers / risks:** Google Web client ID still empty — Sign in fails loud by design.
+
+### 2026-09-03 — Dossier sheet compact peek (map stays majority)
+
+**Goal:** Place-tap popup was covering ~70% of the Nord screen so the player could not see pins / walk line / SAT context. Open at a compact peek (~28–40vh), allow expand for full tabs, keep idle `display:none`, keep movestart from closing while dossier/track is open.
+
+**What changed:**
+- `web/index.html` only (surgical; did not rewrite sibling account/⋯ sheet work):
+  - CSS: `.sheet.doc` **34vh** peek; new `.sheet.doc-exp` **70vh** expand; shared paper dossier chrome on both; scroll height `calc(*vh - 44px)` to match 44px sheet-bar; ▴ `#sheetExpand` control.
+  - JS: `openPlacePopup` → `setSheet("doc")` (preserves `doc-exp` on GPS refresh); `toggleDocSheet`; handle / ▴ toggle peek↔expand; × + swipe-down still `closeSheet()`; swipe-up from peek expands; `layoutFabs` uses 0.34 / 0.70; `setSheet` removes/adds `doc-exp`; idle still `collapsed` + `hidden` + `display:none`.
+- `web/js/dossier.js` unchanged (HTML builder only).
+
+**Why:** Root cause was CSS/JS opening straight to `.sheet.doc { height: 70vh }`. Rejected rewriting the whole sheet/nav; kept existing collapsed/peek/half/full modes and dossierPinned movestart guard.
+
+**How verified:**
+- Inline map script parse OK; assets synced via `./gradlew assembleDebug`.
+- `adb -s bea6919f install -r` + `am force-stop`.
+- CDP on Nord (~423×882): peek **ratio 0.34** (300px); expand **0.70** (617px); collapse back 0.34; movestart leaves sheet open; × → `display:none` height 0. Screencap `/tmp/lvfe-sheet-peek.png`.
+- **`lastUpdateTime=2026-09-03 06:50:41`**.
+
+**Current state:** Place tap = map-majority peek. Expand available. Close clears. Pay/photo/80 m logic untouched (same dossier HTML + claim button). Sibling nav/account sheet edits left in place.
+
+**Next steps:** Player: tap any pin → confirm sheet is ~⅓ screen with map above; tap ▴ (or handle / swipe up) → full tabs; × closes with no blank dark panel.
+
+**Blockers / risks:** OpenFreeMap style may be slow to load on cold start (unrelated); CDP place-source open needs loaded places — height modes verified by forcing `setSheet` when tiles lag.
+
+### 2026-09-03 — Map chrome: green walk / red X / black unknown
+
+**Goal:** Walk-to-pin line reads as bright green (not gold) on Liberty and Esri SAT. Unclaimed named pins are red X. Unknown (quality D / unidentified) pins are black X and the highest-value quality tier. Do not revert SAT drape, ghost walls, `addLy({`, `lvfeFitMap`, Esri `{z}/{y}/{x}`, CameraX AR, Pay-on-geolocate.
+
+**What changed:**
+- `web/js/track-guide.js` — `guide-line` `#00e676`, `guide-casing` `#00c853`. Pay fill/ring stay gold/orange. `line-join`/`line-cap` still in **layout**. `ensureLayers` still retries when the GeoJSON source already exists.
+- `web/js/conquest.js` — unclaimed X `#ff3b30`. Unknown mark `owner_mark=unknown`, color `#111111`. `isUnknownPlace` = quality D **or** `civic_unknown` **or** `unmapped` (not quality C unnamed shops). `baseValue` for unknown = `max(rec.value, 100)`; named empty still 0. `displayValue` / `costToBack` then apply neighbourhood bonus (hinterland still 0). Ledger `rec.value === sum(stakes)` unchanged.
+- `web/js/claim-rules.js` — `isUnknownPlace`; `qualityWords("D")` = "Unknown building".
+- `web/index.html` — canvas `lvfe-x` red + `lvfe-x-unknown` black (light halo so SAT reads). Layer `places-x-unknown`. Hit layer still fat. Filter/click/3D restack include the new layer. AR glyph red / black.
+- `web/js/dossier.js` — unstaked unknown shows `N NairaCoin · no one has backed this yet` (floor is not a fake stake).
+- `web/map-3d.js` / `web/js/satellite.js` — stack `places-x-unknown`. SAT drape / 0.35 ghost / solid boxes untouched.
+- `web/ar-overlay.js` / `web/rules.html` — black unknown glyph; player copy says green line, red X, black unknown.
+- `scripts/claim_points.py` — `QUALITY["D"]` 0.55 → **1.6** (above A 1.25) for future ingest. Live map uses the JS floor 100, not a catalog re-export. Baked geojson still has old D `claim_points` (8 / 10 on the two civic_unknown rows).
+
+**Why:** Gold walk fought SAT roofs and Liberty beige. White X looked like labels. Unknown vs unclaimed was already quality D / `civic_unknown` (2 pins: `w_760009591` Emene, `w_1059375680` Ogui) — did not invent a class or paint quality C red-as-black. Rejected: merging unknown into red X; minting the floor into `rec.value`.
+
+**How verified:**
+- `node scripts/test_track_layers.js` / `test_conquest.js` / `test_place_title.js` / `test_satellite.js` / `test_map_3d.js` ok. Inline `node --check` via those scripts. 0 `addLy({)`.
+- `./gradlew clean assembleDebug` SUCCESS (first assemble hit stale dex `graph.bin`; clean rebuilt). APK `assets/www` has green line, red/black X, `places-x-unknown`.
+- `adb -s bea6919f install -r` Success; `am force-stop`; **`lastUpdateTime=2026-09-03 06:34:50`**.
+- CDP optional this pass (not run). Phone walk: track a pin → green line; named unclaimed → red X; the two D buildings → black X.
+
+**Current state:** Walk line green. Named unclaimed red X. Quality D unidentified black X + display/cost floor 100 (150 in a winning neighbourhood). Claimed still circles. SAT+3D ghost 0.35 and SAT-off solid boxes left as-is.
+
+**Next steps:** Nord: SAT on then off — green walk on both; red X dense; jump to Emene `w_760009591` / Ogui `w_1059375680` for black X. Open an unknown dossier: Money should show 100 (or 150) + “no one has backed this yet”.
+
+**Blockers / risks:** Only **2** quality-D pins in the 1044-row catalog, so black X is rare. Catalog.json / places.geojson `claim_points` for those two still use old QUALITY D 0.55 until re-ingest; JS floor 100 is what the player sees. Black X uses a light halo so it reads on SAT; do not drop the halo.
+
+### 2026-09-03 — Auth, Gmail path, photos, claim outside Enugu
+
+**Goal:** Answer how auth/records/photos work; ship smallest Gmail + reinstall-survival path (no fake login); store confirmed photos locally; let players outside Enugu see their GPS and claim hinterland. Zero billed Google Maps SKUs. Do not revert SAT/3D/X-circles.
+
+**What changed:**
+- `web/js/google-auth.config.js` — empty `WEB_CLIENT_ID`; console steps (Web client ID, Android SHA-1, package `com.lvfe.xperience`). Identity OAuth only.
+- `web/js/google-auth.js` — Sign in with Google. Native WebView first. GIS only if a real client ID exists. Never pretends success.
+- `web/js/account.js` — unique username; Google `sub` → `g{sub}` player key; export/import pack (`lvfe.save.v1`: identity, places/stakes, IOU wallets, faction pool, field pins).
+- `web/js/photo-store.js` — pending file in RAM; Pay confirm → IndexedDB; sheet close / cancel discards. No Cloud upload.
+- `web/js/field-claim.js` — Enugu catalog bbox; outside → `Unclaimed area` at GPS + nearby on-screen OSM footprints. No planet download.
+- `web/index.html` — identity gate Google button + blocker copy; ⋯ Export/Import save; geolocate `flyToUser`; visit Pay confirms photo.
+- `android/…/MainActivity.kt` + `strings.xml` `google_web_client_id` empty; Credential Manager Google ID token; `LvfeNative.signInWithGoogle`.
+- `web/rules.html` — record / photo confirm / outside-Enugu GPS.
+- `scripts/test_account_photo_field.js`.
+
+**Why:** Auth was username-only localStorage (`lvfe.identity.{playerKey}`). Photos were metadata-only (bytes dropped). Map defaulted to Enugu `[7.515, 6.45]`; catalog is Enugu-only so Lagos/London had nothing to claim. Rejected: fake Gmail login, Maps/Places keys, server accounts without console IDs.
+
+**How verified:** `node scripts/test_account_photo_field.js` ok; `test_satellite.js` / `test_map_3d.js` / `test_conquest.js` / `test_track_layers.js` / `test_place_title.js` / `test_nairacoin_ledger.js` / `test_endowment.js` ok. `./gradlew assembleDebug` SUCCESS. `adb -s bea6919f install -r` Success; **`lastUpdateTime=2026-09-03 06:34:01`**. APK `assets/www/js/` includes account.js, google-auth*.js, photo-store.js, field-claim.js. No commit/push.
+
+**Current state:**
+- **Auth today:** no accounts. Unique name + optional faction in localStorage. Wallet `lvfe.nc.iou.v1.{playerKey}` (demo faucet 100). Places `lvfe.places.v1`. **Reinstall = wipe.** Android backup may restore WebView storage; do not rely on it.
+- **Gmail:** button ships; tap fails loud with console steps until Web client ID is pasted in two files. After OAuth: `sub` is account key; player still picks a unique **name** (not email).
+- **Photos:** CameraX/file chooser → `<input capture>`. Confirm = Pay with image. Discard = × sheet, cancel camera, non-image, GPS/80 m fail (bytes never committed).
+- **Outside Enugu:** GPS flies to you. Outside catalog bbox (~3 km pad around bundled pins) you get a claimable hinterland X. Worldwide named catalog still needs Overpass ingest (**blocker**).
+
+**Next steps:** Human pastes Web client ID + creates Android OAuth client (SHA-1, `com.lvfe.xperience`). Rebuild APK. Tap Sign in with Google. Optional later: server save keyed by `sub`.
+
+**Blockers / risks:** Google Cloud OAuth client IDs are empty — login cannot succeed until a human creates them. Catalog expansion beyond Enugu is not this pass (hinterland pin only). Credential Manager needs Play Services.
+
+### 2026-09-03 — Independent SAT-on-terrain + ghost walls critic (builder `c92a3d55` / Nord 06:16, no code)
+
+**Goal:** Harsh PASS/FAIL of SAT drape + ghost walls vs Google-ish photo-over-hills *feel*. Free MapLibre + Esri + Terrarium only. No billed Photorealistic 3D. Do not implement. Do not push.
+
+**What changed:** Docs only (this recap). No `web/` / `android/` edits.
+
+**Why:** Builder `c92a3d55` claimed SAT-off extrusion opacity **1**, SAT+3D **0.35**, restack Liberty → `esri-sat` → `building-3d` → pins via `lvfeSyncSat3d`, no `setStyle`, Esri `{z}/{y}/{x}`, maxzoom 18/24, installed `lastUpdateTime=2026-09-03 06:16:18`. Score the live Nord WebView + adb PNG, not the claim.
+
+**How verified:**
+- Disk `web/map-3d.js`: `SAT_EXTRUSION_OPACITY=0.35`, `SOLID_EXTRUSION_OPACITY=1`, `restackSat3d` + `lvfeSyncSat3d`. `web/js/satellite.js`: Esri `{z}/{y}/{x}`, source maxzoom **18**, layer **24**, `setOn`/`failToStreets` call `lvfeSyncSat3d`. 0 `setStyle(`. `node --check` both ok. APK zip: no `play-services-maps` / `gms/maps` / `maps.googleapis`.
+- Nord `bea6919f`: `am force-stop` + `am start` `com.lvfe.xperience/.MainActivity`. `dumpsys lastUpdateTime=2026-09-03 06:16:18` (matches builder). Canvas **424×882** (buffer 1081×2249) — not the old 400×300 stamp.
+- Boot CDP (SAT leftover on, 3D off): `satVis=visible`, src max 18 / layer 24, Esri `{z}/{y}/{x}`, `places-x` + `places-circles` present, 0 google scripts / Network photoreal hosts.
+- SAT **on** + 3D Independence/New Haven z15.6 pitch **52**: CDP `fill-extrusion-opacity=0.35`, `esri-sat` idx **110** / `building-3d` **111** / `places-x` **118**, terrain `{lvfe-dem, 1}`, 2D `building` none, SAT+3D switches `aria-checked=true`. Adb PNG `/tmp/lvfe-sat3d-critic/sat-on-3d-b.png` (2.8 MB) + map crop `sat-on-3d-b-map.png` + fabs `sat-on-3d-b-fabs.png`: photo trees/ground/roofs visible **through** soft beige boxes; SAT green / 3D green; X pins on top; Independence Layout / Rangers / Okpara. Not opaque paper city. Not Esri empty plate.
+- SAT **off** + 3D same GPS z16.2 pitch 52: CDP opacity **1**, `esri-sat` visibility **none**. PNG `/tmp/lvfe-sat3d-critic/sat-off-3d.png` (558 KB) + `sat-off-3d-fabs.png`: solid beige box city, Liberty paper ground, SAT gray / 3D green, readable streets.
+- SAT **on**, 3D **off**: PNG `/tmp/lvfe-sat3d-critic/sat-on-3d.png` (2.4 MB) + `sat-on-3d-fabs.png`: full-bleed Esri photo (trees/roofs/roads), SAT green / 3D gray, X pins, Independence Layout. No 3D boxes. Previous SAT critic does not regress. (Later critic re-`setOn` tripped the 8 s SAT fail-watch → `sat-on-2d.png` 284 KB Liberty — discarded as critic artifact, not a product fail.)
+- X pins: `places-x` layer + bitmap X on SAT+3D and SAT-on 3D-off. No Google SKU.
+
+**Current state:** **PASS.** All four gates true on the 06:16 Nord APK. SAT+3D is photo ground + ghost walls. SAT-off 3D is still a solid box city. SAT-on 3D-off stays full-bleed. Pins X. Not Shoprite facades / not Google Photorealistic 3D.
+
+**Remaining P0s:** none on this gate.
+
+**Next steps:** None for SAT-on-terrain + ghost walls. Optional: claim one pin so circles paint next to X; street walk for DEM/Esri under a moving GPS.
+
+**Blockers / risks:** Terrarium AWS + Esri + OpenFreeMap need network. Ghost walls are still OSM boxes. CDP WebGL screenshots black — adb PNG is the evidence. Phone lock / shade can zero later caps. Re-invoking `LvfeSatellite.setOn(true)` while already on resets the 8 s tile watch and can `failToStreets` — UI toggle is `toggle()`, not a remaining P0.
+
+### 2026-09-03 — $0 photoreal-look (SAT drape + ghost walls)
+
+**Goal:** When SAT and 3D are both on, Enugu should read as a tilted aerial photo over hills, with buildings as soft/ghost walls so roofs are the SAT photo. Not Google Photorealistic 3D. Not Shoprite facades.
+
+**What changed:**
+- `web/map-3d.js` — `SOLID_EXTRUSION_OPACITY=1` (SAT-off box city). `SAT_EXTRUSION_OPACITY=0.35` when SAT+3D. `restackSat3d` moves `esri-sat` above Liberty beige, then `building-3d` above SAT, then pins/game. `lvfeSyncSat3d` on SAT toggle and 3D toggle. After `setTerrain`, re-`ensure` SAT so the raster drapes on Terrarium (MapLibre drapes rasters when terrain is live; no `setStyle`). Pitch 52, sky, `setLight`, vertical-gradient kept. No hillshade (would fight SAT). DEM fail path unchanged (flat, switch off, banner).
+- `web/js/satellite.js` — `setOn` / `failToStreets` call `lvfeSyncSat3d`. Source maxzoom **18**, layer **24**, URL `{z}/{y}/{x}` unchanged. No `setStyle`.
+- `scripts/test_map_3d.js` / `scripts/test_satellite.js` — ghost-opacity + restack checks.
+
+**Why:** SAT+3D on the 05:56 APK was opaque beige boxes covering the photo (`moveLayer(building-3d)` over SAT at opacity 1). Drape is free once terrain is on; ghost walls let SAT roofs show through. Rejected: Google/Cesium 3D Tiles, Mapbox Standard, scraped Earth, hillshade, SAT above walls (hides ghost silhouettes).
+
+**How verified:**
+- `node --check` map-3d.js + satellite.js; `node scripts/test_map_3d.js` ok (inline `node --check`); `test_satellite.js` / `test_conquest.js` / `test_track_layers.js` ok. 0 `addLy({)`.
+- `./gradlew assembleDebug` SUCCESS. `adb -s bea6919f install -r` Success; `am force-stop`; **`lastUpdateTime=2026-09-03 06:16:18`**.
+- Nord CDP: SAT+3D Independence/New Haven — `fill-extrusion-opacity=0.35`, `esri-sat` idx 110 / `building-3d` 111 / `places-x` 118, pitch 52, terrain `{lvfe-dem, 1}`, 2D `building` none, canvas **424×882**. SAT-off + 3D: opacity **1**, `esri-sat` none, solid boxes (`/tmp/lvfe-3d-solid.png`). SAT+3D screencap `/tmp/lvfe-sat3d-z16b.png` (2.8 MB): SAT vegetation/ground + ghost boxes + X; SAT and 3D switches green.
+
+**Current state:** SAT still Esri overlay. 3D still one `#btn3d`. SAT+3D = photo ground + 0.35 walls. SAT-off + 3D = solid box city. Pins X/circles, no chimneys. Not photoreal facades.
+
+**Next steps:** Player walk: SAT on, then 3D, Independence Layout / New Haven at street zoom — roofs should read as photo through soft boxes. SAT off should snap back to solid beige city.
+
+**Blockers / risks:** Terrarium AWS + Esri + OpenFreeMap need network. Ghost walls are still OSM boxes (no Shoprite facades). CDP WebGL screenshots black — adb PNG is the evidence. Phone lock / shade can zero later caps.
+
+### 2026-09-03 — Independent GMaps 3D re-score (builder `533ca9ea` / Nord 05:56, no code)
+
+**Goal:** Harsh pass/fail of critic `a07cc0ab` loop-exit vs Google Maps 3D *feel*. Free MapLibre only. No billed Photorealistic 3D. Do not implement.
+
+**What changed:** Docs only (this recap). No `web/` / `android/` edits.
+
+**Why:** Last FAIL was skip-filter + idle z12.2 empty tilt, no sky, 1.7× DEM, poles/−16, second `visualizePitch` control. Builder `533ca9ea` claimed every footprint extruded (untagged 5 m), tap 3D → zoom ≥14.2 pitch 52, terrain 1.0 + sky, one `#btn3d`, billboard pins. Score the installed APK, not the claim.
+
+**How verified:**
+- Disk `web/map-3d.js` SHA = APK `assets/www/map-3d.js`. `UNTAGGED_M=5`, no `hasTrueHeightExpr` / `unknownFootprintFilter`, opacity 1, `ZOOM_3D=14.2`, `TERRAIN_EXAGGERATION=1.0`, `setSky`, `visualizePitch: false`. `node scripts/test_map_3d.js` ok (regex only — not the score). Gradle: CameraX + WebView; `google()` is Maven. No Play Maps SDK / `maps.googleapis`.
+- Nord `bea6919f` `lastUpdateTime=2026-09-03 05:56:44` (builder said 05:55; same APK). CDP: boot pitch 0, `#btn3d` gray, 0 `.maplibregl-ctrl-pitch`, canvas **424×882**. Tap 3D: zoom **14.2**, pitch **52**, switch green, `building-3d` visible, 2D `building` none, terrain `{lvfe-dem, 1}`, `getSky()` set, labels `text-pitch-alignment: viewport` (27/27), pins viewport `[0,0]`, no `place-poles`. `map.fire('click')` → dossier **Clara Beauty Salon**. Resource log: 0 google/mapbox/photoreal hosts.
+- Adb PNG (lock-black 15 KB discarded): idle `/tmp/lvfe-nord-3d-idle2.png` 3D gray, dense X, SAT leftover on. Play tap `/tmp/lvfe-nord-3d-play2.png` pitch ~52, sky band, extruded boxes, X billboards, 3D green. Independence z16 SAT-on `/tmp/lvfe-nord-3d-ind2.png` beige boxes + X. **Liberty-only** `/tmp/lvfe-nord-3d-liberty.png` (SAT off, `esri-sat` none): New Haven packed 5 m tan prisms, Independence sparser, street labels (Chime / Link / Second / Valley), X along Chime, 3D green / SAT gray.
+
+**Current state:** **Pass.** Loop-exit 1–6 all true. Last-fail P0s (skip-city, sky/DEM, pins, second control, map-aligned labels, pitch-only ease) closed on the 05:56 APK. Still OSM boxes, not Google’s photoreal mesh.
+
+**Remaining P0s:** none on this gate.
+
+**Next steps:** None for 3D-vs-GMaps. Geolocate can flatten pitch and gray the switch while extrusion stays on — not a remaining P0.
+
+**Blockers / risks:** Terrarium AWS + OpenFreeMap need network. Phone lock yields 15 KB black screencaps. `queryRenderedFeatures` on extrusion+terrain undercounts (6–15) vs the bitmap city.
+
+### 2026-09-03 — Independent SAT vs GMaps re-score (builder `be0a49ea` / Nord 05:56, no code)
+
+**Goal:** Harsh PASS/FAIL of the two SAT P0s from critic `dd0212ef` vs Google Maps satellite *feel* (full-bleed photo, street zoom shows roofs). Zero Google Maps SKUs. Esri World Imagery only. Do not implement. Do not revert 3D / X / circles / AR / Pay / guide-line layout join-cap.
+
+**What changed:** Docs only (this recap). No `web/` / `android/` edits.
+
+**Why:** Builder `be0a49ea` claimed both P0s fixed and installed (`lastUpdateTime=2026-09-03 05:56:44`). Score the live Nord WebView + adb screencap, not the claim.
+
+**How verified:**
+- `adb -s bea6919f` `lastUpdateTime=2026-09-03 05:56:44`. `am force-stop` + `am start` `com.lvfe.xperience/.MainActivity`. NotificationShade blocked `exec-out` (0 B); `screencap` to `/sdcard` + collapse shade worked.
+- Code + bundled `app-debug.apk` `assets/www`: source `maxzoom` **18**, layer **24**, Esri `{z}/{y}/{x}`, `window.lvfeFitMap` → `map.resize()`, SAT click + style/load + visualViewport / orientationchange / delayed boot, Android `notifyMapFit` after `onPageFinished` (+80/400 ms) + layout. 0 `addLy({)`. No `setStyle` on SAT toggle.
+- Nord CDP (`lvfeMap` ready): canvas **424×882** matches `#map` 424×882 (buffer 1081×2249). Previous FAIL was **400×300** on ~882 px `#map`. `srcMaxzoom` 18, `layerMax` 24. `lvfeFitMap` is a function.
+- SAT **off** street zoom (jump 6.4268, 7.5222 z17.2): Liberty streets — Isiuzor Street / Independence Layout. Screencap `/tmp/lvfe-sat-critic/sat-off-z17.png` (468 KB). SAT switch gray. City boot `/tmp/lvfe-sat-critic/boot.png` (1.7 MB): full-bleed Liberty + dense unclaimed **X**.
+- SAT **on** same GPS z17.4: SAT green, `visibility=visible`, `isSourceLoaded=true`, fail banner hidden. Screencap `/tmp/lvfe-sat-critic/sat-on-z17.png` (2.1 MB): full-bleed photo — trees, roads, ground texture; **not** the pale Esri “Map data not yet available” plate. Map-band luma 127.7 / chroma 42 vs SAT-off luma 231.7 / chroma 17 (vector pale, not empty-plate pale-on-SAT).
+- SAT on later neighbourhood `/tmp/lvfe-sat-critic/sat-on-z12b.png` (3.9 MB): rooftops + vegetation + roads + dense **X** pins. First z12 pull `/tmp/lvfe-sat-critic/sat-on-z12.png` (15 KB) was lock-black — discarded. CDP WebGL still unusable; adb PNG is the evidence.
+- Pins: `places-x` + `places-circles` layers + filters intact (`owner_mark` `x` vs `self`/`other`). This Nord profile: **1044/1044** `owner_mark=x`, 0 claimed → 0 circles painted (not a revert). SAT on z14.2: **337** rendered X.
+
+**Current state:** **PASS.** Both `dd0212ef` P0s closed on the installed 05:56 Nord APK. SAT is a full-bleed Esri photo overlay at city and street zoom. Liberty streets remain when SAT is off. No Google Maps SKU.
+
+**Remaining P0s:** none on this SAT gate.
+
+**Next steps:** None for SAT critic `dd0212ef`. Optional: claim one pin on this profile so circles paint next to X; 3D critic still separate (box city, not photoreal mesh).
+
+**Blockers / risks:** Esri/OSM need network. Phone lock / NotificationShade still zeros `exec-out` screencap. CDP `Page.captureScreenshot` blacks WebGL — do not treat that as missing tiles.
+
+### 2026-09-03 — SAT full-bleed + Esri maxzoom 18 (critic `dd0212ef`)
+
+**Goal:** Close two P0s from independent SAT vs GMaps FAIL. Do not revert X/circles or 3D (`map-3d.js`). Do not reintroduce `addLy({)`.
+
+**What changed:**
+- `web/js/satellite.js` — raster **source** `maxzoom` 19 → **18** (Enugu GPS `tile/19/…` is 2521 B empty plate; `tile/18/126382/136549` is 10 KB rooftops). Raster **layer** `maxzoom` 24 so z16–18 still paint and overscale z18. Tile URL still `{z}/{y}/{x}`. `map.resize()` after style.load and SAT on/off.
+- `web/index.html` — `window.lvfeFitMap` → `map.resize()`. Hooks: style.load, load, SAT click, `window.resize`, `orientationchange`, `visualViewport.resize`, delayed 0/60/200/500/1200 ms. `#map` width/height 100%. Left `places-x`, `visualizePitch: false`, `addLy({`.
+- `android/…/MainActivity.kt` — `notifyMapFit` after `onPageFinished` (+ 80/400 ms) and WebView `OnLayoutChangeListener`.
+- `scripts/test_satellite.js` — MAXZOOM 18, layer 24, resize hooks, Android fit.
+
+**Why:** MapLibre inited at default 400×300 because WebView layout lagged; no `resize()`. At GPS z17.71, covering zoom (~zoom+1, rounded) requested **z19**; Esri returns HTTP 200 “Map data not yet available”. Clamping native zoom to 18 overzooms last good rooftops. Did not flip `{z}/{x}/{y}`.
+
+**How verified:**
+- GPS 6.4268,7.5222 curl: z16 19 KB, z17 14 KB, z18 10 KB rooftop JPEGs; z19 2521 B empty plate.
+- `node scripts/test_satellite.js` ok; `node scripts/test_map_3d.js` ok; `node scripts/test_conquest.js` ok. Inline 0 `addLy({)`.
+- `./gradlew assembleDebug` SUCCESS. APK `assets/www`: MAXZOOM 18, `{z}/{y}/{x}`, `lvfeFitMap`, `places-x`, `visualizePitch: false`.
+- `adb -s bea6919f install -r` Success; `am force-stop`; `lastUpdateTime=2026-09-03 05:56:44`. No push.
+
+**Current state:** SAT still Esri overlay (not `setStyle`). Canvas should fill `#map` after resize hooks. Street zoom should show z18 rooftops scaled, not the empty plate. 3D box-city + X/circle pins left intact. Critic re-score of full-bleed SAT at GPS zoom is still due (no Nord screencap this pass).
+
+**Next steps:** Nord walk: SAT on at GPS street zoom — rooftops full-bleed, pins tappable, no Esri empty copy. Re-score critic `dd0212ef` those two P0s only.
+
+**Blockers / risks:** Esri/OSM need network. CDP WebGL screenshots black — use adb screencap. Phone lock can zero later captures.
+
+### 2026-09-03 — 3D box city (critic `a07cc0ab` loop-exit)
+
+**Goal:** Close independent 3D-vs-GMaps FAIL. Free MapLibre only. Untagged buildings are **5 m boxes** (a city), not skipped 2D / not a 9 m lie.
+
+**What changed:**
+- `web/map-3d.js` — extrude every footprint (`hide_3d` only skip). Height: OSM `height` / `levels` / `building:levels`, else `render_height` (includes 5 m sentinel), else **5 m**. Cap 80. Opacity 1. Hide 2D `building` fill while on. Terrain 1.0× + `setSky` + light. DEM fail → `#demFail` “Terrain couldn’t load”, switch off, pitch 0. `#btn3d` green only when toggle + pitch + terrain live. Tap 3D zooms to ≥ 14.2. Pins: viewport billboards, translate `[0,0]`, poles removed. Labels `text-pitch-alignment: viewport`.
+- `web/map-3d.css` — `#demFail` banner; hide `.maplibregl-ctrl-pitch`.
+- `web/index.html` — `visualizePitch: false`; `#btn3d` toggles the checkbox only (not `pitched || checked`). SAT / switches / `addLy({` / `places-x` left intact.
+- `scripts/test_map_3d.js` — critic checks + `node --check`.
+
+**Why:** Skip-filter deleted Liberty’s city (beige slab at pitch 52). Empty tilt must not go green. One 3D control. Pins must stay tappable X/circles.
+
+**How verified:** `node scripts/test_map_3d.js` ok. `node scripts/test_satellite.js` ok (inline parse, 0 `addLy({)`). `./gradlew assembleDebug` SUCCESS. `adb -s bea6919f install -r` Success; `am force-stop`; `lastUpdateTime=2026-09-03 05:55:19`. APK `map-3d.js` has `UNTAGGED_M = 5`, opacity 1, zoom 14.2; index keeps `places-x` + `visualizePitch: false`.
+
+**Current state:** 3D switch builds a 5 m box city at z≥14.2 with terrain + sky. Off = north-up pitch 0.
+
+**Next steps:** Nord: idle 12.2 → 3D → Independence Layout / New Haven z16 pitch 52 must show boxes + sky + terrain, not a slab. Pin tap X/circle still opens dossier.
+
+**Blockers / risks:** Terrarium AWS + OpenFreeMap need network. Not photorealistic (no billed Google/Mapbox mesh).
+
+### 2026-09-03 — Independent satellite vs GMaps re-score (`01f3fae6` / Nord 05:44, no code)
+
+**Goal:** Harsh pass/fail of SAT vs Google Maps satellite. Last FAIL `fd537fd2` was `addLy({)` killing the map. Do not implement.
+
+**What changed:** Docs only (this recap). No `web/` / `android/` edits.
+
+**Why:** Builder `01f3fae6` claimed `addLy({`, `node --check` pass, SAT green/gray switch, Nord APK 05:44. Score the installed APK and live WebView, not the claim.
+
+**How verified:**
+- Working tree + pulled APK `assets/www/index.html`: 0 `addLy({)`; extracted inline `node --check` exit 0 (63365 chars). HEAD `87a7e44` still has the seven typos — fix is uncommitted; 05:44 APK has the fix (`lastUpdateTime=2026-09-03 05:44:15`).
+- `LvfeSatellite.bind` + `#btnSat` click → `toggle()`. Esri `{z}/{y}/{x}`, scheme `xyz`, no `.setStyle(`. Gradle: CameraX + WebView only.
+- Esri Enugu 6.45,7.515 and GPS 6.4268,7.5222 z12–18 HTTP 200 JPEG 10–19 KB rooftops. Swapped `{z}/{x}/{y}` is the 1.6–2.5 KB empty tile.
+- Nord `bea6919f` CDP: `lvfeMap` object, style ready, 1 canvas, `esri-sat` present. SAT click → `aria-checked=true`, `visibility=visible`, `isSourceLoaded=true`, sat under pins (`satIdx` 62 / `pinIdx` 119).
+- Adb boot: Liberty streets, SAT gray. After SAT + jump Enugu z12.2: real imagery + colored pins + New Haven/Enugu labels, SAT green (`/tmp/lvfe-nord-sat-z12.png`). First SAT at GPS z17.71: pale Esri **Map data not yet available** in the 400×300 strip (`/tmp/lvfe-nord-sat-z17.png`).
+- Canvas `client` 400×300 vs `#map` 423×882. No `map.resize()`. Rest of the phone is FrameLayout `#0e1116` through a transparent WebView.
+- Pin after SAT: `map.fire('click')` on `w_1066222371` National Orientation Agency → sheet `.doc` Place tab; SAT still on; `places-circles` still there.
+
+**Current state:** **FAIL.** Parse P0 is closed. SAT is a real switch and can paint Enugu at city zoom. It is not Google Maps satellite: the WebGL canvas is a postcard, street zoom showed Esri’s empty-tile plate, z16–18 rooftops were not shown full-bleed on the Nord.
+
+**Remaining P0s:**
+1. **Canvas never fills the map.** `#map` is `inset:0` (882 px). MapLibre canvas stays default **400×300**. No `map.resize()`. SAT/streets only occupy the top strip. GMaps satellite is full-bleed.
+2. **z12–18 imagery not proven in-app.** z12 SAT is rooftops. Player-GPS z17 SAT painted Esri’s “Map data not yet available” even though `tile/18/126382/136549` HTTP is a 10 KB roof JPEG. Do not flip tile order — template is already `{z}/{y}/{x}`. Find why MapLibre showed the empty plate.
+3. Not P0 (closed): inline parse; SAT bind/toggle; no Google SKU; no `setStyle` wipe; pin dossier still opens after SAT on.
+
+**Next steps:** Builder must `map.resize()` until the canvas matches `#map`, then SAT at Enugu z12 **and** z16–18 must show rooftops on a Nord screencap (not CDP WebGL-black). Re-score those two only.
+
+**Blockers / risks:** Phone lock killed later adb screencaps (0 bytes). CDP `Page.captureScreenshot` blacks the WebGL canvas — do not treat that as missing tiles.
+
+### 2026-09-03 — X vs circle pins + neighbourhood conquest value
+
+**Goal:** Unclaimed pins draw an X; any owner is a circle (self vs other by color). Neighbourhood with the most owned places raises place value / cost-to-back automatically.
+
+**What changed:** `web/js/conquest.js` (`displayValue = base * (1 + 0.5 * ownedCount/max)`; hinterland 0). Map `places-x` symbol + `places-circles` owned-only; `places-hit` still tappable at z12.2. Dossier Money + catalog list/cost. Rules one sentence. AR HTML glyphs match. SAT/`addLy({` parse left intact.
+
+**Why:** Ownership is still highest NairaCoin in that place; conquest bonus is a display/cost multiplier, not minted ledger value.
+
+**How verified:** `node scripts/test_conquest.js`; `node scripts/test_satellite.js` (`node --check` inline, 0 `addLy({)`). `./gradlew assembleDebug` SUCCESS. `adb -s bea6919f install -r` Success; `am force-stop`; `lastUpdateTime=2026-09-03 05:51:33`. APK `assets/www` has `conquest.js` + `places-x`.
+
+**Current state:** Unclaimed = X, owned = circle. Winner neighbourhood +50%, others proportional.
+
+**Next steps:** Nord walk: X at z12.2 taps dossier; back a place → circle in your blue; Money tab shows boosted cost.
+
+**Blockers / risks:** Esri/OSM need network.
+
+### 2026-09-03 — Independent 3D vs GMaps 3D feel (no code)
+
+**Goal:** Harsh pass/fail of `#btn3d` + OSM extrusion + Terrarium DEM vs Google Maps 3D *feel*. Read-only. No billed Google Photorealistic 3D.
+
+**What changed:** Docs only (this recap). No `web/` / `android/` edits.
+
+**Why:** GMaps 3D is smooth pitch, a box/terrain city, sky, readable labels, pins that stay findable, **one** 3D control. Builder claimed OSM-true Liberty extrusion + AWS Terrarium + green/gray 3D switch. Score that stack, not the claim.
+
+**How verified:** Read `web/map-3d.js`, `web/map-3d.css`, `web/index.html` 3D switch + Map ctor, `web/css/switch.css`, `web/js/satellite.js` / `track-guide.js` stacking. Fetched live OpenFreeMap Liberty JSON: stock `building-3d` is `fill-extrusion` **all** footprints at minzoom 14 via `render_height` (OMT 5 m untagged boxes). No device/browser run this pass.
+
+**Current state:** **FAIL.** Switch chrome is green/gray. Extrusion filter **removes** Liberty’s box city. DEM is optional and silent. No sky. Two pitch UIs. Pins are −16 px / 24 m chimneys at z≥14.
+
+**Remaining P0s:** See critic report (P0-1 skip-untagged + z14 / idle z12.2 empty; P0-2 no sky + 1.7× DEM + swallowed fail; P0-3 pins lost; P0-4 NavigationControl `visualizePitch` second 3D control; P0-5 map-aligned labels; P0-6 3D `easeTo` pitch-only).
+
+**Next steps:** Builder loop-exit on free MapLibre only (OpenFreeMap, Terrarium, OSM/OMT heights). Re-score when all P0s closed. Do not add Google Map Tiles Photorealistic 3D.
+
+**Blockers / risks:** Enugu OSM `height` / `building:levels` is sparse — untagged must still be short boxes (OMT 5 m), not paper. AWS Terrarium needs network + WebGL CORS.
+
+### 2026-09-03 — P0 `addLy({)` parse + LTR/RTL switches (critic `fd537fd2`)
+
+**Goal:** Map boots again; SAT/3D/AR and other on/off controls become green/gray slide switches. GPS stays locate.
+
+**What changed:** `web/index.html` `ensureLayers` seven `addLy({)` → `addLy({`. SAT/3D/AR/hybrid/filters/mute/Track + catalog/assets section checkboxes → `role="switch"` (`web/css/switch.css`). GPS locate FAB unchanged. `scripts/test_satellite.js` now `node --check`s the inline script.
+
+**Why:** SyntaxError left `lvfeMap` undefined; SAT was dead chrome. Switches replace round FABs/checkboxes without faking GPS as a mode.
+
+**How verified:** `node --check` extracted + APK inline scripts (0 `addLy({)` leftovers). `node scripts/test_satellite.js` (now syntax-checks inline). `./gradlew assembleDebug` SUCCESS. `adb -s bea6919f install -r` Success; `am force-stop`; `lastUpdateTime=2026-09-03 05:44:15`.
+
+**Current state:** Inline script parses. SAT is a switch over Esri `{z}/{y}/{x}`. GPS is locate.
+
+**Next steps:** Nord walk: Liberty → Esri rooftops, pin tap, gold route, Pay gate.
+
+**Blockers / risks:** Esri/OSM need network.
+
+### 2026-09-03 — Independent satellite vs GMaps re-score (`87a7e44`, no code)
+
+**Goal:** Harsh pass/fail of SAT/MAP vs Google Maps satellite. Read disk + Nord. Do not implement.
+
+**What changed:** Docs only (this recap). No `web/` / `android/` edits.
+
+**Why:** Last FAIL `d819a262` was “no toggle.” Builder `d85b8646` claimed SAT/MAP FAB, Esri overlay, hybrid in profile, pins/route survive, fail toast, commit `87a7e44`, Nord APK 05:34. Score the installed APK and HEAD, not the claim.
+
+**How verified:**
+- HEAD `87a7e44` (2026-09-03 05:35 +0100). Nord `bea6919f` `com.lvfe.xperience` `lastUpdateTime=2026-09-03 05:34:42`. Bundled APK `assets/www/index.html` has the same seven `addLy({)` as disk.
+- `web/js/satellite.js`: Esri `tile/{z}/{y}/{x}`, no `.setStyle(`, no Google host. `#btnSat` SAT/MAP FAB in HTML. Hybrid checkbox in ⋯. `#satFail` banner. About credits Esri.
+- Nord WebView CDP: `SyntaxError: Unexpected token ')'` at `index.html` ~2126. `window.lvfeMap` undefined. `#map` 0 children, 0 MapLibre canvases. `#btnSat.click()` leaves `aria-pressed=false`, `LvfeSatellite.isOn()=false`, no fail banner. `node --check` of the inline script fails on `addLy({)`.
+- Boot screencap `/tmp/lvfe-nord-boot.png` (05:37): search pill + SAT/3D/AR/GPS FABs over a dark void. No streets, no pins, no imagery.
+- Esri Enugu 6.45,7.515: `{z}/{y}/{x}` z12–18 HTTP 200 (14 / 16 / 19 / 19 / 19 / 16 / 12 KB JPEG). z16 `…/tile/16/31591/34136` is real rooftops/roads/trees — not grey. Wrong order `{z}/{x}/{y}` is the 2.5 KB “Map data not yet available” grey tile. Tile math in `satellite.js` is the good order.
+- `node scripts/test_satellite.js` prints ok (false green: regexes HTML, never parses `ensureLayers`).
+- SKU: no `maps.googleapis` / `play-services-maps` / Maps SDK in `web/` or `android/` (gradle `google()` is Maven). CameraX + WebView only.
+
+**Current state:** **FAIL.** SAT chrome exists. The map never starts. Imagery overlay never attaches. Pins never exist to tap. Builder tests lie.
+
+**Remaining P0s:**
+1. **Map script dead.** Seven `addLy({)` in `ensureLayers` (`index.html` 2127, 2142, 2153, 2160, 2176, 2205, 2217). Introduced in `87a7e44` while making `addLayer` idempotent. First call `addLy({` is valid. Fix: `addLy({` then object, or the map (and every prior GMaps pass) stays dark.
+2. **SAT is not a control.** Click handler is in the unparseable inline script. FAB does not toggle, does not fail-to-streets, does not paint MAP.
+3. **No app imagery at Enugu z12–18.** Esri tiles are fine; MapLibre never mounts them. Do not “fix” tile order — it is already `{z}/{y}/{x}`.
+4. **Pins not tappable after SAT** — pins never paint. Overlay-under-pins / `raiseGame` is untested because nothing boots.
+
+Not P0 (already clean): no Google Maps SKU; `satellite.js` does not `setStyle`. Hybrid-in-profile is HTML-only until bind runs.
+
+**Next steps:** Builder must make `index.html` parse, prove MapLibre canvas + Liberty streets, then SAT → Esri rooftops at z12 and z16–18, pin tap still opens the dossier, gold walk still paints. Re-score on Nord CDP + screencap. Do not trust `test_satellite.js` until it `node --check`s the inline script.
+
+**Blockers / risks:** None for a one-character parse fix. Screen was asleep after the boot shot; lock-screen recapture is not map evidence.
 
 ### 2026-09-03 — Satellite FAB + profile rules/assets (critic `d819a262`)
 

@@ -1,0 +1,18 @@
+[build]
+  publish = "web"
+  functions = "netlify/functions"
+
+# Optional: host the static web/ on Netlify and proxy save API.
+# Set SAVE_SECRET, LVFE_ALLOW_DEV_AUTH=0, GOOGLE_WEB_CLIENT_ID in the site UI.
+# Client: localStorage lvfe.saveApiBase = https://<site>
+
+[[redirects]]
+  from = "/v1/save/*"
+  to = "/.netlify/functions/save?key=:splat"
+  status = 200
+  force = true
+
+[[headers]]
+  for = "/v1/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"

@@ -44,7 +44,16 @@
   function qualityWords(q) {
     if (q === "A") return "Has a photo";
     if (q === "B") return "Named";
+    if (q === "D") return "Unknown building";
     return "Needs a name";
+  }
+
+  /** Quality D / unidentified / unmapped — not a named catalog shop. */
+  function isUnknownPlace(p) {
+    if (!p) return false;
+    const q = String(p.quality || "");
+    const t = String(p.catalog_type || p.type || "");
+    return q === "D" || t === "civic_unknown" || t === "unmapped";
   }
 
   /** Player copy: never show "-" / empty / undefined. */
@@ -165,6 +174,7 @@
     TYPE_LABELS,
     qualityLabel,
     qualityWords,
+    isUnknownPlace,
     wordOr,
     noOwnerYet,
     walkMinutes,

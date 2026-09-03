@@ -16,3 +16,32 @@ label.row .cube {
   line-height: 1.3;
   max-width: 220px;
 }
+#demFail {
+  position: absolute;
+  z-index: 15;
+  left: 12px;
+  right: 12px;
+  top: calc(68px + env(safe-area-inset-top, 0px));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: #161b22;
+  color: #e8edf4;
+  border: 1px solid #2a3340;
+  border-radius: 12px;
+  padding: 10px 6px 10px 14px;
+  font-size: 14px;
+}
+#demFail[hidden] { display: none !important; }
+#demFailClose {
+  width: 44px;
+  height: 44px;
+  border: 0;
+  background: transparent;
+  color: #e8edf4;
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+}
+.maplibregl-ctrl-pitch { display: none !important; }

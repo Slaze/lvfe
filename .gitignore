@@ -7,3 +7,9 @@ android/.cache/
 *.apk
 *.ap_
 .DS_Store
+server/.env
+server/data/
+.netlify/
+scripts/__pycache__/
+__pycache__/
+*.pyc

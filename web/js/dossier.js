@@ -74,35 +74,49 @@
     return true;
   }
 
-  function minNeed(p, rec, playerKey) {
+  function conquestCounts(opts) {
+    const C = global.LvfeConquest;
+    if (!C) return { byId: {}, max: 0 };
+    if (opts && opts.conquest) return opts.conquest;
+    return C.get();
+  }
+
+  function minNeed(p, rec, playerKey, counts) {
     const W = global.LvfeCatalogWallet;
     const t = p && p.catalog_type;
     const pts = p && (p.claim_points != null ? p.claim_points : p.claim_nairacoin);
-    const min = W ? W.minStake(pts, t) : Math.max(5, Number(pts) || 5);
+    let min = W ? W.minStake(pts, t) : Math.max(5, Number(pts) || 5);
+    const C = global.LvfeConquest;
+    if (C && min > 0) min = C.costToBack(min, p, counts);
     const mine = rec && rec.stakes && rec.stakes[playerKey];
     const first = !(mine && mine.amount > 0);
     return { min: first ? min : 1, first: first, mine: mine, needPhoto: optsPhotoRequired(p, rec) };
   }
 
-  function moneyValue(rec, p) {
+  function moneyValue(rec, p, counts) {
     if (!R().isOwnable(p)) return "Cannot be owned";
-    const v = rec && Number(rec.value) || 0;
+    const C = global.LvfeConquest;
+    const ledger = rec ? Number(rec.value) || 0 : 0;
+    const v = C ? C.displayValue(rec, p, counts) : ledger;
+    if (v > 0 && ledger <= 0) return v + " NairaCoin · no one has backed this yet";
     return v > 0 ? v + " NairaCoin" : "No one has backed this yet";
   }
 
-  function moneyInterest(p, rec, playerKey) {
+  function moneyInterest(p, rec, playerKey, counts) {
     if (!R().isOwnable(p)) return "";
     const W = global.LvfeCatalogWallet;
     const L = global.LvfePlaceLedger;
     const pts = p && (p.claim_points != null ? p.claim_points : p.claim_nairacoin);
-    const min = W ? W.minStake(pts, p.catalog_type) : 5;
+    let min = W ? W.minStake(pts, p.catalog_type) : 5;
+    const C = global.LvfeConquest;
+    if (C && min > 0) min = C.costToBack(min, p, counts);
     const n = L ? L.yieldFromIncoming(min) : Math.max(1, Math.round(min * 0.1));
     const who = rec && rec.ownerId === playerKey ? "You earn" : "Owner earns";
     return who + " " + n + " NairaCoin from visits when someone else backs (10% of what they put in).";
   }
 
   /** Pay is the gated button. Label is always Pay. Disabled unless GPS and dist <= 80. */
-  function payHtml(p, rec, ok, playerKey) {
+  function payHtml(p, rec, ok, playerKey, counts) {
     if (!R().isOwnable(p)) {
       return `<button type="button" class="claim" disabled>Cannot be owned</button>`;
     }
@@ -110,7 +124,7 @@
       return `<button type="button" class="claim" data-pay="1" disabled>Pay</button>` +
         `<p class="note pay-wait">Walk within 80 m to pay.</p>`;
     }
-    const need = minNeed(p, rec, playerKey);
+    const need = minNeed(p, rec, playerKey, counts);
     const bits = [`<form class="visit-form" data-place="${esc(p.id)}" data-kind="stake">`];
     if (need.needPhoto) {
       bits.push(`<input type="file" accept="image/*" capture="environment" class="photo-in" name="photo" />`);
@@ -126,14 +140,14 @@
     return bits.join("");
   }
 
-  function missionCta(p, rec, ok, playerKey) {
+  function missionCta(p, rec, ok, playerKey, counts) {
     if (!R().isOwnable(p)) {
       return `<button type="button" class="claim" disabled>Cannot be owned</button>`;
     }
     if (!ok) {
       return `<button type="button" class="claim" data-walk-closer="${esc(p.id)}">Walk closer</button>`;
     }
-    return payHtml(p, rec, true, playerKey);
+    return payHtml(p, rec, true, playerKey, counts);
   }
 
   function tabsHtml(tab, visible) {
@@ -172,7 +186,10 @@
     const tracking = Boolean(opts && opts.tracking);
     const W = global.LvfeCatalogWallet;
     const pts = p.claim_points != null ? p.claim_points : p.claim_nairacoin;
-    const cost = ownable ? ((W ? W.minStake(pts, p.catalog_type) : 5) + " NairaCoin") : "Cannot be owned";
+    const counts = conquestCounts(opts);
+    let costN = ownable ? (W ? W.minStake(pts, p.catalog_type) : 5) : 0;
+    if (ownable && global.LvfeConquest && costN > 0) costN = global.LvfeConquest.costToBack(costN, p, counts);
+    const cost = ownable ? (costN + " NairaCoin") : "Cannot be owned";
     const walkLine = (opts && opts.walkLine) || "";
 
     const bits = [
@@ -180,8 +197,9 @@
       `<div class="dossier-head">`,
       `<span class="dossier-mark">File</span>`,
       `<h2>${esc(title)}</h2>`,
-      `<button type="button" class="track-toggle" data-track="${esc(p.id)}" aria-pressed="${tracking ? "true" : "false"}">`,
-      tracking ? "Tracking" : "Track",
+      `<button type="button" class="track-toggle sw-ctl ghost" data-track="${esc(p.id)}" role="switch" aria-checked="${tracking ? "true" : "false"}" aria-label="Track">`,
+      `<span class="sw-ctl-name">Track</span>`,
+      `<span class="sw-ui" aria-hidden="true"></span>`,
       `</button>`,
       `</div>`,
       tabsHtml(tab, visible),
@@ -202,7 +220,7 @@
       bits.push(
         `<section class="${pageClass("mission", tab)}" data-page="mission" role="tabpanel">`,
         `<p class="note">${esc(missionCopy(p, rec, dist, ok, userPos))}</p>`,
-        missionCta(p, rec, ok, playerKey),
+        missionCta(p, rec, ok, playerKey, counts),
         `</section>`
       );
     }
@@ -221,8 +239,8 @@
       if (ownable) {
         bits.push(
           `<p class="row-label">Cost to back</p><p class="row-value">${esc(cost)}</p>`,
-          `<p class="row-label">Place value</p><p class="row-value">${esc(moneyValue(rec, p))}</p>`,
-          `<p class="note">${esc(moneyInterest(p, rec, playerKey))}</p>`
+          `<p class="row-label">Place value</p><p class="row-value">${esc(moneyValue(rec, p, counts))}</p>`,
+          `<p class="note">${esc(moneyInterest(p, rec, playerKey, counts))}</p>`
         );
       } else {
         bits.push(`<p class="note">${esc(rules.farmMsg())}</p>`);
@@ -236,7 +254,7 @@
         `<p class="row-label">This place</p><p class="row-value">${esc(title)}</p>`
       );
       if (walkLine) bits.push(`<p class="note">${esc(walkLine)}</p>`);
-      bits.push(payHtml(p, rec, ok, playerKey), `</section>`);
+      bits.push(payHtml(p, rec, ok, playerKey, counts), `</section>`);
     }
     bits.push(`</div></div>`);
     return bits.join("");

@@ -255,7 +255,7 @@
         "line-cap": "round",
       },
       paint: {
-        "line-color": "#5c3d0a",
+        "line-color": "#00c853",
         "line-width": 12,
         "line-opacity": 0.7,
       },
@@ -272,7 +272,7 @@
         "line-cap": "round",
       },
       paint: {
-        "line-color": "#f4c430",
+        "line-color": "#00e676",
         "line-width": 7,
         "line-opacity": 1,
       },
@@ -377,8 +377,7 @@
     if (name) name.textContent = target.name;
     if (meta) meta.textContent = chipLine();
     if (muteBtn) {
-      muteBtn.setAttribute("aria-pressed", muted ? "true" : "false");
-      muteBtn.textContent = muted ? "Unmute" : "Mute";
+      muteBtn.setAttribute("aria-checked", muted ? "true" : "false");
     }
   }
 

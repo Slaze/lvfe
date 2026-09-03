@@ -1,0 +1,232 @@
+/* Device-local player records. No server. Reinstall wipes WebView storage
+   unless the player exported a pack (or Android backup restored it).
+   Google sub is the durable account key once OAuth is configured. */
+(function (global) {
+  const IDENTITY_PREFIX = "lvfe.identity.";
+  const PLACES_KEY = "lvfe.places.v1";
+  const FACTION_POOL_KEY = "lvfe.factionpool.v1";
+  const GOOGLE_MAP_KEY = "lvfe.google.v1";
+  const FIELD_KEY = "lvfe.field.v1";
+  const WALLET_PREFIX = "lvfe.nc.iou.v1.";
+  const PACK_KIND = "lvfe.save.v1";
+
+  function storage() {
+    if (typeof localStorage === "undefined") {
+      if (!global.__lvfeAccountMem) global.__lvfeAccountMem = {};
+      const mem = global.__lvfeAccountMem;
+      return {
+        getItem: function (k) { return Object.prototype.hasOwnProperty.call(mem, k) ? mem[k] : null; },
+        setItem: function (k, v) { mem[k] = String(v); },
+        removeItem: function (k) { delete mem[k]; },
+        get length() { return Object.keys(mem).length; },
+        key: function (i) { return Object.keys(mem)[i] || null; },
+      };
+    }
+    return localStorage;
+  }
+
+  function lsGet(key, fallback) {
+    try {
+      const raw = storage().getItem(key);
+      if (!raw) return fallback;
+      return JSON.parse(raw);
+    } catch (err) {
+      return fallback;
+    }
+  }
+
+  function lsSet(key, val) {
+    storage().setItem(key, JSON.stringify(val));
+  }
+
+  function playerKeyFromSub(sub) {
+    const s = String(sub || "").replace(/[^a-zA-Z0-9]/g, "").slice(0, 31);
+    return ("g" + (s || "user")).slice(0, 32);
+  }
+
+  function normalizeName(name) {
+    return String(name || "").trim().slice(0, 32);
+  }
+
+  function nameKey(name) {
+    return normalizeName(name).toLowerCase();
+  }
+
+  function listIdentities() {
+    const out = [];
+    const store = storage();
+    const n = store.length || 0;
+    for (let i = 0; i < n; i++) {
+      const k = store.key(i);
+      if (!k || k.indexOf(IDENTITY_PREFIX) !== 0) continue;
+      const pk = k.slice(IDENTITY_PREFIX.length);
+      const idn = lsGet(k, null);
+      if (!idn || !idn.playerName) continue;
+      out.push({
+        pk: pk,
+        playerName: String(idn.playerName).slice(0, 32),
+        factionId: idn.factionId || "",
+        googleSub: idn.googleSub || "",
+        email: idn.email || "",
+      });
+    }
+    return out;
+  }
+
+  function nameTaken(name, exceptPk) {
+    const want = nameKey(name);
+    if (!want) return false;
+    const rows = listIdentities();
+    for (let i = 0; i < rows.length; i++) {
+      if (exceptPk && rows[i].pk === exceptPk) continue;
+      if (nameKey(rows[i].playerName) === want) return true;
+    }
+    return false;
+  }
+
+  function slugFromName(name) {
+    const s = normalizeName(name).toLowerCase().replace(/[^a-z0-9]+/g, "").slice(0, 32);
+    return s || "player";
+  }
+
+  function uniquePlayerKey(name) {
+    let base = slugFromName(name);
+    if (!lsGet(IDENTITY_PREFIX + base, null)) return base;
+    for (let n = 2; n < 99; n++) {
+      const pk = (base.slice(0, 30) + n).slice(0, 32);
+      if (!lsGet(IDENTITY_PREFIX + pk, null)) return pk;
+    }
+    return (base.slice(0, 24) + String(Date.now()).slice(-8)).slice(0, 32);
+  }
+
+  function googleMap() {
+    const o = lsGet(GOOGLE_MAP_KEY, {});
+    return o && typeof o === "object" ? o : {};
+  }
+
+  function bindGoogle(sub, email, playerKey) {
+    const id = String(sub || "").trim();
+    if (!id) return null;
+    const all = googleMap();
+    all[id] = {
+      playerKey: String(playerKey || playerKeyFromSub(id)).slice(0, 32),
+      email: String(email || "").slice(0, 128),
+      at: new Date().toISOString(),
+    };
+    lsSet(GOOGLE_MAP_KEY, all);
+    return all[id];
+  }
+
+  function lookupGoogle(sub) {
+    const id = String(sub || "").trim();
+    if (!id) return null;
+    const row = googleMap()[id];
+    if (!row || !row.playerKey) return null;
+    return row;
+  }
+
+  function walletKeys(playerKey) {
+    const L = global.LvfeNairaCoin;
+    const prefix = (L && L.STORE_PREFIX) || WALLET_PREFIX;
+    return prefix + String(playerKey || "default").slice(0, 32);
+  }
+
+  function collectWallets() {
+    const out = {};
+    const store = storage();
+    const L = global.LvfeNairaCoin;
+    const prefix = (L && L.STORE_PREFIX) || WALLET_PREFIX;
+    const n = store.length || 0;
+    for (let i = 0; i < n; i++) {
+      const k = store.key(i);
+      if (!k || k.indexOf(prefix) !== 0) continue;
+      out[k] = lsGet(k, null);
+    }
+    return out;
+  }
+
+  function collectIdentitiesRaw() {
+    const out = {};
+    const store = storage();
+    const n = store.length || 0;
+    for (let i = 0; i < n; i++) {
+      const k = store.key(i);
+      if (!k || k.indexOf(IDENTITY_PREFIX) !== 0) continue;
+      out[k] = lsGet(k, null);
+    }
+    return out;
+  }
+
+  function packSave(opts) {
+    const o = opts || {};
+    const exportedAt = new Date().toISOString();
+    return {
+      kind: PACK_KIND,
+      v: 1,
+      exportedAt: exportedAt,
+      updatedAt: o.updatedAt || exportedAt,
+      playerKey: o.playerKey || "default",
+      googleSub: o.googleSub || "",
+      email: o.email || "",
+      identity: collectIdentitiesRaw(),
+      places: lsGet(PLACES_KEY, {}),
+      factionPool: lsGet(FACTION_POOL_KEY, {}),
+      google: googleMap(),
+      field: lsGet(FIELD_KEY, { type: "FeatureCollection", features: [] }),
+      wallets: collectWallets(),
+      photos: Array.isArray(o.photos) ? o.photos : [],
+      note: "Lvfe save pack. Prefer cloud sync when SAVE_API_BASE is set; Export/Import remains the offline backup. Photos may be meta-only if over ~400KB.",
+    };
+  }
+
+  function unpackSave(pack) {
+    if (!pack || pack.kind !== PACK_KIND) {
+      return { ok: false, error: "Not an Lvfe save file." };
+    }
+    const ident = pack.identity && typeof pack.identity === "object" ? pack.identity : {};
+    Object.keys(ident).forEach(function (k) {
+      if (k.indexOf(IDENTITY_PREFIX) !== 0) return;
+      lsSet(k, ident[k]);
+    });
+    if (pack.places && typeof pack.places === "object") lsSet(PLACES_KEY, pack.places);
+    if (pack.factionPool && typeof pack.factionPool === "object") lsSet(FACTION_POOL_KEY, pack.factionPool);
+    if (pack.google && typeof pack.google === "object") lsSet(GOOGLE_MAP_KEY, pack.google);
+    if (pack.field) lsSet(FIELD_KEY, pack.field);
+    const wallets = pack.wallets && typeof pack.wallets === "object" ? pack.wallets : {};
+    Object.keys(wallets).forEach(function (k) {
+      if (k.indexOf("lvfe.nc.iou.v1.") !== 0 && k.indexOf("lvfe.nairacoin.") !== 0) return;
+      lsSet(k, wallets[k]);
+    });
+    return {
+      ok: true,
+      playerKey: pack.playerKey || "default",
+      photos: Array.isArray(pack.photos) ? pack.photos : [],
+    };
+  }
+
+  const api = {
+    IDENTITY_PREFIX,
+    PLACES_KEY,
+    FACTION_POOL_KEY,
+    GOOGLE_MAP_KEY,
+    FIELD_KEY,
+    PACK_KIND,
+    playerKeyFromSub,
+    normalizeName,
+    nameTaken,
+    slugFromName,
+    uniquePlayerKey,
+    listIdentities,
+    bindGoogle,
+    lookupGoogle,
+    googleMap,
+    packSave,
+    unpackSave,
+    walletKeys,
+  };
+
+  if (typeof module !== "undefined" && module.exports) {
+    module.exports = api;
+  }
+  global.LvfeAccount = api;
+})(typeof window !== "undefined" ? window : globalThis);

@@ -6,6 +6,7 @@
   <title>Lvfe — Enugu catalog</title>
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.1/dist/maplibre-gl.css" />
   <link rel="stylesheet" href="map-3d.css" />
+  <link rel="stylesheet" href="css/switch.css" />
   <style>
     :root {
       --bg: #0e1116;
@@ -13,9 +14,9 @@
       --ink: #e8edf4;
       --muted: #8b98a8;
     }
-    html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); font: 14px/1.4 system-ui, sans-serif; overflow: hidden; text-size-adjust: 100%; -webkit-text-size-adjust: 100%; }
+    html, body { margin: 0; width: 100%; height: 100%; background: var(--bg); color: var(--ink); font: 14px/1.4 system-ui, sans-serif; overflow: hidden; text-size-adjust: 100%; -webkit-text-size-adjust: 100%; }
     [hidden] { display: none !important; }
-    #map { position: absolute; inset: 0; }
+    #map { position: absolute; inset: 0; width: 100%; height: 100%; }
     .maplibregl-ctrl-logo,
     .maplibregl-ctrl-attrib,
     .maplibregl-compact,
@@ -39,41 +40,157 @@
       font: 16px/1.3 system-ui, sans-serif; color: #202124; min-width: 0;
     }
     .search-pill input::placeholder { color: #5f6368; }
-    .search-pill .more {
-      width: 40px; height: 40px; border: 0; background: transparent;
-      border-radius: 50%; color: #3c4043; font-size: 20px; cursor: pointer;
+    .search-pill .who-stamp {
+      width: 44px; height: 44px; min-width: 44px; min-height: 44px;
+      border: 0; margin: 0; padding: 0;
+      border-radius: 50%;
+      background: #b8893a;
+      color: #1a140c;
+      font: 700 16px/1 "Iowan Old Style", "Palatino Linotype", Palatino, serif;
+      cursor: pointer;
+      box-shadow: inset 0 0 0 2px rgba(255,236,190,.45);
     }
-    .search-hits, .more-menu, .filter-pop {
+    .search-pill .who-stamp[aria-expanded="true"] { background: #d4a24e; }
+    .search-hits {
       margin-top: 8px;
       background: #fff; color: #202124;
       border-radius: 12px;
       box-shadow: 0 2px 8px rgba(0,0,0,.2);
       overflow: auto; max-height: 40vh;
     }
-    .search-hits button, .more-menu button, .more-menu a {
+    .search-hits button {
       display: block; width: 100%; text-align: left;
       background: none; border: 0; border-bottom: 1px solid #eee;
       padding: 12px 14px; font: inherit; color: inherit; cursor: pointer;
-      text-decoration: none;
+      text-decoration: none; min-height: 44px;
     }
-    .search-hits button:last-child, .more-menu *:last-child { border-bottom: 0; }
-    .more-menu .menu-who {
-      padding: 12px 14px 8px; font-size: 12px; color: #5f6368; border-bottom: 1px solid #eee;
-    }
-    .more-menu .menu-who strong { color: #202124; }
-    .more-menu .menu-switch { padding: 8px 14px 10px; border-bottom: 1px solid #eee; }
-    .more-menu .menu-switch label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #5f6368; }
-    .more-menu .menu-switch select {
-      font: inherit; color: #202124; min-height: 40px; border: 1px solid #dadce0; border-radius: 8px; padding: 6px 8px;
-    }
-    .more-menu .menu-check {
-      display: flex; align-items: center; gap: 8px; padding: 12px 14px;
-      border-bottom: 1px solid #eee; color: #202124; cursor: pointer; margin: 0;
-    }
+    .search-hits button:last-child { border-bottom: 0; }
     .search-hits strong { display: block; font-size: 14px; }
     .search-hits span { color: #5f6368; font-size: 12px; }
-    .filter-pop { padding: 10px 14px 12px; }
-    .filter-pop label { color: #202124; }
+    #accountScrim {
+      position: absolute; inset: 0; z-index: 13;
+      background: rgba(8,10,14,.46);
+      opacity: 0; pointer-events: none; visibility: hidden;
+      transition: opacity .24s ease, visibility .24s;
+    }
+    #accountScrim.open { opacity: 1; pointer-events: auto; visibility: visible; }
+    #accountSheet {
+      position: absolute; z-index: 14; left: 0; right: 0; bottom: 0;
+      max-height: min(72vh, 640px);
+      background: #141a22;
+      color: #e8edf4;
+      border-radius: 18px 18px 0 0;
+      box-shadow: 0 -8px 32px rgba(0,0,0,.4);
+      transform: translateY(110%);
+      visibility: hidden;
+      pointer-events: none;
+      display: flex; flex-direction: column;
+      padding-bottom: env(safe-area-inset-bottom, 10px);
+      transition: transform .24s cubic-bezier(.2,.8,.2,1), visibility .24s;
+    }
+    #accountSheet.open {
+      transform: translateY(0);
+      visibility: visible;
+      pointer-events: auto;
+    }
+    #accountSheet[hidden] { display: none !important; }
+    .acct-bar {
+      display: flex; align-items: center; justify-content: center;
+      position: relative; min-height: 44px; flex-shrink: 0;
+    }
+    .acct-handle {
+      display: block; width: 44px; min-width: 44px; height: 44px; min-height: 44px;
+      margin: 0 auto; border: 0; padding: 0; cursor: pointer;
+      background: transparent; position: relative;
+    }
+    .acct-handle::after {
+      content: ""; position: absolute; left: 4px; right: 4px; top: 20px;
+      height: 4px; border-radius: 4px; background: #5a6573;
+    }
+    .acct-close {
+      position: absolute; right: 4px; top: 0;
+      width: 44px; height: 44px; border: 0; background: transparent;
+      color: #e8edf4; font-size: 28px; line-height: 1; cursor: pointer;
+    }
+    .acct-scroll { overflow: auto; -webkit-overflow-scrolling: touch; padding: 0 0 12px; }
+    .acct-hero {
+      display: flex; align-items: center; gap: 14px;
+      padding: 4px 16px 16px;
+    }
+    .acct-seal {
+      width: 56px; height: 56px; border-radius: 50%;
+      background: #b8893a; color: #1a140c;
+      display: flex; align-items: center; justify-content: center;
+      font: 700 22px/1 "Iowan Old Style", "Palatino Linotype", Palatino, serif;
+      box-shadow: inset 0 0 0 2px rgba(255,236,190,.4);
+      flex-shrink: 0;
+    }
+    .acct-hero h2 {
+      margin: 0; font: 700 20px/1.15 "Iowan Old Style", Palatino, serif;
+      color: #f3ead6;
+    }
+    .acct-hero p { margin: 4px 0 0; font-size: 13px; color: #9aa6b2; }
+    .acct-hero .coin { color: #34c759; font-variant-numeric: tabular-nums; }
+    .acct-sec {
+      margin: 0 12px 12px;
+      background: #1b222c;
+      border: 1px solid #2a3340;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .acct-sec h3 {
+      margin: 0; padding: 10px 14px 4px;
+      font: 650 11px/1.2 system-ui, sans-serif;
+      letter-spacing: .12em; text-transform: uppercase;
+      color: #8b98a8;
+    }
+    .acct-row, .acct-sec a.acct-row {
+      display: flex; align-items: center; gap: 10px;
+      width: 100%; min-height: 48px;
+      padding: 0 14px; margin: 0;
+      background: none; border: 0; border-top: 1px solid #2a3340;
+      color: #e8edf4; font: 15px/1.25 system-ui, sans-serif;
+      text-align: left; text-decoration: none; cursor: pointer;
+    }
+    .acct-sec > .acct-row:first-of-type,
+    .acct-sec > a.acct-row:first-of-type { border-top: 0; }
+    .acct-row .mark {
+      width: 22px; color: #b8893a; font-size: 14px; text-align: center; flex-shrink: 0;
+    }
+    .acct-row .go { margin-left: auto; color: #5a6573; }
+    .acct-switch { padding: 8px 14px 12px; border-top: 1px solid #2a3340; }
+    .acct-switch label {
+      display: flex; flex-direction: column; gap: 6px;
+      font-size: 12px; color: #8b98a8; margin: 0; cursor: default;
+    }
+    .acct-switch select {
+      font: inherit; color: #e8edf4; background: #12161c;
+      min-height: 44px; border: 1px solid #2a3340; border-radius: 8px; padding: 8px 10px;
+    }
+    .acct-sec .sw-row, .acct-sec .menu-check {
+      padding: 0 14px; min-height: 48px; color: #e8edf4; border-top: 1px solid #2a3340;
+    }
+    .acct-sec .sw-row:first-of-type { border-top: 0; }
+    .acct-sec .count { color: #8b98a8; }
+    .acct-sec .swatch { box-shadow: 0 0 0 1px #2a3340; }
+    #identityGate .save-row button, #accountSheet .save-pair button {
+      flex: 1; min-height: 44px; border-radius: 8px; cursor: pointer;
+      background: #0e1116; color: #e8edf4; border: 1px solid #2a3340; font: inherit;
+    }
+    .save-pair { display: flex; gap: 8px; padding: 8px 14px 12px; }
+    #accountSheet .google-btn {
+      width: calc(100% - 28px); min-height: 48px; margin: 0 14px 12px;
+      border-radius: 8px; cursor: pointer;
+      background: #fff; color: #1f1a14; border: 1px solid #c5c0b5;
+      font: 650 14px/1 system-ui, sans-serif;
+    }
+    #accountSheet .google-btn[hidden] { display: none !important; }
+    #acctGoogleNote { margin: 0 14px 12px; font-size: 12px; color: #8b98a8; }
+    @media (prefers-reduced-motion: reduce) {
+      #accountScrim, #accountSheet, .sheet.peek, .sheet.half, .sheet.full, .sheet.doc, .sheet.doc-exp {
+        transition: none;
+      }
+    }
     .sub { color: var(--muted); font-size: 12px; margin-bottom: 10px; }
     .who { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
     .who button.link {
@@ -97,7 +214,7 @@
       position: absolute; z-index: 3;
       right: max(12px, env(safe-area-inset-right, 0px));
       bottom: calc(28px + env(safe-area-inset-bottom, 0px));
-      display: flex; flex-direction: column; gap: 10px;
+      display: flex; flex-direction: column; align-items: flex-end; gap: 10px;
     }
     .fab {
       width: 48px; height: 48px; min-width: 48px; min-height: 48px;
@@ -106,7 +223,6 @@
       box-shadow: 0 1px 3px rgba(0,0,0,.3), 0 2px 8px rgba(0,0,0,.18);
       font: 650 12px/1 system-ui, sans-serif; cursor: pointer;
     }
-    .fab[aria-pressed="true"] { background: #1a73e8; color: #fff; }
     .sheet {
       position: absolute; z-index: 12; left: 0; right: 0; bottom: 0;
       background: var(--panel);
@@ -129,29 +245,48 @@
       pointer-events: none !important;
       visibility: hidden !important;
     }
-    .sheet.peek, .sheet.half, .sheet.full, .sheet.doc {
+    .sheet.peek, .sheet.half, .sheet.full, .sheet.doc, .sheet.doc-exp {
       display: block;
       pointer-events: auto;
       visibility: visible;
       transform: translateY(0);
+      transition: transform .24s cubic-bezier(.2,.8,.2,1), height .24s cubic-bezier(.2,.8,.2,1), max-height .24s cubic-bezier(.2,.8,.2,1);
     }
     .sheet.peek { height: 76px; max-height: 76px; overflow: hidden; }
     .sheet.half { height: 46vh; max-height: 46vh; overflow: hidden; }
     .sheet.full { height: 72vh; max-height: 72vh; overflow: auto; }
-    .sheet.doc {
-      height: 70vh; max-height: 70vh; overflow: hidden;
+    /* Place file: compact peek first (~34vh) so the map stays majority-visible. */
+    .sheet.doc, .sheet.doc-exp {
+      overflow: hidden;
       background: #f3ead6;
       color: #2a241c;
       border-radius: 0 14px 0 0;
       box-shadow: 0 -6px 28px rgba(0,0,0,.28);
     }
+    .sheet.doc {
+      height: 34vh; max-height: 34vh;
+    }
+    .sheet.doc-exp {
+      height: 70vh; max-height: 70vh;
+    }
     .sheet-bar {
       display: flex; align-items: center; justify-content: center;
-      position: relative; min-height: 36px;
+      position: relative; min-height: 44px;
     }
     .sheet-handle {
-      display: block; width: 36px; height: 4px; margin: 8px auto 6px;
-      background: #5a6573; border-radius: 4px; border: 0; padding: 0;
+      display: block; width: 44px; min-width: 44px; height: 44px; min-height: 44px;
+      margin: 0 auto; border: 0; padding: 0; cursor: pointer;
+      background: transparent; position: relative;
+    }
+    .sheet-handle::after {
+      content: ""; position: absolute; left: 4px; right: 4px; top: 20px;
+      height: 4px; border-radius: 4px; background: #5a6573;
+    }
+    .sheet-expand {
+      display: none;
+      position: absolute; left: 4px; top: 0;
+      width: 44px; height: 44px; border: 0; background: transparent;
+      color: #e8edf4; font-size: 18px; line-height: 1; cursor: pointer;
     }
     .sheet-close {
       position: absolute; right: 4px; top: 0;
@@ -168,23 +303,38 @@
     .sheet.peek .sheet-scroll { display: none; }
     .sheet.half #nearbyBlock,
     .sheet.half #myPlacesWrap { display: none; }
-    .sheet.doc .sheet-handle { background: #c4b49a; }
-    .sheet.doc .sheet-close { color: #3a3228; }
+    .sheet.doc .sheet-handle::after,
+    .sheet.doc-exp .sheet-handle::after { background: #c4b49a; }
+    .sheet.doc .sheet-close,
+    .sheet.doc-exp .sheet-close,
+    .sheet.doc .sheet-expand,
+    .sheet.doc-exp .sheet-expand { color: #3a3228; }
+    .sheet.doc .sheet-expand,
+    .sheet.doc-exp .sheet-expand { display: block; }
     .sheet.doc .sheet-peek,
+    .sheet.doc-exp .sheet-peek,
     .sheet.doc #whoLine,
+    .sheet.doc-exp #whoLine,
     .sheet.doc #ncNote,
+    .sheet.doc-exp #ncNote,
     .sheet.doc #factionLine,
+    .sheet.doc-exp #factionLine,
     .sheet.doc #nearbyBlock,
-    .sheet.doc #myPlacesWrap { display: none !important; }
-    .sheet.doc .sheet-scroll {
+    .sheet.doc-exp #nearbyBlock,
+    .sheet.doc #myPlacesWrap,
+    .sheet.doc-exp #myPlacesWrap { display: none !important; }
+    .sheet.doc .sheet-scroll,
+    .sheet.doc-exp .sheet-scroll {
       display: block;
       padding: 0;
       max-height: none;
-      height: calc(70vh - 36px);
       overflow: hidden;
       background: #f3ead6;
     }
-    .sheet.doc #placeCard { height: 100%; }
+    .sheet.doc .sheet-scroll { height: calc(34vh - 44px); }
+    .sheet.doc-exp .sheet-scroll { height: calc(70vh - 44px); }
+    .sheet.doc #placeCard,
+    .sheet.doc-exp #placeCard { height: 100%; }
     .dossier {
       display: flex; flex-direction: column; height: 100%;
       background: #f7f1e4; color: #2a241c;
@@ -195,7 +345,7 @@
       text-transform: uppercase; color: #8a7a62; font-weight: 650;
     }
     .dossier-head h2 {
-      margin: 4px 40px 0 0; font-size: 20px; line-height: 1.25;
+      margin: 4px 110px 0 0; font-size: 20px; line-height: 1.25;
       font-weight: 700; color: #1f1a14;
     }
     .dossier-tabs {
@@ -203,7 +353,7 @@
       background: #e6dcc6; border-bottom: 1px solid #c9bba3;
     }
     .dossier-tabs button {
-      flex: 1; min-height: 40px; border: 0; background: transparent;
+      flex: 1; min-height: 44px; border: 0; background: transparent;
       color: #5c5346; font: 650 12px/1 system-ui, sans-serif;
       border-radius: 8px 8px 0 0; padding: 8px 2px; cursor: pointer;
     }
@@ -228,15 +378,18 @@
       min-height: 72px; margin: 0 0 8px; border-radius: 4px;
       background: #e8dcc6; color: #6d6250; font-size: 13px;
     }
-    .sheet.doc button.claim { margin-top: 16px; }
+    .sheet.doc button.claim,
+    .sheet.doc-exp button.claim { margin-top: 16px; }
+    .sheet.doc .dossier-head h2 { font-size: 17px; }
+    .sheet.doc .dossier-tabs button,
+    .sheet.doc-exp .dossier-tabs button {
+      min-height: 44px; font-size: 11px; padding: 8px 2px;
+    }
     .dossier-head { position: relative; }
     .track-toggle {
       position: absolute; right: 48px; top: 0;
-      min-height: 36px; padding: 6px 12px; border: 0; border-radius: 18px;
-      background: #1a73e8; color: #fff; font: 650 13px/1 system-ui, sans-serif;
-      cursor: pointer;
+      color: #3a3228;
     }
-    .track-toggle[aria-pressed="true"] { background: #c0392b; }
     .pay-wait { color: #8a5a16; }
     #trackChip {
       margin-top: 8px;
@@ -250,12 +403,12 @@
     #trackChip .track-copy { flex: 1; min-width: 0; }
     #trackChip strong { display: block; font-size: 14px; }
     #trackChip span { display: block; font-size: 12px; color: #5c4a28; }
-    #trackChip button {
-      border: 0; border-radius: 16px; min-height: 36px; padding: 6px 10px;
+    #trackChip #trackStop {
+      border: 0; border-radius: 16px; min-height: 48px; padding: 6px 10px;
       font: 650 12px/1 system-ui, sans-serif; cursor: pointer;
       background: #3a2a10; color: #fff8e1;
     }
-    #trackChip #trackMute[aria-pressed="true"] { background: #8a7a62; }
+    #trackChip .sw-ctl { color: #3a2a10; }
     #arTrackHud {
       position: absolute; z-index: 4;
       left: 68px; right: 16px;
@@ -289,7 +442,8 @@
     body.ar-on #sheet.peek,
     body.ar-on #sheet.half,
     body.ar-on #sheet.full,
-    body.ar-on #sheet.doc { z-index: 20; }
+    body.ar-on #sheet.doc,
+    body.ar-on #sheet.doc-exp { z-index: 20; }
     body.ar-on #toast { z-index: 21; }
     body.ar-on #identityGate { z-index: 22; }
     /* Viewfinder is the <video>. Do not cover with WebGL on Android WebView. */
@@ -324,6 +478,21 @@
     }
     #arPins .ar-pin strong { display: block; font-size: 14px; }
     #arPins .ar-pin span { color: #b4c0cc; font-size: 12px; }
+    #arPins .ar-pin .ar-glyph {
+      display: block; width: 18px; height: 18px; margin: 0 auto 6px; position: relative;
+    }
+    #arPins .ar-pin .ar-glyph-dot {
+      border-radius: 50%; box-shadow: 0 0 0 2px #fff;
+    }
+    #arPins .ar-pin .ar-glyph-x::before,
+    #arPins .ar-pin .ar-glyph-x::after {
+      content: ""; position: absolute; left: 8px; top: 1px;
+      width: 2px; height: 16px; background: #ff3b30; border-radius: 1px;
+    }
+    #arPins .ar-pin .ar-glyph-x-unknown::before,
+    #arPins .ar-pin .ar-glyph-x-unknown::after { background: #111111; }
+    #arPins .ar-pin .ar-glyph-x::before { transform: rotate(45deg); }
+    #arPins .ar-pin .ar-glyph-x::after { transform: rotate(-45deg); }
     #arHint {
       position: absolute; z-index: 4; left: 16px; right: 16px;
       bottom: calc(24px + env(safe-area-inset-bottom, 0px));
@@ -415,7 +584,7 @@
     .stake-row button.claim { flex: 1; margin-top: 0; width: 100%; min-height: 48px; }
     .meta { font-size: 12px; color: var(--muted); }
     #identityGate {
-      position: absolute; z-index: 6;
+      position: absolute; z-index: 18;
       left: 12px; right: 12px; top: auto;
       bottom: calc(16px + env(safe-area-inset-bottom, 0px));
       background: transparent;
@@ -441,6 +610,21 @@
       border-radius: 6px; padding: 8px; font: inherit;
     }
     #identityGate button.claim { width: 100%; }
+    #identityGate .google-btn {
+      width: 100%; min-height: 48px; margin-top: 8px; border-radius: 8px; cursor: pointer;
+      background: #fff; color: #1f1a14; border: 1px solid #c5c0b5;
+      font: 650 14px/1 system-ui, sans-serif;
+    }
+    #identityGate .save-row { display: flex; gap: 8px; margin-top: 10px; }
+    #identityGate .save-row button {
+      flex: 1; min-height: 44px; border-radius: 8px; cursor: pointer;
+      background: #0e1116; color: #e8edf4; border: 1px solid #2a3340; font: inherit;
+    }
+    #googleBlocker {
+      color: #f0c14b; font-size: 12px; margin: 8px 0 0; white-space: pre-wrap;
+    }
+    #googleBlocker[hidden] { display: none; }
+    .dossier-photo img { width: 100%; max-height: 160px; object-fit: cover; border-radius: 4px; }
     #toast {
       position: absolute; z-index: 5; left: 50%; bottom: 72px;
       transform: translateX(-50%);
@@ -459,7 +643,7 @@
       font-size: 13px; line-height: 1.4;
     }
     #about {
-      position: absolute; z-index: 6; inset: 0;
+      position: absolute; z-index: 18; inset: 0;
       background: #0e1116cc;
       display: flex; align-items: center; justify-content: center;
       pointer-events: auto;
@@ -500,53 +684,108 @@
   <div class="top-chrome">
     <div class="search-pill">
       <input id="searchQ" type="search" placeholder="Search Enugu places" autocomplete="off" />
-      <button type="button" class="more" id="btnMore" aria-label="Profile">⋮</button>
+      <button type="button" class="who-stamp" id="btnMore" aria-label="Account" aria-expanded="false">
+        <span id="stampGlyph">+</span>
+      </button>
     </div>
     <div id="searchHits" class="search-hits" hidden></div>
-    <div id="moreMenu" class="more-menu" hidden>
-      <div class="menu-who" id="menuWho">Playing as guest</div>
-      <div class="menu-switch" id="menuSwitch" hidden>
-        <label>Switch profile
-          <select id="profileSelect"></select>
-        </label>
-      </div>
-      <a href="rules.html">How to play</a>
-      <a href="assets.html">My assets</a>
-      <a href="catalog.html">Catalog</a>
-      <button type="button" id="btnFilters">Filters</button>
-      <label class="menu-check"><input type="checkbox" id="satHybrid" checked /> Street names on satellite</label>
-      <button type="button" data-id-edit="1">Your name</button>
-      <button type="button" id="btnNewProfile">Add another name</button>
-      <button type="button" id="btnAbout">About</button>
-    </div>
     <div id="trackChip" hidden>
       <div class="track-copy">
         <strong id="trackName">This place</strong>
         <span id="trackMeta">Tap GPS to guide</span>
       </div>
-      <button type="button" id="trackMute">Mute</button>
+      <button type="button" class="sw-ctl ghost" id="trackMute" role="switch" aria-checked="false" aria-label="Mute">
+        <span class="sw-ctl-name">Mute</span>
+        <span class="sw-ui" aria-hidden="true"></span>
+      </button>
       <button type="button" id="trackStop">Stop</button>
-    </div>
-    <div id="filterPop" class="filter-pop" hidden>
-      <label class="row"><input type="checkbox" id="qA" checked /><span class="swatch" style="background:#2ecc71"></span> A — photo <span class="count" id="nA">0</span></label>
-      <label class="row"><input type="checkbox" id="qB" checked /><span class="swatch" style="background:#3498db"></span> B — named <span class="count" id="nB">0</span></label>
-      <label class="row"><input type="checkbox" id="qC" checked /><span class="swatch" style="background:#f39c12"></span> C — needs a name <span class="count" id="nC">0</span></label>
-      <label class="row"><input type="checkbox" id="qD" checked /><span class="swatch" style="background:#e74c3c"></span> D — unknown building <span class="count" id="nD">0</span></label>
-      <label class="row"><input type="checkbox" id="qOut" checked /><span class="swatch" style="background:#7f8c8d"></span> Unclaimed <span class="count" id="nOut">0</span></label>
-      <label class="row"><input type="checkbox" id="showPoly" checked /><span class="poly" style="border-color:#2ecc71"></span> Neighbourhoods</label>
     </div>
   </div>
   <input type="checkbox" id="toggleAr" hidden />
   <input type="checkbox" id="toggle3d" hidden />
   <div class="fabs" id="fabs">
-    <button type="button" class="fab" id="btnSat" aria-pressed="false" aria-label="Satellite">SAT</button>
-    <button type="button" class="fab" id="btn3d" aria-pressed="false" aria-label="3D">3D</button>
-    <button type="button" class="fab" id="btnAr" aria-pressed="false" aria-label="AR">AR</button>
+    <button type="button" class="sw-ctl map" id="btnSat" role="switch" aria-checked="false" aria-label="Satellite">
+      <span class="sw-ctl-name">SAT</span>
+      <span class="sw-ui" aria-hidden="true"></span>
+    </button>
+    <button type="button" class="sw-ctl map" id="btn3d" role="switch" aria-checked="false" aria-label="3D">
+      <span class="sw-ctl-name">3D</span>
+      <span class="sw-ui" aria-hidden="true"></span>
+    </button>
+    <button type="button" class="sw-ctl map" id="btnAr" role="switch" aria-checked="false" aria-label="AR">
+      <span class="sw-ctl-name">AR</span>
+      <span class="sw-ui" aria-hidden="true"></span>
+    </button>
     <button type="button" class="fab" id="btnLoc" aria-label="My location">GPS</button>
+  </div>
+  <div id="accountScrim" hidden></div>
+  <div id="accountSheet" hidden>
+    <div class="acct-bar">
+      <button type="button" class="acct-handle" id="acctHandle" aria-label="Close account"></button>
+      <button type="button" class="acct-close" id="acctClose" aria-label="Close">×</button>
+    </div>
+    <div class="acct-scroll">
+      <div class="acct-hero">
+        <div class="acct-seal" id="acctSeal" aria-hidden="true">+</div>
+        <div>
+          <h2 id="acctName">No name yet</h2>
+          <p id="acctMeta">Set a name to back places · <span class="coin" id="acctCoin">0</span> NairaCoin</p>
+        </div>
+      </div>
+      <button type="button" class="google-btn" id="btnGoogleSignInSheet">Sign in with Google</button>
+      <p id="acctGoogleNote" hidden></p>
+      <section class="acct-sec" aria-labelledby="acctYou">
+        <h3 id="acctYou">You</h3>
+        <button type="button" class="acct-row" data-id-edit="1"><span class="mark">✎</span> Name and neighbourhood<span class="go">›</span></button>
+        <button type="button" class="acct-row" id="btnNewProfile"><span class="mark">+</span> Add another name<span class="go">›</span></button>
+        <div class="acct-switch" id="menuSwitch" hidden>
+          <label>Switch walker
+            <select id="profileSelect"></select>
+          </label>
+        </div>
+      </section>
+      <section class="acct-sec" aria-labelledby="acctPlay">
+        <h3 id="acctPlay">Play</h3>
+        <a class="acct-row" href="rules.html"><span class="mark">▸</span> How to play<span class="go">›</span></a>
+        <a class="acct-row" href="catalog.html"><span class="mark">▦</span> Catalog<span class="go">›</span></a>
+        <a class="acct-row" href="assets.html"><span class="mark">◈</span> My places<span class="go">›</span></a>
+      </section>
+      <section class="acct-sec" aria-labelledby="acctMap">
+        <h3 id="acctMap">Map pins</h3>
+        <div id="filterPop">
+          <label class="row sw-row"><span class="swatch" style="background:#2ecc71"></span> Photo <span class="count" id="nA">0</span>
+            <input type="checkbox" id="qA" class="sw" role="switch" aria-checked="true" checked /></label>
+          <label class="row sw-row"><span class="swatch" style="background:#3498db"></span> Named <span class="count" id="nB">0</span>
+            <input type="checkbox" id="qB" class="sw" role="switch" aria-checked="true" checked /></label>
+          <label class="row sw-row"><span class="swatch" style="background:#f39c12"></span> Needs a name <span class="count" id="nC">0</span>
+            <input type="checkbox" id="qC" class="sw" role="switch" aria-checked="true" checked /></label>
+          <label class="row sw-row"><span class="swatch" style="background:#111111"></span> Unknown <span class="count" id="nD">0</span>
+            <input type="checkbox" id="qD" class="sw" role="switch" aria-checked="true" checked /></label>
+          <label class="row sw-row"><span class="swatch" style="background:#7f8c8d"></span> Unclaimed <span class="count" id="nOut">0</span>
+            <input type="checkbox" id="qOut" class="sw" role="switch" aria-checked="true" checked /></label>
+          <label class="row sw-row"><span class="poly" style="border-color:#2ecc71"></span> Neighbourhoods
+            <input type="checkbox" id="showPoly" class="sw" role="switch" aria-checked="true" checked /></label>
+        </div>
+        <label class="menu-check sw-row">Street names on satellite
+          <input type="checkbox" id="satHybrid" class="sw" role="switch" aria-checked="true" checked />
+        </label>
+      </section>
+      <section class="acct-sec" aria-labelledby="acctPhone">
+        <h3 id="acctPhone">This phone</h3>
+        <p id="acctSyncNote" class="iou-note" style="margin:0 14px 10px">Cloud save off until SAVE_API_BASE is set.</p>
+        <div class="save-pair">
+          <button type="button" id="btnExportSave">Export save</button>
+          <button type="button" id="btnImportSave">Import save</button>
+        </div>
+        <button type="button" class="acct-row" id="btnSyncNow"><span class="mark">↻</span> Sync now<span class="go">›</span></button>
+        <button type="button" class="acct-row" id="btnAbout"><span class="mark">i</span> About the map<span class="go">›</span></button>
+      </section>
+    </div>
   </div>
   <div class="sheet collapsed" id="sheet" hidden>
     <div class="sheet-bar">
-      <button type="button" class="sheet-handle" id="sheetHandle" aria-label="Close place"></button>
+      <button type="button" class="sheet-expand" id="sheetExpand" aria-label="Expand place" hidden>▴</button>
+      <button type="button" class="sheet-handle" id="sheetHandle" aria-label="Expand place"></button>
       <button type="button" class="sheet-close" id="sheetClose" aria-label="Close">×</button>
     </div>
     <div class="sheet-peek">
@@ -574,7 +813,7 @@
     <form class="card" id="identityForm">
       <button type="button" class="sheet-close" id="identityClose" aria-label="Close">×</button>
       <h2>Who’s walking?</h2>
-      <p>Pick a unique name. Faction is optional — without one, places you own stay Unclaimed.</p>
+      <p>Pick a unique name. Faction is optional — without one, places you own stay Unclaimed. Gmail is only a sign-in key, not your name.</p>
       <label>Name <input id="idName" name="playerName" required maxlength="32" autocomplete="username" /></label>
       <label>Faction
         <select id="idFaction" name="factionId">
@@ -586,6 +825,13 @@
         </select>
       </label>
       <button type="submit" class="claim">Enter Enugu</button>
+      <button type="button" class="google-btn" id="btnGoogleSignIn">Sign in with Google</button>
+      <p id="googleBlocker" hidden></p>
+      <div class="save-row">
+        <button type="button" id="btnExportSaveGate">Export save</button>
+        <button type="button" id="btnImportSaveGate">Import save</button>
+      </div>
+      <input type="file" id="importSaveFile" accept="application/json" hidden />
     </form>
   </div>
   <div id="about" hidden>
@@ -606,6 +852,7 @@
   <script src="map-3d.js"></script>
   <script src="js/lvfe-assets.js"></script>
   <script src="js/claim-rules.js"></script>
+  <script src="js/conquest.js"></script>
   <script src="js/dossier.js"></script>
   <script src="js/track-guide.js"></script>
   <script src="js/satellite.js"></script>
@@ -614,13 +861,21 @@
   <script src="nairacoin/rpc-stub.js"></script>
   <script src="js/nairacoin.js"></script>
   <script src="js/place-ledger.js"></script>
+  <script src="js/google-auth.config.js"></script>
+  <script src="js/account.js"></script>
+  <script src="js/google-auth.js"></script>
+  <script src="js/photo-store.js"></script>
+  <script src="js/field-claim.js"></script>
+  <script src="js/world-catalog.js"></script>
+  <script src="js/save-api.config.js"></script>
+  <script src="js/save-sync.js"></script>
   <script src="ar-overlay.js"></script>
   <script>
     const QUALITY_COLOR = {
       A: "#2ecc71",
       B: "#3498db",
       C: "#f39c12",
-      D: "#e74c3c",
+      D: "#111111",
     };
     const ROLE_FILL = {
       playable_faction: 0.12,
@@ -641,6 +896,7 @@
       emene: "Emene",
     };
     const EMPTY_FC = { type: "FeatureCollection", features: [] };
+    let factionColors = {};
 
     const params = new URLSearchParams(location.search);
     const qLat = parseFloat(params.get("lat"));
@@ -650,6 +906,8 @@
       : null;
     let PLAYER_KEY = ((params.get("player") || "").trim() || "default").slice(0, 32);
     let creatingProfile = false;
+    let pendingGoogle = null;
+    let fieldAwayTold = false;
     if (window.LvfeCatalogWallet && window.LvfeCatalogWallet.setPlayerKey) {
       window.LvfeCatalogWallet.setPlayerKey(PLAYER_KEY);
     }
@@ -672,6 +930,26 @@
     let wantGeo = false;
     const DOSSIER_TABS = window.LvfeDossier ? window.LvfeDossier.TABS : ["place", "mission", "land", "money", "wallet"];
 
+    function fitMap() {
+      if (!map || typeof map.resize !== "function") return;
+      try { map.resize(); } catch (err) { /* WebView layout */ }
+    }
+    window.lvfeFitMap = fitMap;
+
+    function hookMapFit() {
+      if (hookMapFit.done) return;
+      hookMapFit.done = true;
+      window.addEventListener("resize", fitMap);
+      window.addEventListener("orientationchange", () => {
+        fitMap();
+        setTimeout(fitMap, 250);
+      });
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener("resize", fitMap);
+      }
+      [0, 60, 200, 500, 1200].forEach((ms) => setTimeout(fitMap, ms));
+    }
+
     function placeName(p) {
       return window.LvfeRules.placeTitle(p);
     }
@@ -684,18 +962,29 @@
       const fabs = document.getElementById("fabs");
       if (!fabs) return;
       let bottom = 28;
-      if (sheetMode === "peek") bottom = 88;
+      const sheet = document.getElementById("sheet");
+      if (sheet && sheetMode !== "collapsed" && !sheet.hidden) {
+        const h = sheet.offsetHeight || 0;
+        if (h > 0) bottom = h + 12;
+      } else if (sheetMode === "peek") bottom = 88;
       else if (sheetMode === "half") bottom = Math.round(window.innerHeight * 0.46) + 12;
-      else if (sheetMode === "full" || sheetMode === "doc") {
+      else if (sheetMode === "doc") bottom = Math.round(window.innerHeight * 0.34) + 12;
+      else if (sheetMode === "full" || sheetMode === "doc-exp") {
         bottom = Math.round(window.innerHeight * 0.70) + 12;
       }
       fabs.style.bottom = "calc(" + bottom + "px + env(safe-area-inset-bottom, 0px))";
+    }
+
+    function toggleDocSheet() {
+      if (sheetMode === "doc") setSheet("doc-exp");
+      else if (sheetMode === "doc-exp") setSheet("doc");
     }
 
     function closeSheet() {
       activePlaceId = null;
       dossierPlaceId = null;
       dossierTab = "place";
+      if (window.LvfePhotoStore) window.LvfePhotoStore.discardPending();
       const card = document.getElementById("placeCard");
       if (card) {
         card.hidden = true;
@@ -718,7 +1007,7 @@
       if (!sheet) return;
       const next = mode === "hidden" ? "collapsed" : mode;
       sheetMode = next;
-      sheet.classList.remove("collapsed", "peek", "half", "full", "doc");
+      sheet.classList.remove("collapsed", "peek", "half", "full", "doc", "doc-exp");
       sheet.classList.add(next);
       if (next === "collapsed") {
         sheet.hidden = true;
@@ -727,16 +1016,79 @@
         sheet.hidden = false;
         sheet.removeAttribute("aria-hidden");
       }
+      const handle = document.getElementById("sheetHandle");
+      const expand = document.getElementById("sheetExpand");
+      if (handle) {
+        if (next === "doc") handle.setAttribute("aria-label", "Expand place");
+        else if (next === "doc-exp") handle.setAttribute("aria-label", "Collapse place");
+        else handle.setAttribute("aria-label", "Close place");
+      }
+      if (expand) {
+        const isDoc = next === "doc" || next === "doc-exp";
+        expand.hidden = !isDoc;
+        expand.textContent = next === "doc-exp" ? "▾" : "▴";
+        expand.setAttribute("aria-label", next === "doc-exp" ? "Collapse place" : "Expand place");
+      }
       layoutFabs();
     }
 
-    function hideMenus() {
+    function hidePopovers() {
       const hits = document.getElementById("searchHits");
-      const more = document.getElementById("moreMenu");
-      const filters = document.getElementById("filterPop");
       if (hits) hits.hidden = true;
-      if (more) more.hidden = true;
-      if (filters) filters.hidden = true;
+    }
+
+    function accountOpen() {
+      const sheet = document.getElementById("accountSheet");
+      return Boolean(sheet && sheet.classList.contains("open"));
+    }
+
+    function closeAccountSheet() {
+      const sheet = document.getElementById("accountSheet");
+      const scrim = document.getElementById("accountScrim");
+      const btn = document.getElementById("btnMore");
+      if (sheet) {
+        sheet.classList.remove("open");
+        sheet.setAttribute("aria-hidden", "true");
+        window.setTimeout(function () {
+          if (sheet.classList.contains("open")) return;
+          sheet.hidden = true;
+        }, 260);
+      }
+      if (scrim) {
+        scrim.classList.remove("open");
+        window.setTimeout(function () {
+          if (scrim.classList.contains("open")) return;
+          scrim.hidden = true;
+        }, 260);
+      }
+      if (btn) btn.setAttribute("aria-expanded", "false");
+    }
+
+    function openAccountSheet() {
+      const sheet = document.getElementById("accountSheet");
+      const scrim = document.getElementById("accountScrim");
+      const btn = document.getElementById("btnMore");
+      hidePopovers();
+      paintProfileMenu();
+      if (sheet) {
+        sheet.hidden = false;
+        sheet.removeAttribute("aria-hidden");
+        window.requestAnimationFrame(function () {
+          sheet.classList.add("open");
+        });
+      }
+      if (scrim) {
+        scrim.hidden = false;
+        window.requestAnimationFrame(function () {
+          scrim.classList.add("open");
+        });
+      }
+      if (btn) btn.setAttribute("aria-expanded", "true");
+    }
+
+    function hideMenus() {
+      hidePopovers();
+      closeAccountSheet();
     }
 
     function renderSearchHits(q) {
@@ -857,7 +1209,7 @@
     function setArPressed(on) {
       const btn = document.getElementById("btnAr");
       const box = document.getElementById("toggleAr");
-      if (btn) btn.setAttribute("aria-pressed", on ? "true" : "false");
+      if (btn) btn.setAttribute("aria-checked", on ? "true" : "false");
       if (box && box.checked !== on) {
         box.checked = on;
         box.dispatchEvent(new Event("change"));
@@ -870,33 +1222,46 @@
       const search = document.getElementById("searchQ");
       if (search) {
         search.addEventListener("input", () => {
-          document.getElementById("moreMenu").hidden = true;
-          document.getElementById("filterPop").hidden = true;
+          closeAccountSheet();
           renderSearchHits(search.value);
         });
-        search.addEventListener("focus", () => renderSearchHits(search.value));
+        search.addEventListener("focus", () => {
+          closeAccountSheet();
+          renderSearchHits(search.value);
+        });
       }
       document.getElementById("btnMore").addEventListener("click", (e) => {
         e.stopPropagation();
-        const menu = document.getElementById("moreMenu");
-        const open = menu.hidden;
-        hideMenus();
-        if (open) paintProfileMenu();
-        menu.hidden = !open;
+        if (accountOpen()) closeAccountSheet();
+        else openAccountSheet();
       });
-      document.getElementById("btnFilters").addEventListener("click", () => {
-        hideMenus();
-        document.getElementById("filterPop").hidden = false;
+      const acctClose = document.getElementById("acctClose");
+      if (acctClose) acctClose.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        closeAccountSheet();
       });
+      const acctHandle = document.getElementById("acctHandle");
+      if (acctHandle) acctHandle.addEventListener("click", () => closeAccountSheet());
+      const scrim = document.getElementById("accountScrim");
+      if (scrim) scrim.addEventListener("click", () => closeAccountSheet());
+      bindAccountSwipe();
       document.getElementById("btnAbout").addEventListener("click", () => {
-        hideMenus();
+        closeAccountSheet();
         document.getElementById("about").hidden = false;
       });
       document.getElementById("aboutClose").addEventListener("click", () => {
         document.getElementById("about").hidden = true;
       });
       document.getElementById("sheetHandle").addEventListener("click", () => {
-        closeSheet();
+        if (sheetMode === "doc" || sheetMode === "doc-exp") toggleDocSheet();
+        else closeSheet();
+      });
+      const sheetExpand = document.getElementById("sheetExpand");
+      if (sheetExpand) sheetExpand.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleDocSheet();
       });
       const sheetClose = document.getElementById("sheetClose");
       if (sheetClose) sheetClose.addEventListener("click", (e) => {
@@ -908,6 +1273,8 @@
       if (identClose) identClose.addEventListener("click", (e) => {
         e.preventDefault();
         creatingProfile = false;
+        pendingGoogle = null;
+        hideGoogleBlocker();
         hideIdentityGate();
       });
       const mapFailClose = document.getElementById("mapFailClose");
@@ -919,6 +1286,7 @@
       const btnSat = document.getElementById("btnSat");
       if (btnSat) btnSat.addEventListener("click", () => {
         if (window.LvfeSatellite) window.LvfeSatellite.toggle();
+        fitMap();
       });
       const profileSelect = document.getElementById("profileSelect");
       if (profileSelect) profileSelect.addEventListener("change", () => {
@@ -930,14 +1298,16 @@
       if (btnNew) btnNew.addEventListener("click", () => {
         hideMenus();
         creatingProfile = true;
+        pendingGoogle = null;
+        hideGoogleBlocker();
         document.getElementById("idName").value = "";
         document.getElementById("idFaction").value = "";
         document.getElementById("identityGate").hidden = false;
       });
+      bindSaveButtons();
       document.getElementById("btn3d").addEventListener("click", () => {
         const box = document.getElementById("toggle3d");
-        const pitched = map && typeof map.getPitch === "function" && map.getPitch() > 1;
-        box.checked = !(pitched || box.checked);
+        box.checked = !box.checked;
         box.dispatchEvent(new Event("change"));
       });
       document.getElementById("btnAr").addEventListener("click", () => {
@@ -979,7 +1349,7 @@
       window.addEventListener("resize", layoutFabs);
       if (typeof lvfeEnableAr === "function") {
         lvfeEnableAr({
-          getNearby: nearbyFeatures,
+          getNearby: nearbyFeaturesAr,
           onFail: null,
         });
       }
@@ -988,6 +1358,25 @@
         if (window.LvfeTrack) window.LvfeTrack.paintChip();
         refreshOpenDossier();
       };
+    }
+
+    function bindAccountSwipe() {
+      const sheet = document.getElementById("accountSheet");
+      if (!sheet || bindAccountSwipe.done) return;
+      bindAccountSwipe.done = true;
+      let y0 = 0;
+      let x0 = 0;
+      sheet.addEventListener("touchstart", (e) => {
+        if (!e.changedTouches || !e.changedTouches[0]) return;
+        y0 = e.changedTouches[0].clientY;
+        x0 = e.changedTouches[0].clientX;
+      }, { passive: true });
+      sheet.addEventListener("touchend", (e) => {
+        if (!e.changedTouches || !e.changedTouches[0]) return;
+        const dy = e.changedTouches[0].clientY - y0;
+        const dx = e.changedTouches[0].clientX - x0;
+        if (dy > 48 && dy > Math.abs(dx)) closeAccountSheet();
+      }, { passive: true });
     }
 
     function bindSheetSwipe() {
@@ -1005,7 +1394,12 @@
         if (!e.changedTouches || !e.changedTouches[0]) return;
         const dy = e.changedTouches[0].clientY - y0;
         const dx = e.changedTouches[0].clientX - x0;
-        if (dy > 48 && dy > Math.abs(dx)) closeSheet();
+        if (Math.abs(dy) <= 48 || Math.abs(dy) <= Math.abs(dx)) return;
+        if (dy > 0) {
+          closeSheet();
+          return;
+        }
+        if (sheetMode === "doc") setSheet("doc-exp");
       }, { passive: true });
     }
 
@@ -1147,19 +1541,51 @@
       } catch (err) { /* */ }
       renderHud();
       refreshNearby();
+      stampPlaceMarks();
+      refreshPlaceSource();
       refreshOpenDossier();
       paintProfileMenu();
     }
 
     function paintProfileMenu() {
       const idn = loadIdentity();
-      const who = document.getElementById("menuWho");
-      if (who) {
-        who.innerHTML = idn
-          ? "Playing as <strong>" + esc(idn.playerName) + "</strong>"
-          : (PLAYER_KEY !== "default"
-            ? "Profile <strong>" + esc(PLAYER_KEY) + "</strong>"
-            : "Set a name to back places");
+      const whole = walletWhole();
+      const sealGlyph = idn && idn.playerName
+        ? idn.playerName.trim().charAt(0).toUpperCase()
+        : "+";
+      const stamp = document.getElementById("stampGlyph");
+      if (stamp) stamp.textContent = sealGlyph;
+      const seal = document.getElementById("acctSeal");
+      if (seal) seal.textContent = sealGlyph;
+      const nameEl = document.getElementById("acctName");
+      if (nameEl) nameEl.textContent = (idn && idn.playerName) || "No name yet";
+      const meta = document.getElementById("acctMeta");
+      if (meta) {
+        const fac = idn && idn.factionId ? (FACTION_NAMES[idn.factionId] || idn.factionId) : "no neighbourhood";
+        meta.innerHTML = idn
+          ? esc(fac) + " · <span class=\"coin\" id=\"acctCoin\">" + whole + "</span> NairaCoin"
+          : "Set a name to back places · <span class=\"coin\" id=\"acctCoin\">" + whole + "</span> NairaCoin";
+      } else {
+        const coin = document.getElementById("acctCoin");
+        if (coin) coin.textContent = String(whole);
+      }
+      const gNote = document.getElementById("acctGoogleNote");
+      if (gNote) {
+        if (idn && idn.googleSub) {
+          gNote.hidden = false;
+          gNote.textContent = idn.email
+            ? "Signed in · " + idn.email
+            : "Signed in with Google";
+        } else {
+          gNote.hidden = true;
+          gNote.textContent = "";
+        }
+      }
+      const syncNote = document.getElementById("acctSyncNote");
+      if (syncNote && window.LvfeSaveSync) {
+        syncNote.textContent = window.LvfeSaveSync.statusLine();
+      } else if (syncNote) {
+        syncNote.textContent = "Cloud save off until SAVE_API_BASE is set.";
       }
       const wrap = document.getElementById("menuSwitch");
       const sel = document.getElementById("profileSelect");
@@ -1178,12 +1604,296 @@
       const o = lsGet(identityKey(pk), null);
       if (!o || !o.playerName) return null;
       const factionId = FACTION_NAMES[o.factionId] ? o.factionId : "";
-      return { playerName: String(o.playerName).slice(0, 32), factionId };
+      return {
+        playerName: String(o.playerName).slice(0, 32),
+        factionId,
+        googleSub: o.googleSub || "",
+        email: o.email || "",
+      };
     }
 
     function saveIdentity(idn, pk) {
-      lsSet(identityKey(pk), { playerName: idn.playerName, factionId: idn.factionId || "" });
+      const cur = loadIdentity(pk) || {};
+      lsSet(identityKey(pk), {
+        playerName: idn.playerName,
+        factionId: idn.factionId || "",
+        googleSub: idn.googleSub || cur.googleSub || (pendingGoogle && pendingGoogle.sub) || "",
+        email: idn.email || cur.email || (pendingGoogle && pendingGoogle.email) || "",
+      });
+      scheduleSavePush();
     }
+
+    function showGoogleBlocker(err) {
+      const el = document.getElementById("googleBlocker");
+      if (!el) return;
+      const steps = (err && err.steps) || (window.LvfeGoogleAuthConfig && window.LvfeGoogleAuthConfig.BLOCKER_STEPS) || [];
+      const title = (err && (err.title || err.message)) || (window.LvfeGoogleAuthConfig && window.LvfeGoogleAuthConfig.BLOCKER_TITLE) || "Google sign-in is not wired yet.";
+      el.hidden = false;
+      el.textContent = title + "\n\n" + steps.map((s, i) => (i + 1) + ". " + s).join("\n");
+    }
+
+    function hideGoogleBlocker() {
+      const el = document.getElementById("googleBlocker");
+      if (el) {
+        el.hidden = true;
+        el.textContent = "";
+      }
+    }
+
+    function applyGoogleAccount(result) {
+      if (!result || !result.ok) {
+        showGoogleBlocker(result);
+        toast((result && result.title) || "Google sign-in is not wired yet.");
+        return;
+      }
+      hideGoogleBlocker();
+      pendingGoogle = { sub: result.sub, email: result.email, playerKey: result.playerKey };
+      const Acc = window.LvfeAccount;
+      const mapped = Acc && Acc.lookupGoogle(result.sub);
+      const pk = (mapped && mapped.playerKey) || result.playerKey;
+      const existing = loadIdentity(pk);
+      switchPlayer(pk);
+      if (existing && existing.playerName) {
+        pendingGoogle = { sub: result.sub, email: result.email, playerKey: pk };
+        saveIdentity({
+          playerName: existing.playerName,
+          factionId: existing.factionId,
+          googleSub: result.sub,
+          email: result.email,
+        }, pk);
+        hideIdentityGate();
+        toast("Signed in. Playing as " + existing.playerName + ".");
+        renderHud();
+        return;
+      }
+      creatingProfile = false;
+      document.getElementById("idName").value = "";
+      showIdentityGate();
+      toast("Signed into Google. Pick a unique name — not your email.");
+    }
+
+    function downloadSave() {
+      const Acc = window.LvfeAccount;
+      if (!Acc) {
+        toast("Save export isn’t available.");
+        return;
+      }
+      const idn = loadIdentity() || {};
+      const finish = function (photos) {
+        const pack = Acc.packSave({
+          playerKey: PLAYER_KEY,
+          googleSub: idn.googleSub || (pendingGoogle && pendingGoogle.sub) || "",
+          email: idn.email || (pendingGoogle && pendingGoogle.email) || "",
+          photos: photos || [],
+        });
+        const blob = new Blob([JSON.stringify(pack, null, 2)], { type: "application/json" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "lvfe-save-" + (idn.playerName || PLAYER_KEY || "player") + ".json";
+        a.click();
+        setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
+        toast("Save exported. Reinstall wipes this phone unless you import this file.");
+      };
+      if (window.LvfePhotoStore && window.LvfePhotoStore.exportPhotos) {
+        window.LvfePhotoStore.exportPhotos(8).then(finish).catch(function () { finish([]); });
+      } else finish([]);
+    }
+
+    function importSaveFile(file) {
+      if (!file) return;
+      const Acc = window.LvfeAccount;
+      const reader = new FileReader();
+      reader.onload = function () {
+        try {
+          const pack = JSON.parse(String(reader.result || ""));
+          const res = Acc.unpackSave(pack);
+          if (!res.ok) {
+            toast(res.error || "Could not import save.");
+            return;
+          }
+          if (window.LvfePhotoStore && res.photos && res.photos.length) {
+            window.LvfePhotoStore.importPhotos(res.photos);
+          }
+          if (pack.playerKey) switchPlayer(pack.playerKey);
+          hideIdentityGate();
+          renderHud();
+          refreshNearby();
+          stampPlaceMarks();
+          refreshPlaceSource();
+          scheduleSavePush();
+          toast("Save imported. Playing as " + ((loadIdentity() && loadIdentity().playerName) || pack.playerKey) + ".");
+        } catch (err) {
+          toast("That file is not an Lvfe save.");
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function bindSaveButtons() {
+      function pickImport() {
+        const inp = document.getElementById("importSaveFile");
+        if (inp) inp.click();
+      }
+      ["btnExportSave", "btnExportSaveGate"].forEach(function (id) {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener("click", function (e) {
+          e.preventDefault();
+          hideMenus();
+          downloadSave();
+        });
+      });
+      ["btnImportSave", "btnImportSaveGate"].forEach(function (id) {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener("click", function (e) {
+          e.preventDefault();
+          hideMenus();
+          pickImport();
+        });
+      });
+      const inp = document.getElementById("importSaveFile");
+      if (inp) inp.addEventListener("change", function () {
+        const f = inp.files && inp.files[0];
+        inp.value = "";
+        if (f) importSaveFile(f);
+      });
+      const syncBtn = document.getElementById("btnSyncNow");
+      if (syncBtn) syncBtn.addEventListener("click", function (e) {
+        e.preventDefault();
+        const Sync = window.LvfeSaveSync;
+        if (!Sync || !Sync.enabled()) {
+          toast("Set ?saveApi=http://LAN:18787 or localStorage lvfe.saveApiBase first.");
+          paintProfileMenu();
+          return;
+        }
+        toast("Syncing…");
+        Sync.pullAndMerge(PLAYER_KEY, {
+          packOpts: syncPackOpts(),
+          afterImport: function (res) {
+            if (res && res.playerKey) switchPlayer(res.playerKey);
+            renderHud();
+            stampPlaceMarks();
+            refreshPlaceSource();
+            refreshNearby();
+          },
+        }).then(function (res) {
+          if (res && res.pulled) toast("Pulled cloud save.");
+          else if (res && res.pushedLocal) toast("Pushed local save (newer).");
+          else if (res && res.empty) {
+            return Sync.push(PLAYER_KEY, syncPackOpts()).then(function (p) {
+              toast(p && p.ok ? "Pushed first cloud save." : ("Sync: " + ((p && p.error) || "failed")));
+              paintProfileMenu();
+            });
+          } else if (res && res.ok === false) toast("Sync: " + (res.error || "failed"));
+          else toast("Cloud save up to date.");
+          paintProfileMenu();
+        });
+      });
+      const gBtn = document.getElementById("btnGoogleSignIn");
+      if (gBtn) gBtn.addEventListener("click", function (e) {
+        e.preventDefault();
+        hideGoogleBlocker();
+        if (!window.LvfeGoogleAuth) {
+          showGoogleBlocker(null);
+          toast("Google sign-in is not wired yet.");
+          return;
+        }
+        window.LvfeGoogleAuth.signIn(applyGoogleAccount);
+      });
+      const gSheet = document.getElementById("btnGoogleSignInSheet");
+      if (gSheet) gSheet.addEventListener("click", function (e) {
+        e.preventDefault();
+        const note = document.getElementById("acctGoogleNote");
+        if (!window.LvfeGoogleAuth) {
+          if (note) {
+            note.hidden = false;
+            note.textContent = "Google sign-in is not wired yet.";
+          }
+          toast("Google sign-in is not wired yet.");
+          return;
+        }
+        window.LvfeGoogleAuth.signIn(function (result) {
+          if (!result || !result.ok) {
+            if (note) {
+              note.hidden = false;
+              note.textContent = (result && (result.title || result.message)) || "Google sign-in is not wired yet.";
+            }
+          }
+          applyGoogleAccount(result);
+          if (result && result.ok) closeAccountSheet();
+        });
+      });
+    }
+
+    function paintPhotoThumb(placeId) {
+      const box = document.querySelector(".dossier-photo");
+      if (!box || !placeId || !window.LvfePhotoStore) return;
+      window.LvfePhotoStore.objectUrl(placeId, PLAYER_KEY).then(function (url) {
+        if (!url) return;
+        const still = document.querySelector(".dossier-photo");
+        if (!still) {
+          URL.revokeObjectURL(url);
+          return;
+        }
+        still.innerHTML = "";
+        const img = document.createElement("img");
+        img.alt = "Place photo";
+        img.src = url;
+        still.appendChild(img);
+      }).catch(function () { /* none */ });
+    }
+
+    function applyFieldResult(res) {
+      if (!res || !res.places) return;
+      placesFc = res.places;
+      stampPlaceMarks();
+      refreshPlaceSource();
+      refreshNearby();
+      if (res.away && res.message && !fieldAwayTold) {
+        fieldAwayTold = true;
+        if (res.worldOk === false && res.worldError) {
+          toast("Overpass down — Unclaimed area hinterland still claimable.");
+        } else if (res.added && res.added.length) {
+          toast("Named places near you loaded from OpenStreetMap.");
+        } else {
+          toast("Outside Enugu catalog — Unclaimed area at your GPS is claimable.");
+        }
+      } else if (res.away && res.worldOk === false && res.message) {
+        toast(res.message.slice(0, 120));
+      }
+      if (res.worldPromise && typeof res.worldPromise.then === "function") {
+        res.worldPromise.then(function (worldRes) {
+          applyFieldResult(worldRes);
+        }).catch(function () { /* banner already via message */ });
+      }
+    }
+
+    function flyToUser(pos) {
+      if (!map || !pos) return;
+      const Field = window.LvfeField;
+      const far = !Field || Field.shouldFly(map, pos, 400);
+      function after() {
+        if (!Field) return;
+        const res = Field.onLocated(map, pos, placesFc);
+        applyFieldResult(res);
+      }
+      if (!far) {
+        after();
+        return;
+      }
+      ignorePan = true;
+      try {
+        map.flyTo({ center: [pos.lon, pos.lat], zoom: Math.max(map.getZoom() || 0, 16), duration: 900 });
+      } catch (err) {
+        ignorePan = false;
+        after();
+        return;
+      }
+      map.once("moveend", function () {
+        ignorePan = false;
+        after();
+      });
+    }
+    window.lvfeFlyToUser = flyToUser;
 
     function loadWallet(pk) {
       W.getBalance(pk || PLAYER_KEY);
@@ -1204,6 +1914,96 @@
 
     function savePlaces(all) {
       lsSet(PLACES_KEY, all);
+      scheduleSavePush();
+    }
+
+    function syncPackOpts() {
+      const idn = loadIdentity() || {};
+      return {
+        googleSub: idn.googleSub || (pendingGoogle && pendingGoogle.sub) || "",
+        email: idn.email || (pendingGoogle && pendingGoogle.email) || "",
+      };
+    }
+
+    let savePushTimer = 0;
+    function scheduleSavePush() {
+      if (!window.LvfeSaveSync || !window.LvfeSaveSync.enabled()) return;
+      clearTimeout(savePushTimer);
+      savePushTimer = setTimeout(function () {
+        window.LvfeSaveSync.push(PLAYER_KEY, syncPackOpts()).then(function (res) {
+          if (res && res.stale && res.pack) {
+            window.LvfeSaveSync.applyPack(res.pack, {
+              afterImport: function () {
+                renderHud();
+                stampPlaceMarks();
+                refreshPlaceSource();
+                refreshNearby();
+              },
+            });
+            toast("Server had a newer save — merged (last-write-wins).");
+          }
+          paintProfileMenu();
+        });
+      }, 700);
+    }
+
+    function bootCloudSave() {
+      const Sync = window.LvfeSaveSync;
+      if (!Sync || !Sync.enabled()) return;
+      Sync.pullAndMerge(PLAYER_KEY, {
+        packOpts: syncPackOpts(),
+        afterImport: function (res) {
+          if (res && res.playerKey) switchPlayer(res.playerKey);
+          renderHud();
+          stampPlaceMarks();
+          refreshPlaceSource();
+          refreshNearby();
+        },
+      }).then(function (res) {
+        if (res && res.pulled) toast("Cloud save loaded.");
+        else if (res && res.ok === false && res.code === "oauth_not_configured") {
+          toast("Cloud save: Google OAuth not configured on server.");
+        } else if (res && res.ok === false && !res.skipped && !res.empty && !res.offline) {
+          toast("Cloud save: " + (res.error || "failed"));
+        }
+        paintProfileMenu();
+      });
+      window.addEventListener("online", function () {
+        Sync.flushQueue(PLAYER_KEY, syncPackOpts()).then(function () { paintProfileMenu(); });
+      });
+    }
+
+    function collectFactionColors(fc) {
+      const out = {};
+      const feats = (fc && fc.features) || [];
+      for (let i = 0; i < feats.length; i++) {
+        const p = feats[i].properties || {};
+        const id = p.faction_id || feats[i].id;
+        if (id && p.color) out[id] = p.color;
+      }
+      return out;
+    }
+
+    function stampPlaceMarks() {
+      const stored = loadPlaces();
+      const C = window.LvfeConquest;
+      if (C) C.refresh(placesFc, stored);
+      const pk = PLAYER_KEY;
+      const feats = (placesFc && placesFc.features) || [];
+      for (let i = 0; i < feats.length; i++) {
+        const id = feats[i].properties && feats[i].properties.id;
+        const rec = id ? stored[id] : null;
+        if (C) C.stampFeature(feats[i], rec, pk, factionColors);
+        else if (feats[i].properties) {
+          const unknown = window.LvfeRules && window.LvfeRules.isUnknownPlace(feats[i].properties);
+          feats[i].properties.owner_mark = rec && rec.ownerId
+            ? (rec.ownerId === pk ? "self" : "other")
+            : (unknown ? "unknown" : "x");
+          feats[i].properties.mark_color = rec && rec.ownerId
+            ? "#1d8cff"
+            : (unknown ? "#111111" : "#ff3b30");
+        }
+      }
     }
 
     function emptyRec() {
@@ -1279,7 +2079,16 @@
     }
 
     function minStake(p) {
-      return W.minStake(p.claim_points, p.catalog_type);
+      let n = W.minStake(p.claim_points, p.catalog_type);
+      const C = window.LvfeConquest;
+      if (C && n > 0) n = C.costToBack(n, p, C.get());
+      return n;
+    }
+
+    function shownValue(rec, p) {
+      const C = window.LvfeConquest;
+      if (C) return C.displayValue(rec, p, C.get());
+      return rec ? Number(rec.value) || 0 : 0;
     }
 
     function yieldOnStake(amount) {
@@ -1303,6 +2112,7 @@
     }
 
     function validPhoto(file) {
+      if (window.LvfePhotoStore) return window.LvfePhotoStore.validFile(file);
       if (!file || !(file.size > 0)) return false;
       if (file.type && !/^image\//.test(file.type)) return false;
       return true;
@@ -1430,6 +2240,49 @@
       return out;
     }
 
+    /** AR overlays use a slightly wider cone (~120 m). Claim/Pay stays 80 m. */
+    function nearbyFeaturesAr() {
+      if (!userPos) return [];
+      const range = (typeof window.lvfeArRangeM === "number" && window.lvfeArRangeM > 0)
+        ? window.lvfeArRangeM
+        : 120;
+      const out = [];
+      for (const f of placesFc.features) {
+        const p = f.properties;
+        if (!placeVisible(p)) continue;
+        const [lon, lat] = f.geometry.coordinates;
+        const dist = haversineM(userPos.lat, userPos.lon, lat, lon);
+        if (dist <= range) out.push({ f, dist });
+      }
+      /* Debug-only mock pin: ?arMock=1 or localStorage lvfe.arMock=1
+         Places a named red-X ~45 m north of GPS so overlay math is testable
+         when the player is far from real catalog pins. Production GPS unchanged. */
+      let mock = false;
+      try {
+        mock = new URLSearchParams(location.search).get("arMock") === "1" ||
+          localStorage.getItem("lvfe.arMock") === "1";
+      } catch (err) { /* */ }
+      if (mock) {
+        const dLat = 45 / 111320;
+        const mockFeat = {
+          type: "Feature",
+          geometry: { type: "Point", coordinates: [userPos.lon, userPos.lat + dLat] },
+          properties: {
+            id: "ar-mock-north",
+            name: "AR mock pin",
+            catalog_type: "shop",
+            quality: "B",
+            owner_mark: "x",
+            mark_color: "#ff3b30",
+          },
+        };
+        const dist = haversineM(userPos.lat, userPos.lon, mockFeat.geometry.coordinates[1], mockFeat.geometry.coordinates[0]);
+        out.push({ f: mockFeat, dist: dist });
+      }
+      out.sort((a, b) => a.dist - b.dist);
+      return out;
+    }
+
     function setYouSource() {
       if (!map || !map.getSource("you")) return;
       if (!forcedPos || !userPos) {
@@ -1462,7 +2315,7 @@
 
     function placeValueLine(rec, p) {
       if (!isOwnable(p)) return "0 NairaCoin · cannot be owned";
-      return `${rec.value} NairaCoin in this place`;
+      return `${shownValue(rec, p)} NairaCoin in this place`;
     }
 
     function ctaButtonHtml(p, rec, distOk) {
@@ -1495,7 +2348,7 @@
         const mine = rec.stakes[PLAYER_KEY];
         bits.push(
           `<p class="meta">${ownerLine(rec)}<br>${esc(propertyLabel(rec))}` +
-          `<br>Cost to back this place: ${minStake(p)} NairaCoin · ${rec.value} NairaCoin in this place` +
+          `<br>Cost to back this place: ${minStake(p)} NairaCoin · ${shownValue(rec, p)} NairaCoin in this place` +
           (rec.ownerId && rec.ownerId !== PLAYER_KEY
             ? `<br>Owner earns from visits` +
               (rec.factionId ? ` · ${esc(factionLabel(rec.factionId))} gets a cut` : "")
@@ -1577,7 +2430,7 @@
 
     function moneyValueText(rec, p) {
       if (!isOwnable(p)) return "Cannot be owned";
-      const v = rec && Number(rec.value) || 0;
+      const v = shownValue(rec, p);
       return v > 0 ? v + " NairaCoin" : "No one has backed this yet";
     }
 
@@ -1689,9 +2542,11 @@
       }
       card.hidden = false;
       hideMenus();
-      setSheet("doc");
+      const keepExp = sheetMode === "doc-exp";
+      setSheet(keepExp ? "doc-exp" : "doc");
       setDossierTab(dossierTab);
       bindDossierNav();
+      paintPhotoThumb(nextId);
     }
 
     function refreshOpenDossier() {
@@ -1782,7 +2637,11 @@
         visitorId: PLAYER_KEY,
         visitorName: idn.playerName,
         amount,
-        photo: validPhoto(file) ? photoRef(file) : null,
+        photo: validPhoto(file)
+          ? (window.LvfePhotoStore
+            ? (window.LvfePhotoStore.confirm(id, PLAYER_KEY, file), window.LvfePhotoStore.metaOf(file))
+            : photoRef(file))
+          : null,
       });
       if (split.ownerPaid) creditWallet(split.prevOwner, split.ownerPaid);
       if (split.factionPaid) {
@@ -1808,6 +2667,7 @@
       const all = loadPlaces();
       all[id] = rec;
       savePlaces(all);
+      stampPlaceMarks();
 
       paintCounts();
       refreshPlaceSource();
@@ -1840,7 +2700,12 @@
       map.setLayoutProperty("territories-label", "visibility", visPoly ? "visible" : "none");
       const parts = ["all", ["in", ["get", "quality"], ["literal", qs.length ? qs : ["__none__"]]]];
       if (!includeOut) parts.push(["!=", ["get", "territory_id"], "unclaimed"]);
-      map.setFilter("places-circles", parts);
+      const owned = ["in", ["get", "owner_mark"], ["literal", ["self", "other"]]];
+      const unownedX = ["==", ["get", "owner_mark"], "x"];
+      const unownedUnknown = ["==", ["get", "owner_mark"], "unknown"];
+      map.setFilter("places-circles", parts.concat([owned]));
+      if (map.getLayer("places-x")) map.setFilter("places-x", parts.concat([unownedX]));
+      if (map.getLayer("places-x-unknown")) map.setFilter("places-x-unknown", parts.concat([unownedUnknown]));
       if (map.getLayer("places-hit")) map.setFilter("places-hit", parts);
       refreshNearby();
     }
@@ -1849,6 +2714,7 @@
       const edit = e.target.closest("[data-id-edit]");
       if (edit) {
         e.preventDefault();
+        closeAccountSheet();
         showIdentityGate();
         return;
       }
@@ -1900,7 +2766,7 @@
           arBox.checked = false;
           if (typeof lvfeArStop === "function") lvfeArStop();
           const arBtn = document.getElementById("btnAr");
-          if (arBtn) arBtn.setAttribute("aria-pressed", "false");
+          if (arBtn) arBtn.setAttribute("aria-checked", "false");
         }
         const feat = placeById(jump.getAttribute("data-jump"));
         if (!feat) return;
@@ -1924,8 +2790,24 @@
           toast("A unique name is required.");
           return;
         }
-        if (creatingProfile) {
-          const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "").slice(0, 32) || name.slice(0, 32);
+        const Acc = window.LvfeAccount;
+        if (Acc && Acc.nameTaken(name, creatingProfile || pendingGoogle ? "" : PLAYER_KEY)) {
+          toast("That name is taken on this phone. Pick another.");
+          return;
+        }
+        if (pendingGoogle && pendingGoogle.playerKey) {
+          PLAYER_KEY = pendingGoogle.playerKey;
+          if (window.LvfeCatalogWallet && window.LvfeCatalogWallet.setPlayerKey) {
+            window.LvfeCatalogWallet.setPlayerKey(PLAYER_KEY);
+          }
+          try {
+            const url = new URL(location.href);
+            url.searchParams.set("player", PLAYER_KEY);
+            history.replaceState({}, "", url.pathname + url.search + url.hash);
+          } catch (err) { /* */ }
+          creatingProfile = false;
+        } else if (creatingProfile) {
+          const slug = Acc ? Acc.uniquePlayerKey(name) : (name.toLowerCase().replace(/[^a-z0-9]+/g, "").slice(0, 32) || name.slice(0, 32));
           PLAYER_KEY = slug;
           if (window.LvfeCatalogWallet && window.LvfeCatalogWallet.setPlayerKey) {
             window.LvfeCatalogWallet.setPlayerKey(PLAYER_KEY);
@@ -1937,7 +2819,17 @@
           } catch (err) { /* */ }
           creatingProfile = false;
         }
-        saveIdentity({ playerName: name, factionId: FACTION_NAMES[factionId] ? factionId : "" });
+        saveIdentity({
+          playerName: name,
+          factionId: FACTION_NAMES[factionId] ? factionId : "",
+          googleSub: pendingGoogle && pendingGoogle.sub,
+          email: pendingGoogle && pendingGoogle.email,
+        });
+        if (pendingGoogle && pendingGoogle.sub && Acc) {
+          Acc.bindGoogle(pendingGoogle.sub, pendingGoogle.email, PLAYER_KEY);
+        }
+        pendingGoogle = null;
+        hideGoogleBlocker();
         hideIdentityGate();
         renderHud();
         refreshNearby();
@@ -1957,6 +2849,21 @@
         amount: amtInput ? amtInput.value : 0,
         file: fileInput && fileInput.files && fileInput.files[0] ? fileInput.files[0] : null,
       });
+    });
+    document.addEventListener("change", (e) => {
+      const inp = e.target.closest && e.target.closest("input.photo-in");
+      if (!inp || !window.LvfePhotoStore) return;
+      const form = inp.closest(".visit-form");
+      const placeId = form && form.getAttribute("data-place");
+      const file = inp.files && inp.files[0];
+      if (!file) {
+        window.LvfePhotoStore.discardPending();
+        return;
+      }
+      if (!window.LvfePhotoStore.setPending(file, placeId, PLAYER_KEY)) {
+        toast("Need a photo of the place (image file).");
+        inp.value = "";
+      }
     });
 
     let territoriesFc = null;
@@ -2036,6 +2943,7 @@
 
     bootstrapIdentity();
     bindChrome();
+    bootCloudSave();
     closeSheet();
     hideIdentityGate();
     probeBrowserPerms();
@@ -2048,7 +2956,12 @@
       document.getElementById("nearbyList").textContent = nearbyEmptyCopy();
     }
     ["qA", "qB", "qC", "qD", "qOut", "showPoly"].forEach((id) => {
-      document.getElementById(id).addEventListener("change", setFilter);
+      const el = document.getElementById(id);
+      el.setAttribute("aria-checked", el.checked ? "true" : "false");
+      el.addEventListener("change", () => {
+        el.setAttribute("aria-checked", el.checked ? "true" : "false");
+        setFilter();
+      });
     });
 
     const dataReady = Promise.all([
@@ -2057,11 +2970,19 @@
     ]).then(([territories, places]) => {
       territoriesFc = territories;
       placesFc = places;
+      if (window.LvfeField) {
+        placesFc = window.LvfeField.mergeInto(placesFc, window.LvfeField.loadField().features);
+      }
+      factionColors = collectFactionColors(territories);
       const stored = loadPlaces();
-      for (const f of places.features) {
+      for (const f of placesFc.features) {
         const rec = stored[f.properties.id];
         if (rec) applyLocalQuality(f, rec);
       }
+      if (userPos && window.LvfeField) {
+        applyFieldResult(window.LvfeField.onLocated(map, userPos, placesFc));
+      }
+      stampPlaceMarks();
       paintCounts();
       refreshNearby();
       ensureLayers();
@@ -2088,7 +3009,7 @@
 
     function ensureLayers() {
       if (!map || !territoriesFc || !basemapReady()) return;
-      const pinsUp = Boolean(map.getLayer("places-circles") && map.getLayer("you-dot") && map.getLayer("territories-fill"));
+      const pinsUp = Boolean(map.getLayer("places-circles") && map.getLayer("places-x") && map.getLayer("places-x-unknown") && map.getLayer("you-dot") && map.getLayer("territories-fill"));
       if (pinsUp) {
         layersReady = true;
         if (window.LvfeTrack) window.LvfeTrack.ensureLayers(map);
@@ -2102,6 +3023,33 @@
       const territories = territoriesFc;
       const places = placesFc;
       const addLy = (spec) => { if (!map.getLayer(spec.id)) map.addLayer(spec); };
+      function ensureXIcon(id, fill, halo) {
+        if (map.hasImage && map.hasImage(id)) return;
+        const size = 64;
+        const c = document.createElement("canvas");
+        c.width = size;
+        c.height = size;
+        const ctx = c.getContext("2d");
+        if (!ctx) return;
+        ctx.lineCap = "round";
+        ctx.strokeStyle = halo;
+        ctx.lineWidth = 14;
+        ctx.beginPath();
+        ctx.moveTo(12, 12); ctx.lineTo(52, 52);
+        ctx.moveTo(52, 12); ctx.lineTo(12, 52);
+        ctx.stroke();
+        ctx.strokeStyle = fill;
+        ctx.lineWidth = 8;
+        ctx.beginPath();
+        ctx.moveTo(12, 12); ctx.lineTo(52, 52);
+        ctx.moveTo(52, 12); ctx.lineTo(12, 52);
+        ctx.stroke();
+        try {
+          map.addImage(id, ctx.getImageData(0, 0, size, size), { pixelRatio: 2 });
+        } catch (err) { /* already */ }
+      }
+      ensureXIcon("lvfe-x", "#ff3b30", "#0e1116");
+      ensureXIcon("lvfe-x-unknown", "#111111", "#f5f5f5");
 
       if (!map.getSource("territories")) map.addSource("territories", { type: "geojson", data: territories });
       if (!map.getSource("places")) map.addSource("places", { type: "geojson", data: places });
@@ -2124,7 +3072,7 @@
           ],
         },
       });
-      addLy({)
+      addLy({
         id: "territories-line",
         type: "line",
         source: "territories",
@@ -2139,7 +3087,7 @@
           ],
         },
       });
-      addLy({)
+      addLy({
         id: "territories-label",
         type: "symbol",
         source: "territories",
@@ -2150,14 +3098,14 @@
         },
         paint: { "text-color": "#1a1a1a", "text-halo-color": "#fff", "text-halo-width": 1.2 },
       });
-      addLy({)
+      addLy({
         id: "you-accuracy",
         type: "fill",
         source: "you",
         filter: ["==", ["get", "kind"], "accuracy"],
         paint: { "fill-color": "#1d8cff", "fill-opacity": 0.18 },
       });
-      addLy({)
+      addLy({
         id: "places-hit",
         type: "circle",
         source: "places",
@@ -2173,10 +3121,11 @@
           "circle-stroke-width": 0,
         },
       });
-      addLy({)
+      addLy({
         id: "places-circles",
         type: "circle",
         source: "places",
+        filter: ["in", ["get", "owner_mark"], ["literal", ["self", "other"]]],
         paint: {
           "circle-radius": [
             "interpolate", ["linear"], ["zoom"],
@@ -2184,25 +3133,49 @@
             14, 14,
             16, 12,
           ],
-          "circle-color": [
-            "case",
-            ["==", ["get", "territory_id"], "unclaimed"], "#7f8c8d",
-            [
-              "match",
-              ["get", "quality"],
-              "A", QUALITY_COLOR.A,
-              "B", QUALITY_COLOR.B,
-              "C", QUALITY_COLOR.C,
-              "D", QUALITY_COLOR.D,
-              "#7f8c8d",
-            ],
-          ],
+          "circle-color": ["coalesce", ["get", "mark_color"], "#c0392b"],
           "circle-stroke-width": 1.2,
           "circle-stroke-color": "#0e1116",
           "circle-opacity": 0.9,
         },
       });
-      addLy({)
+      addLy({
+        id: "places-x",
+        type: "symbol",
+        source: "places",
+        filter: ["==", ["get", "owner_mark"], "x"],
+        layout: {
+          "icon-image": "lvfe-x",
+          "icon-size": [
+            "interpolate", ["linear"], ["zoom"],
+            11, 0.55,
+            14, 0.72,
+            16, 0.65,
+          ],
+          "icon-allow-overlap": true,
+          "icon-ignore-placement": true,
+          "icon-anchor": "center",
+        },
+      });
+      addLy({
+        id: "places-x-unknown",
+        type: "symbol",
+        source: "places",
+        filter: ["==", ["get", "owner_mark"], "unknown"],
+        layout: {
+          "icon-image": "lvfe-x-unknown",
+          "icon-size": [
+            "interpolate", ["linear"], ["zoom"],
+            11, 0.55,
+            14, 0.72,
+            16, 0.65,
+          ],
+          "icon-allow-overlap": true,
+          "icon-ignore-placement": true,
+          "icon-anchor": "center",
+        },
+      });
+      addLy({
         id: "places-nearby",
         type: "circle",
         source: "nearby",
@@ -2214,7 +3187,7 @@
           "circle-stroke-color": "#5dade2",
         },
       });
-      addLy({)
+      addLy({
         id: "you-dot",
         type: "circle",
         source: "you",
@@ -2239,7 +3212,7 @@
           [point.x - pad, point.y - pad],
           [point.x + pad, point.y + pad],
         ];
-        const layers = ["places-hit", "places-circles"].filter((id) => map.getLayer(id));
+        const layers = ["places-hit", "places-circles", "places-x", "places-x-unknown"].filter((id) => map.getLayer(id));
         if (map.getLayer("place-poles")) layers.push("place-poles");
         let hits = [];
         try {
@@ -2258,7 +3231,7 @@
         map.on("click", (e) => {
           openPlaceAtPoint(e.point);
         });
-        ["places-hit", "places-circles"].forEach((id) => {
+        ["places-hit", "places-circles", "places-x", "places-x-unknown"].forEach((id) => {
           map.on("mouseenter", id, () => { map.getCanvas().style.cursor = "pointer"; });
           map.on("mouseleave", id, () => { map.getCanvas().style.cursor = ""; });
         });
@@ -2316,7 +3289,7 @@
       if (typeof lvfePaint3dFab === "function") lvfePaint3dFab(map);
       else {
         const b3 = document.getElementById("btn3d");
-        if (b3) b3.setAttribute("aria-pressed", "false");
+        if (b3) b3.setAttribute("aria-checked", "false");
       }
       window.lvfeMap = map;
       window.openPlacePopup = openPlacePopup;
@@ -2325,7 +3298,9 @@
       if (window.LvfeSatellite) {
         window.LvfeSatellite.bind(map, { reattach: reattachOverlays });
       }
-      map.addControl(new maplibregl.NavigationControl({ showCompass: true, showZoom: false, visualizePitch: true }), "top-right");
+      hookMapFit();
+      fitMap();
+      map.addControl(new maplibregl.NavigationControl({ showCompass: true, showZoom: false, visualizePitch: false }), "top-right");
       geo = new maplibregl.GeolocateControl({
         positionOptions: { enableHighAccuracy: true, timeout: 12000 },
         trackUserLocation: true,
@@ -2334,6 +3309,7 @@
       });
       map.addControl(geo, "bottom-right");
       if (wantGeo || nativeHasLocation()) startGeo();
+      if (forcedPos) flyToUser(forcedPos);
       geo.on("geolocate", (e) => {
         if (forcedPos) return;
         userPos = {
@@ -2345,6 +3321,7 @@
         refreshNearby();
         refreshOpenDossier();
         if (window.LvfeTrack) window.LvfeTrack.onUserPos(userPos);
+        flyToUser(userPos);
       });
       geo.on("error", () => {
         if (!forcedPos) {
@@ -2365,8 +3342,9 @@
         layersReady = false;
         stripMapBranding();
         attachWhenStyleReady();
+        fitMap();
       });
-      map.on("load", () => { stripMapBranding(); attachWhenStyleReady(); });
+      map.on("load", () => { stripMapBranding(); attachWhenStyleReady(); fitMap(); });
       map.on("movestart", () => {
         if (ignorePan) return;
         hideMenus();

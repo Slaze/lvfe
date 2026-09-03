@@ -33,10 +33,13 @@ assert(casing.layout["line-join"] === "round" && casing.layout["line-cap"] === "
 assert(line.layout["line-join"] === "round" && line.layout["line-cap"] === "round", "line join/cap in layout");
 assert(!("line-join" in casing.paint) && !("line-cap" in casing.paint), "casing paint has no join/cap");
 assert(!("line-join" in line.paint) && !("line-cap" in line.paint), "line paint has no join/cap");
+assert(line.paint["line-color"] === "#00e676", "walk line is bright green");
+assert(casing.paint["line-color"] === "#00c853", "walk casing is green");
+assert(line.paint["line-color"] !== "#f4c430", "walk line is not gold");
 
 const map = makeMap();
 assert(T.ensureLayers(map) === true, "first attach");
-assert(map.getLayer("guide-line") && map.getLayer("guide-casing"), "gold walk layers attach");
+assert(map.getLayer("guide-line") && map.getLayer("guide-casing"), "green walk layers attach");
 assert(map.getLayer("pay-ring") && map.getLayer("pay-fill"), "80 m ring attaches");
 
 const retry = makeMap();

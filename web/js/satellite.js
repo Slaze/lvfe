@@ -1,4 +1,4 @@
-/* Free Esri World Imagery overlay. Never setStyle — catalog, gold walk,
+/* Free Esri World Imagery overlay. Never setStyle — catalog, green walk,
    80 m ring, you-dot, and 3D stay on the live Liberty style. */
 (function (global) {
   const SOURCE_ID = "esri-sat";
@@ -8,7 +8,10 @@
   /** ArcGIS MapServer is {z}/{row}/{col} = {z}/{y}/{x}. {z}/{x}/{y} is empty junk. */
   const TILE_TMPL = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
   const ATTRIBUTION = "Imagery © Esri, Maxar, Earthstar Geographics";
-  const MAXZOOM = 19;
+  /** Last native Esri LOD with rooftops in Enugu. z19 HTTP 200 is the empty plate. */
+  const MAXZOOM = 18;
+  /** Layer stays on at street zoom; source maxzoom overscales z18 instead of fetching z19. */
+  const LAYER_MAXZOOM = 24;
   const WATCH_MS = 8000;
   const GAME_STACK = [
     "territories-fill",
@@ -18,6 +21,8 @@
     "place-poles",
     "places-hit",
     "places-circles",
+    "places-x",
+    "places-x-unknown",
     "places-nearby",
     "guide-casing",
     "guide-line",
@@ -97,6 +102,7 @@
           type: "raster",
           tiles: [TILE_TMPL],
           tileSize: 256,
+          scheme: "xyz",
           minzoom: 0,
           maxzoom: MAXZOOM,
           attribution: "",
@@ -107,9 +113,17 @@
           id: LAYER_ID,
           type: "raster",
           source: SOURCE_ID,
+          minzoom: 0,
+          maxzoom: LAYER_MAXZOOM,
           layout: { visibility: wantedOn ? "visible" : "none" },
-          paint: { "raster-opacity": 1, "raster-fade-duration": 0 },
+          paint: {
+            "raster-opacity": 1,
+            "raster-fade-duration": 0,
+            "raster-resampling": "linear",
+          },
         }, satBeforeId(map));
+      } else {
+        try { map.setLayerZoomRange(LAYER_ID, 0, LAYER_MAXZOOM); } catch (err) { /* */ }
       }
       return Boolean(map.getLayer(LAYER_ID));
     } catch (err) {
@@ -122,6 +136,12 @@
       const id = GAME_STACK[i];
       if (!map.getLayer(id)) continue;
       try { map.moveLayer(id); } catch (err) { /* gone */ }
+    }
+  }
+
+  function syncSat3d(map) {
+    if (typeof global.lvfeSyncSat3d === "function") {
+      try { global.lvfeSyncSat3d(map); } catch (err) { /* 3D optional */ }
     }
   }
 
@@ -155,12 +175,15 @@
 
   function paintFab() {
     const btn = document.getElementById("btnSat");
-    if (!btn) return;
-    btn.setAttribute("aria-pressed", wantedOn ? "true" : "false");
-    btn.setAttribute("aria-label", wantedOn ? "Map" : "Satellite");
-    btn.textContent = wantedOn ? "MAP" : "SAT";
+    if (btn) {
+      btn.setAttribute("aria-checked", wantedOn ? "true" : "false");
+      btn.setAttribute("aria-label", wantedOn ? "Satellite on" : "Satellite off");
+    }
     const box = document.getElementById("satHybrid");
-    if (box) box.checked = hybridOn;
+    if (box) {
+      box.checked = hybridOn;
+      box.setAttribute("aria-checked", hybridOn ? "true" : "false");
+    }
   }
 
   function showFail() {
@@ -195,6 +218,7 @@
     applyHybrid(mapRef);
     raiseGame(mapRef);
     paintFab();
+    syncSat3d(mapRef);
     showFail();
   }
 
@@ -218,6 +242,12 @@
     if (mapRef) stack(mapRef);
   }
 
+  function fitMap(map) {
+    const m = map || mapRef;
+    if (!m || typeof m.resize !== "function") return;
+    try { m.resize(); } catch (err) { /* WebView layout */ }
+  }
+
   function setOn(on) {
     const want = Boolean(on);
     if (!mapRef) {
@@ -236,6 +266,8 @@
       applyHybrid(mapRef);
       raiseGame(mapRef);
       paintFab();
+      fitMap(mapRef);
+      syncSat3d(mapRef);
       return;
     }
     hideFail();
@@ -248,6 +280,8 @@
     try { mapRef.setLayoutProperty(LAYER_ID, "visibility", "visible"); } catch (err) { /* */ }
     stack(mapRef);
     paintFab();
+    fitMap(mapRef);
+    syncSat3d(mapRef);
     if (typeof hooks.reattach === "function") hooks.reattach();
     startWatch(mapRef);
   }
@@ -300,6 +334,7 @@
           try { map.setLayoutProperty(LAYER_ID, "visibility", "visible"); } catch (err) { /* */ }
         }
         stack(map);
+        fitMap(map);
         if (typeof hooks.reattach === "function") hooks.reattach();
       });
       const failClose = document.getElementById("satFailClose");
@@ -311,7 +346,11 @@
       if (hyb && hyb.dataset.bound !== "1") {
         hyb.dataset.bound = "1";
         hyb.checked = hybridOn;
-        hyb.addEventListener("change", () => setHybrid(hyb.checked));
+        hyb.setAttribute("aria-checked", hybridOn ? "true" : "false");
+        hyb.addEventListener("change", () => {
+          hyb.setAttribute("aria-checked", hyb.checked ? "true" : "false");
+          setHybrid(hyb.checked);
+        });
       }
     }
     ensure(map);
@@ -324,6 +363,7 @@
     ATTRIBUTION,
     FAIL_MSG,
     MAXZOOM,
+    LAYER_MAXZOOM,
     GAME_STACK,
     lonLatToTile,
     tileUrl,
@@ -337,6 +377,7 @@
     stack,
     paintFab,
     raiseGame,
+    fitMap,
   };
 
   if (typeof module !== "undefined" && module.exports) {

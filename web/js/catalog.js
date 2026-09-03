@@ -37,6 +37,7 @@
     document.querySelectorAll("[data-sec]").forEach((box) => {
       const id = box.getAttribute("data-sec");
       box.checked = state.visible[id] !== false;
+      box.setAttribute("aria-checked", box.checked ? "true" : "false");
     });
   }
 
@@ -133,10 +134,22 @@
       const owned = W.iOwn(p.id);
       const farm = !W.ownable(p.catalog_type);
       const stake = W.myStake(p.id);
+      const rec = placeRec(p.id);
+      const C = window.LvfeConquest;
+      const counts = C ? C.get() : null;
+      const shown = (!farm && C) ? C.displayValue(rec, p, counts) : 0;
       const note = farm ? "cannot be owned" : (owned ? "owner" : (stake ? "backed" : "No owner yet"));
+      let money = "";
+      if (!farm && C) {
+        if (shown > 0) money = " · " + shown + " NairaCoin";
+        else {
+          const cost = C.costToBack(W.minStake(p.claim_nairacoin || p.claim_points, p.catalog_type), p, counts);
+          if (cost > 0) money = " · " + cost + " to back";
+        }
+      }
       return `<button type="button" class="cat-row" data-open="${R.esc(p.id)}">` +
         `<strong>${R.esc(R.placeTitle(p))}</strong>` +
-        `<span>${R.esc(R.typeLabel(p))} · ${R.esc(R.qualityWords(p.quality))} · ${R.esc(R.areaLabel(p))} · ${note}</span>` +
+        `<span>${R.esc(R.typeLabel(p))} · ${R.esc(R.qualityWords(p.quality))} · ${R.esc(R.areaLabel(p))} · ${note}${money}</span>` +
         `</button>`;
     }).join("") || `<p class="meta">No places match.</p>`;
     document.getElementById("meta").textContent =
@@ -220,7 +233,10 @@
       return;
     }
     const amount = Math.floor(Number(opts && opts.amount));
-    const need = first ? W.minStake(p.claim_nairacoin, p.catalog_type) : 1;
+    let need = first ? W.minStake(p.claim_nairacoin, p.catalog_type) : 1;
+    if (first && window.LvfeConquest && need > 0) {
+      need = window.LvfeConquest.costToBack(need, p, window.LvfeConquest.get());
+    }
     if (!Number.isFinite(amount) || amount < need) {
       toast("Need " + need + " NairaCoin to back this place.");
       return;
@@ -233,15 +249,19 @@
       visitorId: pk,
       visitorName: idn.playerName,
       amount: amount,
-      photo: file ? { name: file.name || "photo", size: file.size || 0, type: file.type || "image/*", at: new Date().toISOString() } : null,
+      photo: file
+        ? (window.LvfePhotoStore
+          ? (window.LvfePhotoStore.confirm(id, pk, file), window.LvfePhotoStore.metaOf(file))
+          : { name: file.name || "photo", size: file.size || 0, type: file.type || "image/*", at: new Date().toISOString() })
+        : null,
     });
     if (file) rec.hasPhoto = true;
     let all = {};
     try { all = JSON.parse(localStorage.getItem(PLACES_KEY) || "{}") || {}; } catch (err) { all = {}; }
     all[id] = rec;
     localStorage.setItem(PLACES_KEY, JSON.stringify(all));
-    renderBal();
-    renderFile();
+    if (window.LvfeConquest) window.LvfeConquest.refresh(state.all, all);
+    render();
     toast("Put " + amount + " NairaCoin into this place");
   }
 
@@ -271,12 +291,18 @@
     const terrs = [...new Set(places.map((p) => R.areaLabel(p)))].sort();
     fillSelect("qType", types, "All types");
     fillSelect("qTerr", terrs, "All neighbourhoods");
+    if (window.LvfeConquest) {
+      let stored = {};
+      try { stored = JSON.parse(localStorage.getItem(PLACES_KEY) || "{}") || {}; } catch (err) { stored = {}; }
+      window.LvfeConquest.refresh(state.all, stored);
+    }
     apply();
   }
 
   loadSecs();
   document.querySelectorAll("[data-sec]").forEach((box) => {
     box.addEventListener("change", () => {
+      box.setAttribute("aria-checked", box.checked ? "true" : "false");
       saveSecs();
       if (state.openId) renderFile();
     });

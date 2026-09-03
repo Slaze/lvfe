@@ -7,6 +7,7 @@
   let stream = null;
   let orientHandler = null;
   let heading = 0;
+  let headingFromNative = false;
   let drawId = 0;
   let getNearbyFn = null;
   let onFailFn = null;
@@ -14,6 +15,8 @@
   let running = false;
   let canvasView = false;
   let ctx2d = null;
+  const AR_RANGE_M = 120;
+  const HALF_FOV = 32;
 
   function $(id) {
     return document.getElementById(id);
@@ -41,12 +44,23 @@
       host === "appassets.androidplatform.net";
   }
 
-  function setHeading(deg) {
-    if (!Number.isFinite(deg)) return;
+  function setHeading(deg, fromNative) {
+    if (!Number.isFinite(deg) || deg < 0) return;
     heading = (deg + 360) % 360;
+    if (fromNative) headingFromNative = true;
+  }
+
+  function pollNativeHeading() {
+    try {
+      if (global.LvfeNative && typeof global.LvfeNative.getDeviceHeading === "function") {
+        const v = Number(global.LvfeNative.getDeviceHeading());
+        if (Number.isFinite(v) && v >= 0) setHeading(v, true);
+      }
+    } catch (err) { /* desktop */ }
   }
 
   function onOrient(e) {
+    if (headingFromNative) return;
     if (typeof e.webkitCompassHeading === "number") {
       setHeading(e.webkitCompassHeading);
     } else if (typeof e.alpha === "number") {
@@ -90,7 +104,7 @@
     const box = $("toggleAr");
     if (box) box.checked = false;
     const btn = $("btnAr");
-    if (btn) btn.setAttribute("aria-pressed", "false");
+    if (btn) btn.setAttribute("aria-checked", "false");
     if (onFailFn) onFailFn(msg || "Camera couldn’t start");
   }
 
@@ -98,7 +112,7 @@
     const box = $("toggleAr");
     const btn = $("btnAr");
     if (box) box.checked = on;
-    if (btn) btn.setAttribute("aria-pressed", on ? "true" : "false");
+    if (btn) btn.setAttribute("aria-checked", on ? "true" : "false");
   }
 
   function dismissSheet() {
@@ -172,15 +186,15 @@
 
   function compassXY(f, dist, i, w, h, pos) {
     const R = global.LvfeRules;
+    /* Closer pins sit lower in the viewfinder (horizon ≈ 0.38, feet ≈ 0.72). */
+    let y = h * (0.38 + Math.min(dist / AR_RANGE_M, 1) * 0.34);
     let x = w * 0.5;
-    let y = h * (0.36 + Math.min(dist / 80, 1) * 0.28);
     if (pos && R && typeof R.bearingDeg === "function") {
       const [lon, lat] = f.geometry.coordinates;
       const brg = R.bearingDeg(pos.lat, pos.lon, lat, lon);
       const delta = ((brg - heading + 540) % 360) - 180;
-      const halfFov = 30;
-      if (Math.abs(delta) > halfFov + 10) return null;
-      x = w * (0.5 + (delta / halfFov) * 0.48);
+      if (Math.abs(delta) > HALF_FOV + 12) return null;
+      x = w * (0.5 + (delta / HALF_FOV) * 0.48);
     } else {
       x = w * (0.22 + (i % 3) * 0.28);
       y = h * (0.28 + Math.floor(i / 3) * 0.14);
@@ -230,6 +244,23 @@
   function typeOf(p) {
     const R = global.LvfeRules;
     return R && typeof R.typeLabel === "function" ? R.typeLabel(p) : "Place";
+  }
+
+  function pinProps(p) {
+    if (p && p.id && typeof global.placeById === "function") {
+      const feat = global.placeById(p.id);
+      if (feat && feat.properties) return feat.properties;
+    }
+    return p || {};
+  }
+
+  function glyphOf(p) {
+    const props = pinProps(p);
+    const kind = props.owner_mark || "x";
+    if (kind === "unknown") return `<i class="ar-glyph ar-glyph-x ar-glyph-x-unknown" aria-hidden="true"></i>`;
+    if (kind === "x") return `<i class="ar-glyph ar-glyph-x" aria-hidden="true"></i>`;
+    const color = props.mark_color || "#1d8cff";
+    return `<i class="ar-glyph ar-glyph-dot" style="background:${escAttr(color)}" aria-hidden="true"></i>`;
   }
 
   function paintTrackHud(w, h) {
@@ -294,7 +325,7 @@
       htmlIds = "";
       if (hint) {
         hint.hidden = false;
-        hint.textContent = "No places within 80 m";
+        hint.textContent = "No places within " + AR_RANGE_M + " m";
       }
       return;
     }
@@ -306,12 +337,14 @@
       const pins = near.map(({ f }) => {
         const p = f.properties || {};
         return `<button type="button" class="ar-pin" data-ar-place="${escAttr(p.id)}">` +
+          glyphOf(p) +
           `<strong>${esc(titleOf(p))}</strong>` +
           `<span>${esc(typeOf(p))} · <em data-ar-near="${escAttr(p.id)}"></em></span></button>`;
       });
       if (marked && !near.some(({ f }) => String((f.properties || {}).id) === markId)) {
         pins.push(
           `<button type="button" class="ar-pin" data-ar-place="${escAttr(marked.id)}" data-ar-marked="1">` +
+          glyphOf({ id: marked.id, name: marked.name }) +
           `<strong>${esc(titleOf({ name: marked.name }))}</strong>` +
           `<span><em data-ar-live>0 m</em></span></button>`
         );
@@ -351,6 +384,7 @@
     }
     const w = stage.clientWidth || window.innerWidth;
     const h = stage.clientHeight || window.innerHeight;
+    pollNativeHeading();
     const near = nearby();
     if (canvasView) paintCanvas(video, near, w, h);
     try {
@@ -384,6 +418,7 @@
     document.body.classList.remove("ar-on");
     document.body.classList.remove("ar-native");
     document.documentElement.classList.remove("ar-native");
+    headingFromNative = false;
     try {
       if (global.LvfeNative && typeof global.LvfeNative.stopArCamera === "function") {
         global.LvfeNative.stopArCamera();
@@ -545,7 +580,7 @@
       if (!box.checked) {
         leaveWorld();
         const btn = $("btnAr");
-        if (btn) btn.setAttribute("aria-pressed", "false");
+        if (btn) btn.setAttribute("aria-checked", "false");
         return;
       }
       startCamera();
@@ -587,4 +622,6 @@
   global.lvfeEnableAr = lvfeEnableAr;
   global.lvfeArStop = stopCamera;
   global.lvfeArUseCanvas = setCanvasView;
+  global.lvfeArSetHeading = function (deg) { setHeading(Number(deg), true); };
+  global.lvfeArRangeM = AR_RANGE_M;
 })(typeof window !== "undefined" ? window : globalThis);

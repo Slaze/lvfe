@@ -1,88 +1,53 @@
 /**
- * MapLibre pitch + OSM-true extrusion + free Terrarium DEM for Lvfe.
- * Liberty already ships `building-3d`; this module enables tilt, extrudes
- * only buildings with real height data, drapes AWS/Mapzen terrain, and
- * keeps catalog circles/poles above the mesh.
- *
- * Height rules (no city-wide fallback):
- *   1. OSM `height` if > 0
- *   2. `levels` / `building:levels` × 3 m + 2 m roof
- *   3. OpenMapTiles `render_height` if present and not the 5 m sentinel
- *   4. else unknown → skip extrusion, keep 2D fill
- * Cap 80 m. Three.js is not used (MapLibre 5.x fill-extrusion + raster-dem).
+ * MapLibre 3D for Lvfe — free only (no Google Photorealistic / Mapbox billed 3D).
+ * One switch (#btn3d): off = north-up pitch 0; on = pitch 52 + zoom ≥ 14.2.
+ * Every OSM footprint is a box. Tagged height/levels win; untagged = OMT 5 m.
+ * Cap 80 m. SAT-off opacity 1 (solid box city). SAT+3D: ghost walls (~0.45)
+ * so Esri SAT draped on Terrarium reads as roofs. Not photoreal facades.
+ * 2D building fill hidden while extruded. Terrain 1.0× + sky.
+ * DEM fail → banner, switch off, stay flat.
+ * Pins stay billboards (X/circle). No −16 px nudge. No chimney poles.
  */
 (function (global) {
   const PITCH_3D = 52;
   const PITCH_FLAT = 0;
-  const BEARING_3D = -16;
+  const ZOOM_3D = 14.2;
   const HEIGHT_CAP_M = 80;
   const LEVEL_M = 3;
-  const ROOF_M = 2;
-  /** OpenMapTiles: ceil(COALESCE(height, levels*3.66, 5)). Untagged → 5. */
-  const OMT_SENTINEL_M = 5;
+  const UNTAGGED_M = 5;
+  const SOLID_EXTRUSION_OPACITY = 1;
+  /** SAT roofs must read through the boxes. Not opaque beige paper. */
+  const SAT_EXTRUSION_OPACITY = 0.35;
   const EXTRUSION_ID = "building-3d";
+  const SAT_LAYER_ID = "esri-sat";
   const FILL_2D_ID = "building";
-  const STORE_KEY = "lvfe.map3d.v2";
-  const POLE_ID = "place-poles";
-  const POLE_SRC = "place-poles";
-  const POLE_HEIGHT_M = 24;
-  const POLE_HALF_M = 2.2;
+  const STORE_KEY = "lvfe.map3d.v3";
   const DEM_ID = "lvfe-dem";
-  const HILLSHADE_ID = "lvfe-hillshade";
-  /** Enugu plateau is gentle; 1.7× makes Independence Layout vs valley readable. */
-  const TERRAIN_EXAGGERATION = 1.7;
   const DEM_TILES = "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png";
+  const TERRAIN_EXAGGERATION = 1.0;
+  const DEM_WATCH_MS = 8000;
+  const FAIL_MSG = "Terrain couldn’t load";
+  const PIN_CIRCLES = ["places-circles", "places-nearby", "you-dot", "places-hit"];
+  const RAISE_IDS = [
+    "places-hit", "places-circles", "places-x", "places-x-unknown", "places-nearby",
+    "guide-casing", "guide-line", "pay-fill", "pay-ring", "you-dot",
+  ];
 
   function numProp(key) {
     return ["to-number", ["coalesce", ["get", key], 0]];
   }
 
-  /** True when the tile carries a real height, not the OMT 5 m “no data” default. */
-  function hasTrueHeightExpr() {
-    return [
-      "any",
-      [">", numProp("height"), 0],
-      [">", numProp("levels"), 0],
-      [">", numProp("building:levels"), 0],
-      [
-        "all",
-        [">", numProp("render_height"), 0],
-        ["!=", numProp("render_height"), OMT_SENTINEL_M],
-      ],
-    ];
-  }
-
-  function extrusionFilter() {
-    return [
-      "all",
-      ["!=", ["get", "hide_3d"], true],
-      hasTrueHeightExpr(),
-    ];
-  }
-
-  function unknownFootprintFilter() {
-    return [
-      "any",
-      ["==", ["get", "hide_3d"], true],
-      ["!", hasTrueHeightExpr()],
-    ];
-  }
-
+  /** Tagged OSM height/levels, else OMT render_height (5 m sentinel = untagged box). */
   function heightExpr() {
     return [
       "min", HEIGHT_CAP_M,
       [
         "case",
         [">", numProp("height"), 0], numProp("height"),
-        [">", numProp("levels"), 0], ["+", ["*", numProp("levels"), LEVEL_M], ROOF_M],
-        [">", numProp("building:levels"), 0], ["+", ["*", numProp("building:levels"), LEVEL_M], ROOF_M],
-        [
-          "all",
-          [">", numProp("render_height"), 0],
-          ["!=", numProp("render_height"), OMT_SENTINEL_M],
-        ],
-        numProp("render_height"),
-        0,
+        [">", numProp("levels"), 0], ["*", numProp("levels"), LEVEL_M],
+        [">", numProp("building:levels"), 0], ["*", numProp("building:levels"), LEVEL_M],
+        [">", numProp("render_height"), 0], numProp("render_height"),
+        UNTAGGED_M,
       ],
     ];
   }
@@ -94,6 +59,10 @@
       [">", numProp("min_height"), 0], numProp("min_height"),
       0,
     ];
+  }
+
+  function extrusionFilter() {
+    return ["!=", ["get", "hide_3d"], true];
   }
 
   function firstSymbolId(map) {
@@ -123,18 +92,50 @@
       minzoom: layer.minzoom == null ? 0 : layer.minzoom,
       maxzoom: layer.maxzoom == null ? 24 : layer.maxzoom,
       filter: map.getFilter(FILL_2D_ID) || null,
+      visibility: (map.getLayoutProperty && map.getLayoutProperty(FILL_2D_ID, "visibility")) || "visible",
     };
+  }
+
+  function satWanted() {
+    const sat = global.LvfeSatellite;
+    return !!(sat && typeof sat.isOn === "function" && sat.isOn());
+  }
+
+  function threeWanted(map) {
+    if (map && map.__lvfe3dLive) return true;
+    try {
+      const box = document.getElementById("toggle3d");
+      return !!(box && box.checked);
+    } catch (err) {
+      return false;
+    }
+  }
+
+  function sat3dOpacity(map) {
+    return (threeWanted(map) && satWanted()) ? SAT_EXTRUSION_OPACITY : SOLID_EXTRUSION_OPACITY;
+  }
+
+  function applySatExtrusionOpacity(map) {
+    if (!map || !map.getLayer(EXTRUSION_ID)) return;
+    try {
+      map.setPaintProperty(EXTRUSION_ID, "fill-extrusion-opacity", sat3dOpacity(map));
+    } catch (err) { /* paint key unsupported */ }
   }
 
   function applyExtrusion(map) {
     const src = buildingSourceId(map);
-    if (!src) return;
+    if (!src) return false;
 
     const paint = {
-      "fill-extrusion-color": "hsl(35,8%,85%)",
+      "fill-extrusion-color": [
+        "coalesce",
+        ["get", "colour"],
+        ["get", "color"],
+        "hsl(32, 12%, 76%)",
+      ],
       "fill-extrusion-height": heightExpr(),
       "fill-extrusion-base": baseExpr(),
-      "fill-extrusion-opacity": 0.85,
+      "fill-extrusion-opacity": SOLID_EXTRUSION_OPACITY,
       "fill-extrusion-vertical-gradient": true,
     };
     const filter = extrusionFilter();
@@ -156,20 +157,24 @@
         paint,
       }, firstSymbolId(map));
     }
+    applySatExtrusionOpacity(map);
+    return Boolean(map.getLayer(EXTRUSION_ID));
   }
 
   function applyBuildingMode(map, on) {
     rememberFill2d(map);
+    if (on) applyExtrusion(map);
     if (map.getLayer(EXTRUSION_ID)) {
       map.setLayoutProperty(EXTRUSION_ID, "visibility", on ? "visible" : "none");
     }
     if (!map.getLayer(FILL_2D_ID) || map.getLayer(FILL_2D_ID).type !== "fill") return;
-    map.setLayoutProperty(FILL_2D_ID, "visibility", "visible");
     if (on) {
-      try { map.setLayerZoomRange(FILL_2D_ID, 13, 24); } catch (err) { /* ignore */ }
-      try { map.setFilter(FILL_2D_ID, unknownFootprintFilter()); } catch (err) { /* ignore */ }
+      try { map.setLayoutProperty(FILL_2D_ID, "visibility", "none"); } catch (err) { /* ignore */ }
     } else {
       const orig = map.__lvfeFill2d;
+      try {
+        map.setLayoutProperty(FILL_2D_ID, "visibility", (orig && orig.visibility) || "visible");
+      } catch (err) { /* ignore */ }
       if (orig) {
         try { map.setLayerZoomRange(FILL_2D_ID, orig.minzoom, orig.maxzoom); } catch (err) { /* ignore */ }
         try { map.setFilter(FILL_2D_ID, orig.filter); } catch (err) { /* ignore */ }
@@ -177,10 +182,47 @@
     }
   }
 
-  function hillshadeBeforeId(map) {
-    if (map.getLayer("landuse_residential")) return "landuse_residential";
-    if (map.getLayer(FILL_2D_ID)) return FILL_2D_ID;
-    return undefined;
+  function applyLight(map, on) {
+    try {
+      if (typeof map.setLight === "function") {
+        map.setLight(on
+          ? { anchor: "viewport", color: "#fff8ee", intensity: 0.58, position: [1.15, 210, 30] }
+          : { anchor: "viewport", color: "#ffffff", intensity: 0.5, position: [1.15, 210, 30] });
+      }
+    } catch (err) { /* old style */ }
+  }
+
+  function applySky(map, on) {
+    if (typeof map.setSky !== "function") return;
+    try {
+      if (on) {
+        map.setSky({
+          "sky-color": "#88C6FC",
+          "horizon-color": "#f4f7fb",
+          "fog-color": "#d4e4f0",
+          "fog-ground-blend": 0.35,
+          "horizon-fog-blend": 0.65,
+          "sky-horizon-blend": 0.55,
+          "atmosphere-blend": 0.45,
+        });
+      } else {
+        map.setSky();
+      }
+    } catch (err) { /* sky optional on this GL build */ }
+  }
+
+  function applyLabelPitch(map, on) {
+    const layers = (map.getStyle() && map.getStyle().layers) || [];
+    for (let i = 0; i < layers.length; i++) {
+      const layer = layers[i];
+      if (!layer || layer.type !== "symbol") continue;
+      try {
+        map.setLayoutProperty(layer.id, "text-pitch-alignment", on ? "viewport" : "map");
+      } catch (err) { /* no text */ }
+      try {
+        map.setLayoutProperty(layer.id, "icon-pitch-alignment", "viewport");
+      } catch (err) { /* no icon */ }
+    }
   }
 
   function ensureDem(map) {
@@ -194,178 +236,72 @@
         maxzoom: 15,
         attribution: "",
       });
+      return Boolean(map.getSource(DEM_ID));
+    } catch (err) {
+      return false;
+    }
+  }
+
+  function applyTerrain(map, on) {
+    if (on && !ensureDem(map)) return false;
+    try {
+      if (on) map.setTerrain({ source: DEM_ID, exaggeration: TERRAIN_EXAGGERATION });
+      else map.setTerrain(null);
       return true;
     } catch (err) {
       return false;
     }
   }
 
-  function ensureHillshade(map) {
-    if (map.getLayer(HILLSHADE_ID) || !map.getSource(DEM_ID)) return;
-    try {
-      map.addLayer({
-        id: HILLSHADE_ID,
-        type: "hillshade",
-        source: DEM_ID,
-        maxzoom: 18,
-        paint: {
-          "hillshade-exaggeration": 0.35,
-          "hillshade-shadow-color": "#2a2418",
-          "hillshade-highlight-color": "#f4f1ea",
-          "hillshade-illumination-direction": 315,
-        },
-      }, hillshadeBeforeId(map));
-    } catch (err) { /* hillshade optional */ }
-  }
-
-  function applyTerrain(map, on) {
-    if (!ensureDem(map)) return;
-    ensureHillshade(map);
-    try {
-      if (on) map.setTerrain({ source: DEM_ID, exaggeration: TERRAIN_EXAGGERATION });
-      else map.setTerrain(null);
-    } catch (err) { /* DEM fetch / WebGL */ }
-    if (map.getLayer(HILLSHADE_ID)) {
-      map.setLayoutProperty(HILLSHADE_ID, "visibility", on ? "visible" : "none");
-    }
-  }
-
-  /** Prefer style-ready over `load`: missing sprites / DEM tiles can keep loaded() false. */
-  function scheduleTerrain(map, on) {
-    map.__lvfeTerrainWanted = on;
-    const run = () => applyTerrain(map, !!map.__lvfeTerrainWanted);
-    const styleOk = () => {
-      try {
-        const s = map.getStyle && map.getStyle();
-        return Boolean(s && s.layers && s.layers.length);
-      } catch (err) {
-        return false;
-      }
-    };
-    if (styleOk()) {
-      setTimeout(run, 50);
-      return;
-    }
-    if (map.__lvfeTerrainWait) return;
-    map.__lvfeTerrainWait = true;
-    const kick = () => {
-      map.__lvfeTerrainWait = false;
-      setTimeout(run, 50);
-    };
-    map.once("style.load", kick);
-    map.once("load", kick);
-  }
-
-  function placesCollection(map) {
-    const src = map.getSource("places");
-    if (!src) return null;
-    if (typeof src.serialize === "function") {
-      const s = src.serialize();
-      const d = s && s.data;
-      if (d && Array.isArray(d.features)) return d;
-    }
-    const q = map.querySourceFeatures("places");
-    if (!q.length) return null;
-    return { type: "FeatureCollection", features: q };
-  }
-
-  function polesFromPlaces(fc) {
-    const features = [];
-    for (let i = 0; i < fc.features.length; i++) {
-      const f = fc.features[i];
-      if (!f.geometry || f.geometry.type !== "Point") continue;
-      const lon = f.geometry.coordinates[0];
-      const lat = f.geometry.coordinates[1];
-      const dLat = POLE_HALF_M / 111320;
-      const dLon = POLE_HALF_M / (111320 * Math.cos(lat * Math.PI / 180) || 1);
-      features.push({
-        type: "Feature",
-        properties: f.properties,
-        geometry: {
-          type: "Polygon",
-          coordinates: [[
-            [lon - dLon, lat - dLat],
-            [lon + dLon, lat - dLat],
-            [lon + dLon, lat + dLat],
-            [lon - dLon, lat + dLat],
-            [lon - dLon, lat - dLat],
-          ]],
-        },
-      });
-    }
-    return { type: "FeatureCollection", features };
-  }
-
-  function hookPlaceFilter(map) {
-    if (map.__lvfeFilterHook) return;
-    map.__lvfeFilterHook = true;
-    const orig = map.setFilter.bind(map);
-    map.setFilter = function (id, filter, options) {
-      const r = orig(id, filter, options);
-      if (id === "places-circles") {
-        if (map.getLayer(POLE_ID)) orig(POLE_ID, filter, options);
-        if (map.getLayer("places-hit")) orig("places-hit", filter, options);
-      }
-      return r;
-    };
-  }
-
-  function openCatalogPlace(id) {
-    if (!id || typeof global.placeById !== "function") return;
-    const feat = global.placeById(id);
-    if (feat && typeof global.openPlacePopup === "function") global.openPlacePopup(feat);
+  function hidePoles(map) {
+    if (!map.getLayer("place-poles")) return;
+    try { map.setLayoutProperty("place-poles", "visibility", "none"); } catch (err) { /* ignore */ }
+    try { map.removeLayer("place-poles"); } catch (err) { /* still in style */ }
   }
 
   function raisePinLayers(map) {
-    [POLE_ID, "places-hit", "places-circles", "places-nearby", "you-dot"].forEach((id) => {
+    RAISE_IDS.forEach((id) => {
       if (!map.getLayer(id)) return;
       try { map.moveLayer(id); } catch (err) { /* ignore */ }
     });
   }
 
-  function ensurePoles(map) {
-    if (!map.getLayer("places-circles")) return false;
-    hookPlaceFilter(map);
-    const fc = placesCollection(map);
-    if (!fc) return false;
-    try {
-      const color = map.getPaintProperty("places-circles", "circle-color");
-      const filter = map.getFilter("places-circles");
-      if (!map.getSource(POLE_SRC)) {
-        map.addSource(POLE_SRC, { type: "geojson", data: polesFromPlaces(fc) });
-      }
-      if (!map.getLayer(POLE_ID)) {
-        map.addLayer({
-          id: POLE_ID,
-          type: "fill-extrusion",
-          source: POLE_SRC,
-          minzoom: 14,
-          paint: {
-            "fill-extrusion-color": color,
-            "fill-extrusion-height": POLE_HEIGHT_M,
-            "fill-extrusion-base": 0,
-            "fill-extrusion-opacity": 0.95,
-            "fill-extrusion-vertical-gradient": true,
-          },
-        }, "places-circles");
-        if (filter) map.setFilter(POLE_ID, filter);
-        map.on("click", POLE_ID, (e) => {
-          if (!e.features || !e.features.length) return;
-          openCatalogPlace(e.features[0].properties.id);
-        });
-        map.on("mouseenter", POLE_ID, () => { map.getCanvas().style.cursor = "pointer"; });
-        map.on("mouseleave", POLE_ID, () => { map.getCanvas().style.cursor = ""; });
-      } else {
-        try { map.setPaintProperty(POLE_ID, "fill-extrusion-height", POLE_HEIGHT_M); } catch (err) { /* ignore */ }
-      }
-      const box = document.getElementById("toggle3d");
-      const on = pitchedNow(map) || (box && box.checked);
-      map.setLayoutProperty(POLE_ID, "visibility", on ? "visible" : "none");
-      raisePinLayers(map);
-      return true;
-    } catch (err) {
-      return false;
+  function restackSat3d(map) {
+    if (!map) return;
+    const sat = global.LvfeSatellite;
+    applySatExtrusionOpacity(map);
+    /* SAT+3D: photo above Liberty beige, ghost walls above SAT, pins last.
+       MapLibre drapes the raster on Terrarium once setTerrain is live. */
+    if (satWanted() && threeWanted(map) && map.getLayer(SAT_LAYER_ID) && map.getLayer(EXTRUSION_ID)) {
+      try { map.moveLayer(SAT_LAYER_ID); } catch (err) { /* ignore */ }
+      try { map.moveLayer(EXTRUSION_ID); } catch (err) { /* ignore */ }
     }
+    raisePinLayers(map);
+    if (sat && typeof sat.raiseGame === "function") {
+      try { sat.raiseGame(map); } catch (err) { /* ignore */ }
+    }
+  }
+
+  function syncSat3d(map) {
+    const m = map || global.lvfeMap;
+    if (!m) return;
+    restackSat3d(m);
+  }
+
+  function liftCatalogPins(map) {
+    hidePoles(map);
+    PIN_CIRCLES.forEach((id) => {
+      if (!map.getLayer(id)) return;
+      try { map.setPaintProperty(id, "circle-pitch-alignment", "viewport"); } catch (err) { /* ignore */ }
+      try { map.setPaintProperty(id, "circle-pitch-scale", "viewport"); } catch (err) { /* ignore */ }
+      try { map.setPaintProperty(id, "circle-translate", [0, 0]); } catch (err) { /* ignore */ }
+    });
+    ["places-x", "places-x-unknown"].forEach((id) => {
+      if (!map.getLayer(id)) return;
+      try { map.setLayoutProperty(id, "icon-pitch-alignment", "viewport"); } catch (err) { /* ignore */ }
+      try { map.setPaintProperty(id, "icon-translate", [0, 0]); } catch (err) { /* ignore */ }
+    });
+    restackSat3d(map);
   }
 
   function pitchedNow(map) {
@@ -376,72 +312,182 @@
     }
   }
 
+  function terrainLive(map) {
+    try {
+      return Boolean(map && map.getTerrain && map.getTerrain());
+    } catch (err) {
+      return false;
+    }
+  }
+
   function sync3dFab(map) {
     const box = document.getElementById("toggle3d");
-    const on = pitchedNow(map) || (box && box.checked);
+    const live = !!(box && box.checked && map && map.__lvfe3dLive && pitchedNow(map) && terrainLive(map));
     const btn = document.getElementById("btn3d");
-    if (btn) btn.setAttribute("aria-pressed", on ? "true" : "false");
-  }
-
-  function liftCatalogPins(map) {
-    const on = pitchedNow(map) || (document.getElementById("toggle3d") || {}).checked;
-    ["places-circles", "places-nearby", "you-dot", "places-hit"].forEach((id) => {
-      if (!map.getLayer(id)) return;
-      try { map.setPaintProperty(id, "circle-pitch-alignment", "viewport"); } catch (err) { /* ignore */ }
-      try { map.setPaintProperty(id, "circle-pitch-scale", "viewport"); } catch (err) { /* ignore */ }
-    });
-    ["places-circles", "places-hit"].forEach((id) => {
-      if (!map.getLayer(id)) return;
-      try { map.setPaintProperty(id, "circle-translate", on ? [0, -16] : [0, 0]); } catch (err) { /* ignore */ }
-      try { map.setPaintProperty(id, "circle-translate-anchor", "viewport"); } catch (err) { /* ignore */ }
-    });
-    ensurePoles(map);
-  }
-
-    function readPref() {
-    try {
-      const v = localStorage.getItem(STORE_KEY);
-      if (v === "1") return true;
-      if (v === "0") return false;
-    } catch (err) { /* private mode */ }
-    return false;
+    if (btn) {
+      btn.setAttribute("aria-checked", live ? "true" : "false");
+      btn.setAttribute("aria-label", live ? "3D on" : "3D off");
+    }
   }
 
   function writePref(on) {
     try { localStorage.setItem(STORE_KEY, on ? "1" : "0"); } catch (err) { /* ignore */ }
   }
 
+  function ensureDemBanner() {
+    let el = document.getElementById("demFail");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "demFail";
+      el.hidden = true;
+      el.innerHTML = "<span id=\"demFailMsg\">" + FAIL_MSG + "</span>" +
+        "<button type=\"button\" id=\"demFailClose\" aria-label=\"Close\">×</button>";
+      const sat = document.getElementById("satFail");
+      if (sat && sat.parentNode) sat.parentNode.insertBefore(el, sat.nextSibling);
+      else {
+        const mapEl = document.getElementById("map");
+        if (mapEl && mapEl.parentNode) mapEl.parentNode.insertBefore(el, mapEl);
+        else document.body.appendChild(el);
+      }
+    }
+    const close = document.getElementById("demFailClose");
+    if (close && close.dataset.lvfeBound !== "1") {
+      close.dataset.lvfeBound = "1";
+      close.addEventListener("click", () => { el.hidden = true; });
+    }
+    return el;
+  }
+
+  function showDemFail() {
+    const el = ensureDemBanner();
+    const msg = document.getElementById("demFailMsg");
+    if (msg) msg.textContent = FAIL_MSG;
+    el.hidden = false;
+  }
+
+  function hideDemFail() {
+    const el = document.getElementById("demFail");
+    if (el) el.hidden = true;
+  }
+
+  function stopDemWatch(map) {
+    if (!map || !map.__lvfeDemWatch) return;
+    clearTimeout(map.__lvfeDemWatch);
+    map.__lvfeDemWatch = 0;
+  }
+
+  function failToFlat(map) {
+    if (!map) return;
+    stopDemWatch(map);
+    map.__lvfe3dLive = false;
+    map.__lvfeTerrainWanted = false;
+    const box = document.getElementById("toggle3d");
+    if (box) box.checked = false;
+    writePref(false);
+    applyBuildingMode(map, false);
+    applySky(map, false);
+    applyLight(map, false);
+    applyLabelPitch(map, false);
+    try { map.setTerrain(null); } catch (err) { /* ignore */ }
+    try { map.easeTo({ pitch: PITCH_FLAT, bearing: 0, duration: 280 }); } catch (err) { /* ignore */ }
+    liftCatalogPins(map);
+    sync3dFab(map);
+    showDemFail();
+  }
+
+  function startDemWatch(map) {
+    stopDemWatch(map);
+    map.__lvfeDemGot = false;
+    map.__lvfeDemWatch = setTimeout(() => {
+      map.__lvfeDemWatch = 0;
+      if (!map.__lvfeTerrainWanted) return;
+      let loaded = map.__lvfeDemGot;
+      try {
+        if (!loaded && map.isSourceLoaded && map.isSourceLoaded(DEM_ID)) loaded = true;
+      } catch (err) { /* ignore */ }
+      if (!loaded) failToFlat(map);
+    }, DEM_WATCH_MS);
+  }
+
+  function onDemData(e) {
+    if (!e || e.sourceId !== DEM_ID) return;
+    if (e.tile || e.isSourceLoaded || e.sourceDataType === "idle") {
+      const map = this;
+      map.__lvfeDemGot = true;
+    }
+  }
+
+  function onDemError(e) {
+    const map = this;
+    if (!map.__lvfeTerrainWanted) return;
+    const src = e && (e.sourceId || (e.source && e.source.id));
+    const msg = (e && e.error && (e.error.message || String(e.error))) || "";
+    if (src !== DEM_ID && !/terrarium|elevation-tiles|raster-dem|lvfe-dem/i.test(msg)) return;
+    if (/Could not load image|AbortError|styleimagemissing/i.test(msg)) return;
+    failToFlat(map);
+  }
+
   function setPitched(map, on, animate) {
-    map.__lvfeTerrainWanted = on;
-    applyBuildingMode(map, on);
-    if (map.getLayer(POLE_ID)) {
-      map.setLayoutProperty(POLE_ID, "visibility", on ? "visible" : "none");
-    }
+    const box = document.getElementById("toggle3d");
     if (on) {
-      if (map.getSource(DEM_ID)) applyTerrain(map, true);
-      else scheduleTerrain(map, true);
-    } else if (map.getSource(DEM_ID)) {
-      applyTerrain(map, false);
+      hideDemFail();
+      map.__lvfeTerrainWanted = true;
+      applyBuildingMode(map, true);
+      if (!map.getLayer(EXTRUSION_ID)) {
+        failToFlat(map);
+        return;
+      }
+      applySky(map, true);
+      applyLight(map, true);
+      applyLabelPitch(map, true);
+      if (!applyTerrain(map, true)) {
+        failToFlat(map);
+        return;
+      }
+      map.__lvfe3dLive = true;
+      if (global.LvfeSatellite && typeof global.LvfeSatellite.ensure === "function") {
+        try { global.LvfeSatellite.ensure(map); } catch (err) { /* SAT optional */ }
+      }
+      applySatExtrusionOpacity(map);
+      startDemWatch(map);
+      const opts = {
+        pitch: PITCH_3D,
+        duration: animate ? 480 : 0,
+      };
+      try {
+        if (map.getZoom() < ZOOM_3D) opts.zoom = ZOOM_3D;
+      } catch (err) { /* ignore */ }
+      map.easeTo(opts);
+      if (box) box.checked = true;
+      writePref(true);
     } else {
-      scheduleTerrain(map, false);
+      stopDemWatch(map);
+      map.__lvfeTerrainWanted = false;
+      map.__lvfe3dLive = false;
+      applyBuildingMode(map, false);
+      applySky(map, false);
+      applyLight(map, false);
+      applyLabelPitch(map, false);
+      applyTerrain(map, false);
+      map.easeTo({
+        pitch: PITCH_FLAT,
+        bearing: 0,
+        duration: animate ? 420 : 0,
+      });
+      if (box) box.checked = false;
+      writePref(false);
     }
-    const pitch = on ? PITCH_3D : PITCH_FLAT;
-    const opts = { pitch, duration: animate ? 450 : 0 };
-    if (!animate && on && Math.abs(map.getBearing()) < 2) opts.bearing = BEARING_3D;
-    map.easeTo(opts);
     liftCatalogPins(map);
     sync3dFab(map);
   }
 
   function ensureToggle(map) {
-    let box = document.getElementById("toggle3d");
+    const box = document.getElementById("toggle3d");
     if (!box) return null;
     if (box.dataset.lvfeBound === "1") return box;
     box.dataset.lvfeBound = "1";
-    /* First bind: camera only. Ignore stale lvfe.map3d.v2 so a pitch-0 map never looks pressed. */
-    box.checked = pitchedNow(map);
+    box.checked = false;
     box.addEventListener("change", () => {
-      writePref(box.checked);
       setPitched(map, box.checked, true);
     });
     return box;
@@ -469,6 +515,11 @@
     }
   }
 
+  function hidePitchWidget() {
+    const nodes = document.querySelectorAll(".maplibregl-ctrl-pitch");
+    for (let i = 0; i < nodes.length; i++) nodes[i].style.display = "none";
+  }
+
   function styleOk(map) {
     try {
       const s = map.getStyle && map.getStyle();
@@ -480,14 +531,16 @@
 
   function onStyleReady(map) {
     map.__lvfeFill2d = null;
+    map.__lvfe3dLive = false;
     hideOsmPoiLabels(map);
+    hidePoles(map);
     applyExtrusion(map);
     liftCatalogPins(map);
     const box = ensureToggle(map);
-    /* Apply 3D only if the user already asked (checkbox). Never from stale storage alone. */
     const on = !!(box && box.checked);
     setPitched(map, on, false);
     sync3dFab(map);
+    hidePitchWidget();
   }
 
   function lvfeEnable3d(map) {
@@ -496,7 +549,14 @@
     global.lvfeMap = map;
     enableControls(map);
     ensureToggle(map);
+    ensureDemBanner();
     sync3dFab(map);
+
+    if (!map.__lvfeDemHooks) {
+      map.__lvfeDemHooks = true;
+      map.on("sourcedata", onDemData);
+      map.on("error", onDemError);
+    }
 
     const boot = () => onStyleReady(map);
     if (styleOk(map) || map.loaded() || (map.isStyleLoaded && map.isStyleLoaded())) boot();
@@ -511,7 +571,7 @@
 
     const waitPins = () => {
       liftCatalogPins(map);
-      if (map.getLayer(POLE_ID) || (map.getLayer("places-circles") && map.__lvfePolesGaveUp)) {
+      if (map.getLayer("places-circles") || map.getLayer("places-x") || map.__lvfePolesGaveUp) {
         map.off("idle", waitPins);
       }
     };
@@ -525,4 +585,17 @@
 
   global.lvfeEnable3d = lvfeEnable3d;
   global.lvfePaint3dFab = sync3dFab;
+  global.lvfeSyncSat3d = syncSat3d;
+  global.lvfeMap3d = {
+    PITCH_3D,
+    ZOOM_3D,
+    UNTAGGED_M,
+    HEIGHT_CAP_M,
+    TERRAIN_EXAGGERATION,
+    SOLID_EXTRUSION_OPACITY,
+    SAT_EXTRUSION_OPACITY,
+    FAIL_MSG,
+    DEM_TILES,
+    heightExpr,
+  };
 })(typeof window !== "undefined" ? window : globalThis);

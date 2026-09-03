@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Lvfe — My assets</title>
   <link rel="stylesheet" href="css/lvfe.css" />
+  <link rel="stylesheet" href="css/switch.css" />
 </head>
 <body>
   <div class="nav">
@@ -18,11 +19,15 @@
   </div>
   <div class="wrap">
     <p class="sub" id="whoLine">Places you own or have backed on this phone.</p>
-    <div class="sec-toggles" id="secToggles">
-      <label><input type="checkbox" data-sec="owned" checked /> Owned</label>
-      <label><input type="checkbox" data-sec="backed" checked /> Backed</label>
-      <label><input type="checkbox" data-sec="earn" checked /> What you earn</label>
-      <label><input type="checkbox" data-sec="race" checked /> Who could take it</label>
+    <div class="sec-toggles sw-stack" id="secToggles">
+      <label class="sw-row">Owned
+        <input type="checkbox" class="sw" role="switch" data-sec="owned" aria-checked="true" checked /></label>
+      <label class="sw-row">Backed
+        <input type="checkbox" class="sw" role="switch" data-sec="backed" aria-checked="true" checked /></label>
+      <label class="sw-row">What you earn
+        <input type="checkbox" class="sw" role="switch" data-sec="earn" aria-checked="true" checked /></label>
+      <label class="sw-row">Who could take it
+        <input type="checkbox" class="sw" role="switch" data-sec="race" aria-checked="true" checked /></label>
     </div>
     <p class="meta" id="meta">Loading…</p>
     <div id="assetList"></div>

@@ -17,6 +17,7 @@
     } catch (err) { /* */ }
     document.querySelectorAll("[data-sec]").forEach((box) => {
       box.checked = visible[box.getAttribute("data-sec")] !== false;
+      box.setAttribute("aria-checked", box.checked ? "true" : "false");
     });
   }
 
@@ -158,6 +159,7 @@
   loadSecs();
   document.querySelectorAll("[data-sec]").forEach((box) => {
     box.addEventListener("change", () => {
+      box.setAttribute("aria-checked", box.checked ? "true" : "false");
       saveSecs();
       const pk = W.playerKey();
       const stored = loadPlaces();

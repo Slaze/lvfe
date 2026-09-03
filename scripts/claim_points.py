@@ -27,7 +27,7 @@ BASE = {
     "unmapped": 12,
 }
 
-QUALITY = {"A": 1.25, "B": 1.0, "C": 0.7, "D": 0.55}
+QUALITY = {"A": 1.25, "B": 1.0, "C": 0.7, "D": 1.6}
 
 # Unclaimed (named neighbourhood or hinterland) raises min stake.
 ROLE = {
