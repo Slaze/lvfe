@@ -110,8 +110,32 @@ Location-based territorial game. World data from OpenStreetMap (no paid Google M
 - 2026-09-03: Game activity notifications + Wallet/Earn/Rankings/Analytics hub; Bid to overturn; NCN copy; sibling map chrome kept.
 - 2026-09-03: Overlay/layout audit — `box-sizing:border-box`, menu clip, dossier peek/expand px heights, FAB/toast chrome bottom; Nord CDP + screencaps.
 - 2026-09-03: Iconia CMS Terms filled (Lvfe + NCN + Google Identity; live `/pages/terms-and-conditions`).
+- 2026-09-03: Buy NCN (Paystack) + rank sigils + Google profile FAB; PHP buy routes on Iconia.
 
 ## Sessions
+
+### 2026-09-03 — Buy NCN, rank sigils, Google profile FAB
+
+**Goal:** Paystack Buy NCN (1 NCN = $1) with verify/webhook credit; rank emblems; bottom-left FAB = Google photo + sigil/points; Nord install; commit+push `Slaze/lvfe`.
+
+**What changed:**
+- Client: `web/js/buy-ncn.config.js`, `buy-ncn.js`, `rank-sigils.js`; Wallet hub Buy UI; Rankings use sigils; FAB photo + sigil + pts; Google `photoUrl` cache (`account.js` / `google-auth.js`); Android Credential Manager `profilePictureUri` + JWT `picture`.
+- Server: `hosting/lvfe-save/buy.php` + routes in `index.php` / `.htaccess`; Node `server/buy.js`; `docs/BUY_NCN.md`; `scripts/test_buy_ncn_sigils.js`.
+- FTP uploaded PHP buy surface to `public_html/lvfe-save/` (no secret keys). `config.local.php` still lacks Paystack secrets → health `buyNcn.configured:false`.
+
+**Why:** Fastest Nigeria Checkout path; credit only after Paystack verify; visual rank hierarchy; profile FAB matches Google identity.
+
+**How verified:**
+- `node scripts/test_buy_ncn_sigils.js` + `test_game_economy.js` ok.
+- `curl …/lvfe-save/health` → `buyNcn.configured:false`; `POST /v1/buy/init` → `paystack_not_configured` blocker.
+- `./gradlew clean assembleDebug` SUCCESS; `adb -s bea6919f install -r`; **`lastUpdateTime=2026-09-03 10:23:31`**.
+- Nord CDP: `buyModule`+`sigils` true, `buyConfigured` false, FAB photo node + initiate sigil + `goldHang`+`searchMag` kept.
+
+**Current state:** Buy UI + credit path live; payments blocked until Paystack keys pasted. Profile FAB shows letter until Google photo available.
+
+**Next steps:** Paste `pk_test_` / `sk_test_` into client config + host `config.local.php`; webhook URL; sandbox card buy → local+server credit; then live keys.
+
+**Blockers / risks:** **Paystack API keys missing** (sandbox and live). No Flutterwave/Stripe wired yet (Paystack default).
 
 ### 2026-09-03 — Iconia Terms and conditions (OAuth ToS)
 
