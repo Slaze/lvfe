@@ -115,7 +115,7 @@ Location-based territorial game. World data from OpenStreetMap (no paid Google M
 
 **How verified:**
 - `node scripts/test_track_layers.js` ok.
-- `./gradlew assembleDebug` SUCCESS; `adb -s bea6919f install -r`; **`lastUpdateTime=2026-09-03 09:58:35`**.
+- `./gradlew assembleDebug` SUCCESS; `adb -s bea6919f install -r`; **`lastUpdateTime=2026-09-03 09:58:35`**. Commit **`2a93a78`**.
 - Nord CDP: magnifier top-left, gold bottom-left, chip Walk + Car, **alts=2**, `guide-label` + `bus-stops-dot`; bus features sparse in that Enugu cell (1).
 
 **Current state:** Map chrome + alt routes live on Nord. Splash/menu sibling work remains.
