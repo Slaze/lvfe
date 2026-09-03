@@ -146,7 +146,7 @@ Location-based territorial game. World data from OpenStreetMap (no paid Google M
 - Live `sw.js` → `CACHE = "lvfe-shell-v3"` + `./css/nord-shell-v2.css`.
 - Bare `/css/nord-shell.css` still CF-stale (7675 / old md5) — intentional reason for `-v2` filename.
 
-**Current state:** Fix live on Iconia. iPhone home-screen users may still need **Clear Website Data** once if `v1` SW never updates.
+**Current state:** Fix live on Iconia. Commit **`d494a3c`** pushed to `Slaze/lvfe` `main`. iPhone home-screen users may still need **Clear Website Data** once if `v1` SW never updates.
 
 **Next steps:** User clears Safari site data for iconiaglobal.com and reopens home-screen icon; confirm Play Now + gold seal open; Android Chrome install banner smoke.
 
