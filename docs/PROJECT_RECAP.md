@@ -113,6 +113,7 @@ Location-based territorial game. World data from OpenStreetMap (no paid Google M
 - `node scripts/test_save_world_ar.js` + account/conquest/track/sat/map3d ok.
 - Live Overpass Lagos `6.52,3.38` → **74** features (e.g. Chicken Republic/food/B).
 - `./gradlew assembleDebug` SUCCESS; `adb -s bea6919f install -r` Success; **`lastUpdateTime=2026-09-03 07:12:49`**.
+- Commit **`0b600e4`** pushed to `https://github.com/Slaze/lvfe` (`main`).
 
 **Current state:** Cloud save works when `SAVE_API_BASE` / `?saveApi=` / `localStorage.lvfe.saveApiBase` points at `http://<lan>:18787` (or Netlify). Default APK has empty base → local+Export only until configured. AR heading bridged; mock pin for desk test. World catalog live outside Enugu.
 
