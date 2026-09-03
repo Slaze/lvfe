@@ -13,6 +13,7 @@ server/.env
 server/data/
 hosting/lvfe-save/config.local.php
 hosting/lvfe-save/data/saves/
+hosting/lvfe-save/data/payments/
 .netlify/
 scripts/__pycache__/
 __pycache__/

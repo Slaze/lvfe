@@ -6,6 +6,8 @@
 
   let inflight = false;
   let gisReady = false;
+  let lastToken = "";
+  let lastPhotoUrl = "";
 
   function nativeBridge() {
     return typeof global.LvfeNative !== "undefined" ? global.LvfeNative : null;
@@ -52,15 +54,23 @@
         message: "Google returned no account id. Try again or use Export save.",
       };
     }
+    const photoUrl = String((data && (data.photoUrl || data.picture)) || "").trim();
+    const idToken = (data && data.idToken) || "";
+    if (idToken) {
+      lastToken = idToken;
+      try { global.__lvfeGoogleIdToken = idToken; } catch (err) { /* */ }
+    }
+    if (photoUrl) lastPhotoUrl = photoUrl;
     const Acc = global.LvfeAccount;
     const playerKey = Acc ? Acc.playerKeyFromSub(sub) : ("g" + sub.replace(/[^a-zA-Z0-9]/g, "")).slice(0, 32);
-    if (Acc) Acc.bindGoogle(sub, email, playerKey);
+    if (Acc) Acc.bindGoogle(sub, email, playerKey, photoUrl);
     return {
       ok: true,
       sub: sub,
       email: email,
       playerKey: playerKey,
-      idToken: (data && data.idToken) || "",
+      idToken: idToken,
+      photoUrl: photoUrl || (Acc && Acc.photoUrlFor ? Acc.photoUrlFor(sub) : "") || lastPhotoUrl,
     };
   }
 
@@ -83,6 +93,7 @@
             sub: payload.sub,
             email: payload.email,
             idToken: resp.credential,
+            picture: payload.picture || "",
           }));
         },
       });
@@ -170,6 +181,8 @@
     signIn,
     loadGis,
     okPayload,
+    lastIdToken: function () { return lastToken || global.__lvfeGoogleIdToken || ""; },
+    lastPhotoUrl: function () { return lastPhotoUrl; },
     failLoud: function (cb) { return fail(cb); },
   };
 

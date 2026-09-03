@@ -5,9 +5,10 @@ Same contract as `server/` (Node) and `netlify/functions/save.js`.
 ## Live URL
 
 - **Public base (wired in client):** `https://iconiaglobal.com/lvfe-save`
-- Health: `GET /health`
+- Health: `GET /health` (includes `buyNcn` Paystack status)
 - Pull: `GET /v1/save/:playerKey`
 - Push: `PUT /v1/save/:playerKey` with JSON `{ "pack": { "kind": "lvfe.save.v1", "updatedAt": "…", … } }`
+- Buy NCN: `POST /v1/buy/init`, `POST /v1/buy/verify`, `POST /v1/buy/webhook` — see `docs/BUY_NCN.md` (1 NCN = USD $1)
 
 ## Auth
 

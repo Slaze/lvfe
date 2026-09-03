@@ -701,11 +701,15 @@ class MainActivity : AppCompatActivity() {
                     )
                     return@launch
                 }
+                val photo = google.profilePictureUri?.toString()
+                    ?: parsed.third.takeIf { it.isNotBlank() }
+                    ?: ""
                 notifyGoogleSignIn(
                     JSONObject()
                         .put("ok", true)
                         .put("sub", parsed.first)
                         .put("email", parsed.second)
+                        .put("photoUrl", photo)
                         .put("idToken", google.idToken),
                 )
             } catch (err: Exception) {
@@ -719,7 +723,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun parseIdToken(token: String?): Pair<String, String>? {
+    private fun parseIdToken(token: String?): Triple<String, String, String>? {
         if (token.isNullOrBlank()) return null
         return try {
             val parts = token.split(".")
@@ -729,7 +733,8 @@ class MainActivity : AppCompatActivity() {
             )
             val obj = JSONObject(body)
             val sub = obj.optString("sub")
-            if (sub.isBlank()) null else sub to obj.optString("email")
+            if (sub.isBlank()) null
+            else Triple(sub, obj.optString("email"), obj.optString("picture"))
         } catch (err: Exception) {
             null
         }

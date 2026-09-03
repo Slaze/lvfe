@@ -12,4 +12,5 @@ RewriteRule ^ - [L]
 
 RewriteRule ^health/?$ index.php?_path=health [L,QSA]
 RewriteRule ^v1/save/([^/]+)/?$ index.php?_path=v1/save/$1&key=$1 [L,QSA]
+RewriteRule ^v1/buy/(init|verify|webhook)/?$ index.php?_path=v1/buy/$1 [L,QSA]
 RewriteRule ^(.*)$ index.php?_path=$1 [L,QSA]

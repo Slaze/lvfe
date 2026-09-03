@@ -14,6 +14,7 @@ const http = require("http");
 const fs = require("fs");
 const path = require("path");
 const { URL } = require("url");
+const { createBuyHandlers } = require("./buy.js");
 
 const ROOT = __dirname;
 loadEnv(path.join(ROOT, ".env"));
@@ -52,8 +53,8 @@ function loadEnv(file) {
 
 function cors(res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, PUT, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type, X-Lvfe-Player-Key, X-Lvfe-Account-Key");
+  res.setHeader("Access-Control-Allow-Methods", "GET, PUT, POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type, X-Lvfe-Player-Key, X-Lvfe-Account-Key, X-Paystack-Signature");
 }
 
 function send(res, code, obj) {
@@ -93,6 +94,13 @@ function writeSave(accountKey, doc) {
   fs.writeFileSync(tmp, JSON.stringify(doc, null, 2));
   fs.renameSync(tmp, p);
 }
+
+const buyHandlers = createBuyHandlers({
+  ROOT,
+  safeKey,
+  readSave,
+  writeSave,
+});
 
 function trimPhotos(pack) {
   if (!pack || !Array.isArray(pack.photos)) {
@@ -229,6 +237,7 @@ async function handle(req, res) {
   const parts = u.pathname.replace(/\/+$/, "").split("/").filter(Boolean);
 
   if (req.method === "GET" && parts.length === 1 && parts[0] === "health") {
+    const buy = buyHandlers.keysStatus();
     send(res, 200, {
       ok: true,
       service: "lvfe-save",
@@ -236,8 +245,37 @@ async function handle(req, res) {
       googleConfigured: Boolean(GOOGLE_AUD),
       conflict: "last-write-wins by updatedAt",
       photoCap: { maxPhotos: MAX_PHOTOS, metaOnlyOverBytes: PHOTO_META_ONLY_OVER, maxBodyBytes: MAX_BODY },
+      buyNcn: {
+        provider: "paystack",
+        configured: buy.configured,
+        sandbox: buy.sandbox,
+        ncnPerUsd: 1,
+      },
     });
     return;
+  }
+
+  // POST /v1/buy/init|verify|webhook
+  if (parts[0] === "v1" && parts[1] === "buy" && parts[2] && req.method === "POST") {
+    let raw;
+    try {
+      raw = await readBody(req);
+    } catch (err) {
+      send(res, err.code === 413 ? 413 : 400, { ok: false, error: err.message || "Bad body" });
+      return;
+    }
+    if (parts[2] === "init") {
+      await buyHandlers.handleInit(req, res, send, authorize, raw);
+      return;
+    }
+    if (parts[2] === "verify") {
+      await buyHandlers.handleVerify(req, res, send, authorize, raw);
+      return;
+    }
+    if (parts[2] === "webhook") {
+      await buyHandlers.handleWebhook(req, res, send, raw);
+      return;
+    }
   }
 
   // GET /v1/save/:accountKey

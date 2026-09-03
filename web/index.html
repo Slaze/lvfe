@@ -65,8 +65,59 @@
       font: 700 18px/1 "Iowan Old Style", "Palatino Linotype", Palatino, serif;
       cursor: pointer;
       box-shadow: 0 2px 8px rgba(0,0,0,.28), inset 0 0 0 2px rgba(255,236,190,.45);
+      display: flex; align-items: center; justify-content: center;
+      overflow: visible;
     }
     .who-stamp.gold-hang[aria-expanded="true"] { background: #d4a24e; }
+    .who-stamp.gold-hang.has-photo {
+      background: #0e1116;
+      box-shadow: 0 2px 8px rgba(0,0,0,.35), 0 0 0 2px #b8893a;
+    }
+    .who-stamp .fab-avatar {
+      position: relative; width: 52px; height: 52px; border-radius: 50%;
+      overflow: hidden; display: flex; align-items: center; justify-content: center;
+    }
+    .who-stamp .fab-avatar img {
+      width: 100%; height: 100%; object-fit: cover; display: block;
+    }
+    .who-stamp .fab-avatar #stampGlyph {
+      display: flex; align-items: center; justify-content: center;
+      width: 100%; height: 100%;
+    }
+    .who-stamp .fab-rank {
+      position: absolute;
+      left: 50%; transform: translateX(-50%);
+      bottom: -22px;
+      display: flex; align-items: center; gap: 4px;
+      padding: 2px 6px 2px 2px;
+      border-radius: 999px;
+      background: rgba(14,17,22,.92);
+      border: 1px solid rgba(184,137,58,.55);
+      box-shadow: 0 1px 4px rgba(0,0,0,.35);
+      pointer-events: none;
+      white-space: nowrap;
+    }
+    .who-stamp .fab-rank .sigil-svg { width: 18px; height: 18px; display: block; }
+    .who-stamp .fab-pts {
+      font: 700 10px/1 system-ui, sans-serif;
+      color: #e8c36a;
+    }
+    .who-stamp.signed-out-fab .fab-rank { opacity: .85; }
+    .sigil { display: inline-flex; grid-row: span 2; align-self: center; }
+    .sigil-svg { display: block; }
+    .hub-rank li {
+      display: grid; grid-template-columns: 36px 1fr; gap: 2px 10px;
+      padding: 10px 0; border-top: 1px solid rgba(255,255,255,.06); font-size: 13px;
+    }
+    .hub-buy { margin: 12px 0 16px; padding: 12px; border-radius: 12px; background: rgba(255,122,26,.08); border: 1px solid rgba(255,122,26,.25); }
+    .hub-buy h4 { margin: 0 0 6px; }
+    .hub-buy-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+    .hub-buy-row .hub-cta { flex: 1 1 40%; min-width: 88px; }
+    .hub-buy-custom { display: flex; align-items: center; gap: 8px; margin: 8px 0; font-size: 13px; color: #c5c8ce; }
+    .hub-buy-custom input {
+      width: 72px; padding: 8px; border-radius: 8px; border: 1px solid #2a3340;
+      background: #0e1116; color: #e8edf4; font: inherit;
+    }
     .map-hint {
       position: absolute; z-index: 3;
       left: max(12px, env(safe-area-inset-left, 0px));
@@ -794,10 +845,6 @@
     .hub-mission strong { display: block; font-size: 14px; }
     .hub-mission span { color: #9aa0a6; font-size: 12px; }
     .hub-rank { list-style: none; margin: 0; padding: 0; }
-    .hub-rank li {
-      display: grid; grid-template-columns: 28px 1fr; gap: 2px 10px;
-      padding: 10px 0; border-top: 1px solid rgba(255,255,255,.06); font-size: 13px;
-    }
     .hub-rank li:first-child { border-top: 0; }
     .hub-pos { grid-row: span 2; font-weight: 800; color: #ff7a1a; font-size: 16px; align-self: center; }
     .hub-rank span:last-child { color: #9aa0a6; font-size: 12px; }
@@ -880,7 +927,14 @@
   </div>
   <div class="map-hint" id="mapHint">Green = walk · dashed = alt · blue B = bus</div>
   <button type="button" class="who-stamp gold-hang" id="btnMore" aria-label="Account menu" aria-expanded="false">
-    <span id="stampGlyph">+</span>
+    <span class="fab-avatar">
+      <img id="fabPhoto" alt="" hidden />
+      <span id="stampGlyph">+</span>
+    </span>
+    <span class="fab-rank" id="fabRank" aria-hidden="true">
+      <span class="fab-sigil" id="fabSigil"></span>
+      <span class="fab-pts" id="fabPts">0</span>
+    </span>
   </button>
   <input type="checkbox" id="toggleAr" hidden />
   <input type="checkbox" id="toggle3d" hidden />
@@ -1091,7 +1145,10 @@
   <script src="js/dossier.js"></script>
   <script src="js/game-notify.js"></script>
   <script src="js/rankings.js"></script>
+  <script src="js/rank-sigils.js"></script>
   <script src="js/wallet-earn.js"></script>
+  <script src="js/buy-ncn.config.js"></script>
+  <script src="js/buy-ncn.js"></script>
   <script src="js/play-hub.js"></script>
   <script src="js/track-guide.js"></script>
   <script src="js/bus-stops.js"></script>  <script src="js/satellite.js"></script>
@@ -1214,7 +1271,8 @@
       document.documentElement.style.setProperty("--lvfe-chrome-bottom", bottom + "px");
       const bottomCss = "calc(" + bottom + "px + env(safe-area-inset-bottom, 0px))";
       if (fabs) fabs.style.bottom = bottomCss;
-      if (gold) gold.style.bottom = bottomCss;
+      /* Profile FAB hangs rank pill ~22px below the circle */
+      if (gold) gold.style.bottom = "calc(" + (bottom + 22) + "px + env(safe-area-inset-bottom, 0px))";
     }
 
     function toggleDocSheet() {
@@ -1951,6 +2009,7 @@
         const coin = document.getElementById("acctCoin");
         if (coin) coin.textContent = String(whole);
       }
+      paintFabProfile();
       paintGoogleAuthUi();
       const syncNote = document.getElementById("acctSyncNote");
       if (syncNote && window.LvfeSaveSync) {
@@ -1968,6 +2027,77 @@
           "<option value=\"" + esc(row.pk) + "\"" + (row.pk === PLAYER_KEY ? " selected" : "") + ">" +
           esc(row.name) + (row.pk === PLAYER_KEY ? " (now)" : "") + "</option>"
         ).join("");
+      }
+    }
+
+    function playerRankRow() {
+      const Rank = window.LvfeRankings;
+      const places = loadPlaces();
+      const idn = loadIdentity() || {};
+      const identities = hubIdentities();
+      if (!Rank) {
+        return { playerKey: PLAYER_KEY, playerName: idn.playerName || PLAYER_KEY, staked: 0, owned: 0, points: 0, rank: 0 };
+      }
+      const who = idn.factionId
+        ? Rank.factionWhoIsWho(idn.factionId, places, { identities: identities })
+        : null;
+      if (who && who.members) {
+        for (let i = 0; i < who.members.length; i++) {
+          if (who.members[i].playerKey === PLAYER_KEY) return who.members[i];
+        }
+      }
+      const stats = Rank.playerStats(places, { identities: identities });
+      const row = stats[PLAYER_KEY] || {
+        playerKey: PLAYER_KEY,
+        playerName: idn.playerName || PLAYER_KEY,
+        staked: 0,
+        owned: 0,
+        factionId: idn.factionId || "",
+      };
+      row.points = (Number(row.staked) || 0) + (Number(row.owned) || 0) * 10;
+      row.rank = 0;
+      return row;
+    }
+
+    function paintFabProfile() {
+      const btn = document.getElementById("btnMore");
+      const img = document.getElementById("fabPhoto");
+      const glyph = document.getElementById("stampGlyph");
+      const sigilEl = document.getElementById("fabSigil");
+      const ptsEl = document.getElementById("fabPts");
+      const g = googleSignedState();
+      const Acc = window.LvfeAccount;
+      let photo = "";
+      if (g && g.sub) {
+        photo = (g.photoUrl || "") ||
+          (Acc && Acc.photoUrlFor ? Acc.photoUrlFor(g.sub) : "") ||
+          (Acc && Acc.photoUrlForPlayer ? Acc.photoUrlForPlayer(PLAYER_KEY) : "") ||
+          (window.LvfeGoogleAuth && window.LvfeGoogleAuth.lastPhotoUrl ? window.LvfeGoogleAuth.lastPhotoUrl() : "");
+      }
+      if (btn) {
+        btn.classList.toggle("has-photo", Boolean(photo));
+        btn.classList.toggle("signed-out-fab", !g || !g.sub);
+      }
+      if (img) {
+        if (photo) {
+          img.hidden = false;
+          img.src = photo;
+          img.alt = "Google profile";
+          if (glyph) glyph.hidden = true;
+        } else {
+          img.hidden = true;
+          img.removeAttribute("src");
+          if (glyph) glyph.hidden = false;
+        }
+      }
+      const Sig = window.LvfeRankSigils;
+      const row = playerRankRow();
+      if (Sig && sigilEl) {
+        const meta = Sig.compactMeta(row, { factionRank: row.rank || 99 });
+        sigilEl.innerHTML = meta.html;
+        if (ptsEl) ptsEl.textContent = String(meta.points);
+      } else if (ptsEl) {
+        ptsEl.textContent = String((row && row.points) || 0);
       }
     }
 
@@ -2170,24 +2300,26 @@
         return;
       }
       hideGoogleBlocker();
-      pendingGoogle = { sub: result.sub, email: result.email, playerKey: result.playerKey };
+      pendingGoogle = { sub: result.sub, email: result.email, playerKey: result.playerKey, photoUrl: result.photoUrl || "" };
       const Acc = window.LvfeAccount;
       const mapped = Acc && Acc.lookupGoogle(result.sub);
       const pk = (mapped && mapped.playerKey) || result.playerKey;
       const existing = loadIdentity(pk);
       switchPlayer(pk);
       if (existing && existing.playerName) {
-        pendingGoogle = { sub: result.sub, email: result.email, playerKey: pk };
+        pendingGoogle = { sub: result.sub, email: result.email, playerKey: pk, photoUrl: result.photoUrl || "" };
         saveIdentity({
           playerName: existing.playerName,
           factionId: existing.factionId,
           googleSub: result.sub,
           email: result.email,
         }, pk);
+        if (Acc && result.photoUrl) Acc.bindGoogle(result.sub, result.email, pk, result.photoUrl);
         hideIdentityGate();
         toast("Signed in. Playing as " + existing.playerName + ".");
         renderHud();
         paintGoogleAuthUi();
+        paintFabProfile();
         return;
       }
       creatingProfile = false;
@@ -2823,6 +2955,72 @@
           balance: walletWhole(),
           stakesOut: Earn ? Earn.stakesOut(PLAYER_KEY, places) : { total: 0, owned: 0, backed: 0, rows: [] },
           activity: Earn ? Earn.loadActivity() : [],
+        });
+        bindHubBuy();
+      }
+    }
+
+    function bindHubBuy() {
+      const Buy = window.LvfeBuyNcn;
+      const Cfg = window.LvfeBuyNcnConfig;
+      function start(amount) {
+        if (!Buy) {
+          toast("Buy module missing.");
+          return;
+        }
+        if (!Cfg || !Cfg.isConfigured()) {
+          showBuyBlocker(Buy.failLoud());
+          return;
+        }
+        const g = googleSignedState();
+        const email = (g && g.email) || "";
+        toast("Opening Paystack…");
+        Buy.startCheckout({
+          playerKey: PLAYER_KEY,
+          email: email,
+          ncnAmount: amount,
+        }, function (res) {
+          if (!res || !res.ok) {
+            if (res && (res.code === "paystack_not_configured" || res.code === "live_keys_missing")) {
+              showBuyBlocker(res);
+            } else if (res && res.code !== "closed") {
+              toast((res && res.message) || "Purchase failed.");
+            }
+            return;
+          }
+          loadWallet();
+          scheduleSavePush();
+          paintProfileMenu();
+          renderPlayHub();
+          toast("Credited " + res.ncnAmount + " NCN.");
+        });
+      }
+      function showBuyBlocker(err) {
+        const el = document.getElementById("googleBlocker");
+        const steps = (err && err.steps) || (Cfg && Cfg.BLOCKER_STEPS) || [];
+        const title = (err && (err.title || err.message)) || (Cfg && Cfg.BLOCKER_TITLE) || "Buy NCN is not wired yet.";
+        if (el) {
+          el.hidden = false;
+          el.textContent = title + "\n\n" + steps.map(function (s, i) { return (i + 1) + ". " + s; }).join("\n");
+        }
+        toast(title);
+      }
+      const blockerBtn = document.getElementById("hubBuyBlocker");
+      if (blockerBtn) {
+        blockerBtn.addEventListener("click", function () {
+          showBuyBlocker(Buy ? Buy.failLoud() : (Cfg && { title: Cfg.BLOCKER_TITLE, steps: Cfg.BLOCKER_STEPS }));
+        });
+      }
+      document.querySelectorAll("[data-buy-ncn]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          start(Number(btn.getAttribute("data-buy-ncn")) || 5);
+        });
+      });
+      const go = document.getElementById("hubBuyGo");
+      if (go) {
+        go.addEventListener("click", function () {
+          const inp = document.getElementById("hubBuyCustom");
+          start(inp ? Number(inp.value) : 10);
         });
       }
     }

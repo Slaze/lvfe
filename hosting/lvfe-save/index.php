@@ -5,6 +5,7 @@
  *   GET  /health
  *   GET  /v1/save/:playerKey
  *   PUT  /v1/save/:playerKey
+ *   POST /v1/buy/init|verify|webhook  (Paystack; 1 NCN = USD $1)
  *
  * Auth: Bearer lvfe-dev:<playerKey> (when LVFE_ALLOW_DEV_AUTH=1),
  *       Bearer <SAVE_SECRET>,
@@ -20,8 +21,8 @@ const PHOTO_META_ONLY_OVER = 400000;
 const MAX_BODY = 2621440;
 
 header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, PUT, OPTIONS');
-header('Access-Control-Allow-Headers: Authorization, Content-Type, X-Lvfe-Player-Key, X-Lvfe-Account-Key');
+header('Access-Control-Allow-Methods: GET, PUT, POST, OPTIONS');
+header('Access-Control-Allow-Headers: Authorization, Content-Type, X-Lvfe-Player-Key, X-Lvfe-Account-Key, X-Paystack-Signature');
 header('Cache-Control: no-store');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -29,9 +30,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
+require_once __DIR__ . '/buy.php';
+
 $cfg = load_config();
 $path = isset($_GET['_path']) ? (string)$_GET['_path'] : '';
 $path = trim($path, '/');
+$saveDir = __DIR__ . '/data/saves';
+if (!is_dir($saveDir)) {
+    mkdir($saveDir, 0750, true);
+}
 
 if ($path === 'health' || $path === '') {
     if ($path === '' && !isset($_GET['key'])) {
@@ -39,15 +46,33 @@ if ($path === 'health' || $path === '') {
     }
     if ($path === 'health' || $path === '') {
         if ($path === 'health' || ($path === '' && ($_GET['probe'] ?? '') === '1')) {
+            $buy = buy_keys_status($cfg);
             json_out(200, [
                 'ok' => true,
                 'service' => 'lvfe-save',
                 'host' => 'php',
                 'devAuth' => ($cfg['LVFE_ALLOW_DEV_AUTH'] ?? '0') !== '0',
                 'googleConfigured' => ($cfg['GOOGLE_WEB_CLIENT_ID'] ?? '') !== '',
+                'buyNcn' => [
+                    'provider' => 'paystack',
+                    'configured' => $buy['configured'],
+                    'sandbox' => $buy['sandbox'],
+                    'ncnPerUsd' => 1,
+                ],
             ]);
         }
     }
+}
+
+/* Buy NCN (Paystack) — before save-key gate */
+if ($path === 'v1/buy/init' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    buy_handle_init($cfg, $saveDir);
+}
+if ($path === 'v1/buy/verify' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    buy_handle_verify($cfg, $saveDir);
+}
+if ($path === 'v1/buy/webhook' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    buy_handle_webhook($cfg, $saveDir);
 }
 
 $key = isset($_GET['key']) ? safe_key((string)$_GET['key']) : null;
@@ -60,12 +85,19 @@ if ($key === null && preg_match('#^save/([^/]+)$#', $path, $m)) {
 
 if ($key === null) {
     if ($path === '' || $path === 'health') {
+        $buy = buy_keys_status($cfg);
         json_out(200, [
             'ok' => true,
             'service' => 'lvfe-save',
             'host' => 'php',
             'devAuth' => ($cfg['LVFE_ALLOW_DEV_AUTH'] ?? '0') !== '0',
             'googleConfigured' => ($cfg['GOOGLE_WEB_CLIENT_ID'] ?? '') !== '',
+            'buyNcn' => [
+                'provider' => 'paystack',
+                'configured' => $buy['configured'],
+                'sandbox' => $buy['sandbox'],
+                'ncnPerUsd' => 1,
+            ],
         ]);
     }
     json_out(400, ['ok' => false, 'error' => 'Missing account key']);
@@ -81,10 +113,6 @@ if (!$auth['ok']) {
 }
 
 $method = $_SERVER['REQUEST_METHOD'];
-$saveDir = __DIR__ . '/data/saves';
-if (!is_dir($saveDir)) {
-    mkdir($saveDir, 0750, true);
-}
 
 if ($method === 'GET') {
     $doc = read_doc($saveDir, $key);
@@ -139,7 +167,7 @@ if ($method === 'PUT') {
     json_out(200, ['ok' => true, 'accountKey' => $key, 'updatedAt' => $updatedAt]);
 }
 
-json_out(405, ['ok' => false, 'error' => 'GET or PUT only']);
+json_out(405, ['ok' => false, 'error' => 'GET, PUT, or POST /v1/buy/*']);
 
 /* --- helpers --- */
 
@@ -149,6 +177,11 @@ function load_config(): array
         'SAVE_SECRET' => '',
         'LVFE_ALLOW_DEV_AUTH' => '1',
         'GOOGLE_WEB_CLIENT_ID' => '',
+        'PAYSTACK_PUBLIC_KEY' => '',
+        'PAYSTACK_SECRET_KEY' => '',
+        'PAYSTACK_WEBHOOK_SECRET' => '',
+        'PAYSTACK_CURRENCY' => 'NGN',
+        'NGN_PER_USD' => '1500',
     ];
     $local = __DIR__ . '/config.local.php';
     if (is_file($local)) {

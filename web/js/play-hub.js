@@ -27,15 +27,42 @@
     const so = c.stakesOut || { total: 0, owned: 0, backed: 0, rows: [] };
     const activity = Array.isArray(c.activity) ? c.activity : [];
     const copy = (global.LvfeWalletEarn && global.LvfeWalletEarn.howEarnCopy()) || { short: "", long: "" };
+    const buyCfg = global.LvfeBuyNcnConfig;
+    const buyReady = Boolean(global.LvfeBuyNcn && buyCfg && buyCfg.isConfigured && buyCfg.isConfigured());
+    const presets = (buyCfg && buyCfg.PRESETS) || [5, 10, 25, 50];
     const bits = [
       `<div class="hub-pane" data-hub="wallet">`,
       `<p class="hub-bal">${ncn(bal)}</p>`,
       `<p class="hub-meta">Stakes out ${ncn(so.total)} · ${so.owned} owned · ${so.backed} backed</p>`,
       `<p class="hub-note">${esc(copy.short)}</p>`,
+      `<div class="hub-buy">`,
+      `<h4>Buy NCN</h4>`,
+      `<p class="hub-meta">1 NCN = USD $1 · Paystack Checkout</p>`,
+    ];
+    if (!buyReady) {
+      bits.push(
+        `<p class="hub-empty">Sandbox / live keys not set yet. See docs/BUY_NCN.md.</p>`,
+        `<button type="button" class="hub-cta ghost" id="hubBuyBlocker"><span class="mark">!</span> Show setup steps</button>`
+      );
+    } else {
+      bits.push(`<div class="hub-buy-row">`);
+      presets.forEach(function (p) {
+        bits.push(`<button type="button" class="hub-cta ghost hub-buy-amt" data-buy-ncn="${p}">${p} NCN</button>`);
+      });
+      bits.push(
+        `</div>`,
+        `<label class="hub-buy-custom">Custom <input type="number" id="hubBuyCustom" min="1" max="500" step="1" value="10" inputmode="numeric" /></label>`,
+        `<button type="button" class="hub-cta" id="hubBuyGo"><span class="mark">◎</span> Buy with Paystack</button>`
+      );
+      if (buyCfg.isTestKey && buyCfg.isTestKey()) {
+        bits.push(`<p class="hub-meta">Test mode (pk_test_)</p>`);
+      }
+    }
+    bits.push(
       `<button type="button" class="hub-cta" data-hub-tab="earn"><span class="mark">◎</span> Earn more</button>`,
       `<details class="hub-details"><summary>How the system works</summary><p>${esc(copy.long)}</p></details>`,
-      `<h4>Recent activity</h4>`,
-    ];
+      `<h4>Recent activity</h4>`
+    );
     if (!activity.length) {
       bits.push(`<p class="hub-empty">No stakes yet on this phone.</p>`);
     } else {
@@ -84,22 +111,27 @@
 
   function rankingsHtml(ctx) {
     const c = ctx || {};
-    const global = Array.isArray(c.global) ? c.global : [];
+    const globalRows = Array.isArray(c.global) ? c.global : [];
     const factions = Array.isArray(c.factions) ? c.factions : [];
     const who = c.who || null;
+    const Sig = global.LvfeRankSigils;
     const bits = [
       `<div class="hub-pane" data-hub="rankings">`,
       `<h4>Leaders by NCN staked</h4>`,
     ];
-    if (!global.length) {
+    if (!globalRows.length) {
       bits.push(`<p class="hub-empty">No stakes on the ledger yet.</p>`);
     } else {
       bits.push(`<ol class="hub-rank">`);
-      global.slice(0, 15).forEach(function (r) {
+      globalRows.slice(0, 15).forEach(function (r) {
+        const meta = Sig ? Sig.compactMeta(r, { factionRank: r.rank }) : null;
         bits.push(
-          `<li><span class="hub-pos">${r.rank}</span>` +
+          `<li>` +
+          (meta ? meta.html : `<span class="hub-pos">${r.rank}</span>`) +
           `<strong>${esc(r.playerName)}</strong>` +
-          `<span>${ncn(r.staked)} · ${r.owned} places</span></li>`
+          `<span>${ncn(r.staked)} · ${r.owned} places` +
+          (meta ? ` · ${esc(meta.tierLabel)} · ${meta.points} pts` : "") +
+          `</span></li>`
         );
       });
       bits.push(`</ol>`);
@@ -125,10 +157,14 @@
         `<ol class="hub-rank">`
       );
       who.members.slice(0, 12).forEach(function (m) {
+        const meta = Sig ? Sig.compactMeta(m, { factionRank: m.rank }) : null;
         bits.push(
-          `<li><span class="hub-pos">${m.rank}</span>` +
+          `<li>` +
+          (meta ? meta.html : `<span class="hub-pos">${m.rank}</span>`) +
           `<strong>${esc(m.playerName)}</strong>` +
-          `<span>${ncn(m.staked)} · ${m.owned} owned</span></li>`
+          `<span>${ncn(m.staked)} · ${m.owned} owned` +
+          (meta ? ` · ${esc(meta.roleLabel)}` : "") +
+          `</span></li>`
         );
       });
       bits.push(`</ol>`);

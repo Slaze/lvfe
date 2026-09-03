@@ -104,17 +104,32 @@
     return o && typeof o === "object" ? o : {};
   }
 
-  function bindGoogle(sub, email, playerKey) {
+  function bindGoogle(sub, email, playerKey, photoUrl) {
     const id = String(sub || "").trim();
     if (!id) return null;
     const all = googleMap();
+    const prev = all[id] || {};
     all[id] = {
       playerKey: String(playerKey || playerKeyFromSub(id)).slice(0, 32),
       email: String(email || "").slice(0, 128),
+      photoUrl: String(photoUrl || prev.photoUrl || "").slice(0, 512),
       at: new Date().toISOString(),
     };
     lsSet(GOOGLE_MAP_KEY, all);
     return all[id];
+  }
+
+  function photoUrlFor(sub) {
+    const id = String(sub || "").trim();
+    if (!id) return "";
+    const row = googleMap()[id];
+    return row && row.photoUrl ? String(row.photoUrl).slice(0, 512) : "";
+  }
+
+  function photoUrlForPlayer(playerKey) {
+    const sess = googleSessionFor(playerKey);
+    if (!sess || !sess.sub) return "";
+    return photoUrlFor(sess.sub) || String(sess.photoUrl || "").slice(0, 512);
   }
 
   function lookupGoogle(sub) {
@@ -148,6 +163,7 @@
         sub: keys[i],
         email: String(row.email || "").slice(0, 128),
         playerKey: String(row.playerKey).slice(0, 32),
+        photoUrl: String(row.photoUrl || "").slice(0, 512),
       };
     }
     return null;
@@ -250,6 +266,8 @@
     unbindGoogle,
     googleSessionFor,
     googleMap,
+    photoUrlFor,
+    photoUrlForPlayer,
     packSave,
     unpackSave,
     walletKeys,
