@@ -97,8 +97,9 @@ button.ghost { background: var(--line); color: var(--ink); }
 }
 .cat-thumb {
   flex: 0 0 48px; width: 48px; height: 48px; border-radius: 8px; overflow: hidden;
-  background: #2a2a2e;
+  background: #e8dcc6;
 }
+.cat-thumb-empty { background: #e8dcc6; }
 .cat-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
 #catFile {
   position: fixed; z-index: 8; left: 0; right: 0; bottom: 0;

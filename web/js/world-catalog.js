@@ -193,6 +193,10 @@
         has_photo: 0,
         world: 1,
         field: 1,
+        image: row.image || "",
+        wikimedia_commons: row.wikimedia_commons || "",
+        mapillary: row.mapillary || "",
+        wikipedia: row.wikipedia || "",
       },
     };
   }
@@ -211,13 +215,19 @@
       const id = placeId(el.type, el.id);
       if (seen[id]) continue;
       seen[id] = true;
-      out.push({
+      const row = {
         id: id,
         lat: xy.lat,
         lon: xy.lon,
         name: tags.name || "",
         catalog_type: ctype,
-      });
+      };
+      if (tags.image) row.image = tags.image;
+      else if (tags["image:url"]) row.image = tags["image:url"];
+      if (tags.wikimedia_commons) row.wikimedia_commons = tags.wikimedia_commons;
+      if (tags.mapillary) row.mapillary = tags.mapillary;
+      if (tags.wikipedia) row.wikipedia = tags.wikipedia;
+      out.push(row);
     }
     return out;
   }

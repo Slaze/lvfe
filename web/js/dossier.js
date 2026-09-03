@@ -51,7 +51,11 @@
 
   function photoLine(p, rec) {
     const has = Boolean((rec && rec.hasPhoto) || (p && (Number(p.has_photo) || p.quality === "A")));
-    return has ? "Has a visit photo" : "Looking up place…";
+    if (has) return "Has a visit photo";
+    if (p && (p.image || p.wikimedia_commons || p.mapillary || p.wikipedia)) {
+      return "Looking up place…";
+    }
+    return "No photo yet — visit to confirm";
   }
 
   function placeCoords(p, opts) {

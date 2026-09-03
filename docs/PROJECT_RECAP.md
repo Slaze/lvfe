@@ -38,7 +38,7 @@ Location-based territorial game. World data from OpenStreetMap (no paid Google M
 - `web/rules.html` — player How to play (walk, photo, NairaCoin, 80 m, highest backer owns, faction, neighbourhood value bonus, Pay gate, beep/track, AR, catalog, banks, world Overpass).
 - `web/assets.html` + `web/js/assets.js` — owned/backed places, visit interest (10%), gap vs next backer; dossier-style section toggles.
 - `web/js/dossier.js` — place-file HTML; Land mark actions (watch / threat / takeover); **Bid to overturn** via `LvfeWalletEarn.bidToOwn`. Flex head row; 2-line title clamp.
-- `web/js/place-thumb.js` — place snapshot: Esri World Imagery tile + Wikipedia geosearch upgrade; IndexedDB cache; catalog chips.
+- `web/js/place-thumb.js` — dossier thumbs: visit photo → OSM `image`/`wikimedia_commons`/`mapillary`/`wikipedia` → Wikimedia/Wikipedia ground photo → optional Mapillary token → placeholder. **Never** Esri SAT / map canvas / Google photo SKUs.
 - `web/js/game-notify.js` — notifications (`claim_self` / `claim_rival` / `nearby_claimable` / `enemy_nearby` / `pass_toll` / `toll_owner` / `watch_change` / `threat_act` / `test`); prefs; Android `LvfeNative.showGameNotification` else `#gameBanner`.
 - `web/js/pass-toll.js` — pass-by toll ≤80 m enemy-owned: `max(2, floor(ownerStake×5%))`, 60 min/place, partial+debt, Escape refund fee, owner inbox.
 - `web/js/game-marks.js` — watchlist / threats / takeover plans (`lvfe.marks.v1` + save pack); ledger diff notifies.
@@ -124,11 +124,45 @@ Location-based territorial game. World data from OpenStreetMap (no paid Google M
 - 2026-09-03: Pass-by toll + contest notify (Outpay/Escape/Accept) + mark watch/threat/takeover (`dc5eba5`); co-landed PWA shell in same commit.
 - 2026-09-03: PWA deployed live to **`https://iconiaglobal.com/lvfe/`** (FTP; apex `lvfe` pass-through; GIS origins documented).
 - 2026-09-03: PWA install prompt + `install.html` guide; co-landed iOS menu/Nord translucent fixes (sibling); SW **`lvfe-shell-v4`**.
-- 2026-09-03: Place dossier layout overlap fixed (flex head + 2-line clamp); place snapshot thumbs via **Esri World Imagery** + Wikipedia geosearch upgrade (`place-thumb.js`).
+- 2026-09-03: Place dossier layout overlap fixed (flex head + 2-line clamp); place thumbs initially Esri (wrong) — **corrected** to visit/OSM/Wikimedia ground photos only (no SAT-as-thumb).
 - 2026-09-03: **Username permanent** (Google-bound on save API) + **location-based factions** (OSM local build outside Enugu; Enugu four canonical); SW **`lvfe-shell-v5`**.
 - 2026-09-03: **P0 Google APK↔PWA sync** verified: cold-start `g{sub}` restore + migrate; PHP Google `key_mismatch`; Nord CDP + cloud pack **Slaze** / `g1064…`.
+- 2026-09-03: **P0 place thumbs** — remove Esri SAT from dossier/catalog thumbs; bake OSM media into catalog/geojson; redeploy PWA + Nord.
 
 ## Sessions
+
+### 2026-09-03 — P0: dossier thumbs must be real place photos (not SAT)
+
+**Goal:** Place dossier snapshot/thumbnail shows a confirmed ground-level picture of the place — never satellite/aerial. Remove Esri-as-thumb from sibling `e3896bd3`. Keep dossier long-title overlap fix. Redeploy PWA + Nord APK; commit/push. Merge with account sync / username-factions / install (already on `main`).
+
+**Source pipeline (priority):**
+1. Player visit photo (IndexedDB / save pack) via `LvfePhotoStore`
+2. OSM tags on the feature: `image=`, `wikimedia_commons=`, `mapillary=`, `wikipedia=` (catalog/geojson stamped from `place_osm_links`; world Overpass passes tags through)
+3. Wikipedia geosearch / title match + Wikimedia Commons geosearch (aerial-ish titles filtered)
+4. Optional Mapillary Graph API only if `LvfeMapillaryConfig.ACCESS_TOKEN` or `localStorage.lvfe.mapillaryToken`
+5. Else clear placeholder: **“No photo yet — visit to confirm”**
+
+**What changed:**
+- `web/js/place-thumb.js` — rewritten; DB cache `lvfe.place-thumbs.v2`; rejects Esri/World_Imagery URLs; no tile math.
+- `scripts/export_catalog.py` — pulls media tags from sqlite links; patches `data/places.geojson` + `catalog.json` (~164 `image` fields).
+- `web/js/world-catalog.js` / `dossier.js` / `web/css/lvfe.css` — media props + placeholder copy; empty catalog chips (no SAT).
+- `scripts/test_place_thumb.js` — asserts no Esri tile template; aerial filter; OSM chip path.
+- Title overlap (flex head + 2-line clamp) already on tree — kept.
+
+**Why:** Human ruled satellite/map canvas snapshots wrong for “picture of the place.” SAT remains map toggle only (`satellite.js`).
+
+**How verified:**
+- `node scripts/test_place_thumb.js` ok; `rg` no `ESRI_TMPL` / tile `{z}` builder in `place-thumb.js`.
+- Live `https://iconiaglobal.com/lvfe/js/place-thumb.js` — ground-photo header; no SAT template; catalog media **162**.
+- Nord `bea6919f`: `assembleDebug` + `install -r`; **`lastUpdateTime=2026-09-03 11:32:31`**.
+
+**Current state:** Fix live on PWA + Nord APK. Map SAT overlay unchanged. Many Enugu OSM `image=` URLs point at legacy `enugupoi.appspot.com` (may 404 → fall through to wiki/placeholder).
+
+**Next steps:** On-device: open a pin with OSM image or wiki hit; confirm no aerial tile; Pay visit photo still wins. Optional Mapillary token if free key available.
+
+**Blockers / risks:** Dead OSM image hosts; Wikimedia sparse in Enugu; CF/SW may briefly serve old `place-thumb.js` until network-first/v5 refresh.
+
+---
 
 ### 2026-09-03 — P0: iPhone PWA + Nord APK not one Google account
 

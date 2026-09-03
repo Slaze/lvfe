@@ -55,8 +55,50 @@ def player_nairacoin(ctype: str, pts) -> int:
     return int(pts)
 
 
+MEDIA_KEYS = ("image", "wikimedia_commons", "mapillary", "wikipedia")
+
+
+def media_from_tags(tags: dict | None) -> dict:
+    if not tags:
+        return {}
+    out = {}
+    for k in MEDIA_KEYS:
+        v = tags.get(k)
+        if v:
+            out[k] = str(v)
+    if "image" not in out and tags.get("image:url"):
+        out["image"] = str(tags["image:url"])
+    return out
+
+
+def load_place_media(conn: sqlite3.Connection) -> dict[str, dict]:
+    media: dict[str, dict] = {}
+    try:
+        rows = conn.execute(
+            """
+            SELECT place_id, osm_tags_json, is_primary
+            FROM place_osm_links
+            ORDER BY is_primary DESC
+            """
+        ).fetchall()
+    except sqlite3.Error:
+        return media
+    for place_id, tags_json, _primary in rows:
+        if place_id in media or not tags_json:
+            continue
+        try:
+            tags = json.loads(tags_json)
+        except json.JSONDecodeError:
+            continue
+        hit = media_from_tags(tags if isinstance(tags, dict) else None)
+        if hit:
+            media[place_id] = hit
+    return media
+
+
 def from_sqlite() -> list[dict]:
     conn = sqlite3.connect(DB)
+    media = load_place_media(conn)
     rows = conn.execute(
         """
         SELECT p.id, p.display_name, p.catalog_type, p.quality, p.claim_points,
@@ -73,21 +115,21 @@ def from_sqlite() -> list[dict]:
         ctype = r[2]
         quality = r[3]
         pts = r[4] if r[4] is not None else claim_points(ctype, quality, role)
-        out.append(
-            {
-                "id": r[0],
-                "name": r[1] or f"Unnamed {ctype}",
-                "catalog_type": ctype,
-                "catalog_label": TYPE_LABELS.get(ctype, ctype),
-                "quality": quality,
-                "territory_id": tid,
-                "territory_name": r[8] or "Unclaimed area",
-                "territory_role": role,
-                "claim_nairacoin": player_nairacoin(ctype, pts),
-                "lat": r[6],
-                "lon": r[7],
-            }
-        )
+        row = {
+            "id": r[0],
+            "name": r[1] or f"Unnamed {ctype}",
+            "catalog_type": ctype,
+            "catalog_label": TYPE_LABELS.get(ctype, ctype),
+            "quality": quality,
+            "territory_id": tid,
+            "territory_name": r[8] or "Unclaimed area",
+            "territory_role": role,
+            "claim_nairacoin": player_nairacoin(ctype, pts),
+            "lat": r[6],
+            "lon": r[7],
+        }
+        row.update(media.get(r[0], {}))
+        out.append(row)
     return out
 
 
@@ -103,21 +145,23 @@ def from_geojson() -> list[dict]:
         pts = p.get("claim_points")
         if pts is None:
             pts = claim_points(ctype, quality, role)
-        out.append(
-            {
-                "id": p["id"],
-                "name": p.get("name") or f"Unnamed {ctype}",
-                "catalog_type": ctype,
-                "catalog_label": TYPE_LABELS.get(ctype, ctype),
-                "quality": quality,
-                "territory_id": p.get("territory_id") or CATCHALL_TERRITORY,
-                "territory_name": p.get("territory_name") or "Unclaimed area",
-                "territory_role": role,
-                "claim_nairacoin": player_nairacoin(ctype, pts),
-                "lat": g[1],
-                "lon": g[0],
-            }
-        )
+        row = {
+            "id": p["id"],
+            "name": p.get("name") or f"Unnamed {ctype}",
+            "catalog_type": ctype,
+            "catalog_label": TYPE_LABELS.get(ctype, ctype),
+            "quality": quality,
+            "territory_id": p.get("territory_id") or CATCHALL_TERRITORY,
+            "territory_name": p.get("territory_name") or "Unclaimed area",
+            "territory_role": role,
+            "claim_nairacoin": player_nairacoin(ctype, pts),
+            "lat": g[1],
+            "lon": g[0],
+        }
+        for k in MEDIA_KEYS:
+            if p.get(k):
+                row[k] = p[k]
+        out.append(row)
     return out
 
 
@@ -130,6 +174,31 @@ def payload(places: list[dict]) -> dict:
         "count": len(places),
         "places": places,
     }
+
+
+def patch_places_geojson(places: list[dict]) -> None:
+    """Stamp OSM media tags onto places.geojson for dossier thumbs (no SAT)."""
+    if not GEOJSON.exists():
+        return
+    by_id = {p["id"]: p for p in places}
+    fc = json.loads(GEOJSON.read_text())
+    changed = 0
+    for f in fc.get("features", []):
+        props = f.get("properties") or {}
+        pid = props.get("id")
+        src = by_id.get(pid)
+        if not src:
+            continue
+        for k in MEDIA_KEYS:
+            if src.get(k) and props.get(k) != src[k]:
+                props[k] = src[k]
+                changed += 1
+            elif k in props and not src.get(k):
+                del props[k]
+        f["properties"] = props
+    if changed:
+        GEOJSON.write_text(json.dumps(fc, separators=(",", ":")))
+        print(f"patched {changed} media fields → {GEOJSON.name}", file=sys.stderr)
 
 
 def write_csv(places: list[dict]) -> None:
@@ -145,6 +214,10 @@ def write_csv(places: list[dict]) -> None:
         "claim_nairacoin",
         "lat",
         "lon",
+        "image",
+        "wikimedia_commons",
+        "mapillary",
+        "wikipedia",
     ]
     with OUT_CSV.open("w", newline="", encoding="utf-8") as fh:
         w = csv.DictWriter(fh, fieldnames=fields)
@@ -165,6 +238,8 @@ def main() -> None:
         raise SystemExit("Need data/lvfe.sqlite or data/places.geojson")
     OUT_JSON.write_text(json.dumps(payload(places), separators=(",", ":")))
     write_csv(places)
+    if src == "sqlite":
+        patch_places_geojson(places)
     print(f"{len(places)} places from {src} → {OUT_JSON.name} + {OUT_CSV.name}", file=sys.stderr)
 
 
