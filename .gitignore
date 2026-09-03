@@ -9,6 +9,8 @@ android/.cache/
 .DS_Store
 server/.env
 server/data/
+hosting/lvfe-save/config.local.php
+hosting/lvfe-save/data/saves/
 .netlify/
 scripts/__pycache__/
 __pycache__/

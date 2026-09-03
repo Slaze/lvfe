@@ -1,0 +1,15 @@
+# Lvfe save API — keep Yii out; route /v1/save/* and /health into index.php
+Options -Indexes
+RewriteEngine On
+RewriteBase /lvfe-save/
+
+# Deny direct access to secrets + save files
+RewriteRule ^(?:config\.local\.php|data)(?:/|$) - [F,L]
+
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+RewriteRule ^health/?$ index.php?_path=health [L,QSA]
+RewriteRule ^v1/save/([^/]+)/?$ index.php?_path=v1/save/$1&key=$1 [L,QSA]
+RewriteRule ^(.*)$ index.php?_path=$1 [L,QSA]

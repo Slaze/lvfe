@@ -16,8 +16,9 @@ Location-based territorial game. World data from OpenStreetMap (no paid Google M
 - `scripts/export_catalog.py` — sqlite/geojson → `data/catalog.json` + `data/catalog.csv` (ownable **min stake**; bank/atm **0**).
 - `web/index.html` — MapLibre + OpenFreeMap **GMaps-style chrome**: full-bleed map, top search pill + **gold seal stamp** (opens account sheet), CSS bottom sheet (**hidden until pin tap**). **SAT / 3D / AR** are LTR/RTL slide switches on-map (`role="switch"`, green `#34c759` on / gray `#9aa0a6` off). **GPS is a locate action**, not a switch. `ensureLayers` uses valid `addLy({` (seven `addLy({)` SyntaxErrors fixed). `window.lvfeFitMap` → `map.resize()` after style/load, SAT toggle, `visualViewport`/`orientationchange`/`window.resize`, and delayed boot (WebView). Esri World Imagery `{z}/{y}/{x}` overlay (no `setStyle`). **Unclaimed named pins = red X** (`places-x`, `#ff3b30`); **unknown (quality D / civic_unknown / unmapped) = black X** (`places-x-unknown`, `#111111`); **owned pins = circle** (`places-circles`, self `#1d8cff` vs other/faction color). Invisible `places-hit` keeps taps at z12.2. Pins / green walk / 80 m ring / you-dot re-attach via `reattachOverlays`; hybrid OSM labels in account **Map pins**; fail banner **Satellite couldn’t load**. Pin tap opens a **paper file / dossier** (`.sheet.doc` compact peek **34vh**, expand `.sheet.doc-exp` **70vh**) with **Place / Mission / Land / Money / Wallet** tabs (44px). Wallet **Pay** is `disabled` unless GPS and `dist <= 80`. Track chip + green OSRM walk line + 80 m pay ring. ▴ / handle expands; × + swipe-down close fully. Idle map still auto-hides (`display:none`). Profile stamp → **grouped account sheet** (`#accountSheet`: You / Play / Map pins / This phone + Google + export/import + **Sync now**). No left `.panel`, no always-on `#hud`, no MapLibre Popup, no OSM/Esri wordmark on the map (About only). Default pitch **0**. 80 m GPS; photo + NairaCoin. **localStorage cache + optional cloud save** (`SAVE_API_BASE` / `?saveApi=`). Reinstall still wipes unless Export save **or** cloud sync. **Sign in with Google** fails loud until Web client ID is pasted (Identity OAuth only — no Maps SKUs).
 - `server/` — zero-dep Node save API (`PORT` default **18787**). `GET/PUT /v1/save/:playerKey`. Conflict: **last-write-wins** by `pack.updatedAt`. Auth: `Bearer lvfe-dev:<playerKey>` when `LVFE_ALLOW_DEV_AUTH=1`; `SAVE_SECRET`; `google:<id_token>` when `GOOGLE_WEB_CLIENT_ID` set (else production Gmail fails loud). Photos: max 8, dataURL >~400KB → meta-only; body ≤2.5 MiB. Env: see `server/.env.example` + `server/README.md`. Optional Netlify: `netlify.toml` + `netlify/functions/save.js`.
-- `web/js/save-api.config.js` / `save-sync.js` — client pull after boot, push on stake/identity (debounced), offline queue, Export/Import kept.
-- `web/js/google-auth.config.js` / `google-auth.js` / `account.js` — placeholder `WEB_CLIENT_ID`; native `LvfeNative.signInWithGoogle` on Android; unique username ≠ email; save pack `lvfe.save.v1` + `updatedAt`.
+- `hosting/lvfe-save/` — **public HTTPS save API** (PHP on Iconia Namecheap/cPanel). Live base **`https://iconiaglobal.com/lvfe-save`**. Same routes/auth as Node. Secrets in host-only `config.local.php` (gitignored). Preferred branded host `lvfe-save.iconiaglobal.com` needs Cloudflare DNS + cPanel subdomain (human).
+- `web/js/save-api.config.js` / `save-sync.js` — client pull after boot, push on stake/identity (debounced), offline queue, Export/Import kept. Default `SAVE_API_BASE` = public Iconia URL (override `?saveApi=` / `localStorage`).
+- `web/js/google-auth.config.js` / `google-auth.js` / `account.js` — placeholder `WEB_CLIENT_ID`; native `LvfeNative.signInWithGoogle` on Android; unique username ≠ email; save pack `lvfe.save.v1` + `updatedAt`. On-screen blocker lists exact Google Cloud Web + Android client steps (no Maps SKUs).
 - `web/js/photo-store.js` — visit photo bytes in IndexedDB on Pay confirm; discard on sheet close / cancel; sync may send small dataURLs.
 - `web/js/field-claim.js` — catalog bbox is Enugu; GPS fly-to; outside bbox → hinterland + OSM footprints + **world Overpass** merge. No planet download.
 - `web/js/world-catalog.js` — viewport Overpass (~0.012° pad) outside Enugu; rate-limit 45s; cell cache 30 min; mirrors overpass-api.de + kumi; quality tiers match ingest; banks/ATMs not ownable; fail banner → hinterland.
@@ -91,8 +92,38 @@ Location-based territorial game. World data from OpenStreetMap (no paid Google M
 - 2026-09-03: Place-tap dossier opens at **34vh** peek (map majority); expand to **70vh** via ▴ / handle / swipe-up; × / swipe-down closes fully.
 - 2026-09-03: Menu/nav — gold seal stamp + grouped account sheet; closed incomplete `365af887` chrome (missing `bindAccountSwipe`).
 - 2026-09-03: Server-backed saves (`server/` + optional Netlify), AR pin overlays with native heading, world Overpass catalog outside Enugu.
+- 2026-09-03: Public HTTPS save on Iconia PHP (`https://iconiaglobal.com/lvfe-save`); client default `SAVE_API_BASE` wired; Google Web client ID how-to expanded (still empty placeholder).
 
 ## Sessions
+
+### 2026-09-03 — Public save URL + Google Web client ID how-to
+
+**Goal:** (1) Public save API so Nord syncs without LAN. Prefer iconiaglobal.com subdomain; else Netlify. (2) Document Google Web client ID steps and keep placeholders empty until human pastes. Commit+push `Slaze/lvfe`. Zero Maps SKUs.
+
+**What changed:**
+- `hosting/lvfe-save/` — PHP save API (health + GET/PUT `/v1/save/:key`, LWW, photos trim, auth parity with Node). Deployed to Iconia `public_html/lvfe-save/` via existing FileZilla **Iconia Server** FTP (`iconicxy@198.54.120.95`). Apex `.htaccess` pass-through now includes `lvfe-save` with `ipm-app|demos`.
+- Host-only `config.local.php` (gitignored) with generated `SAVE_SECRET`; `LVFE_ALLOW_DEV_AUTH=1` until Google OAuth is live.
+- `web/js/save-api.config.js` default `SAVE_API_BASE=https://iconiaglobal.com/lvfe-save` (override `?saveApi=` / localStorage still works).
+- `web/js/google-auth.config.js` blocker steps expanded (consent, Web origins incl. `appassets.androidplatform.net`, Android client + SHA-1, host `GOOGLE_WEB_CLIENT_ID`, then `LVFE_ALLOW_DEV_AUTH=0`).
+- `.gitignore` ignores `hosting/lvfe-save/config.local.php` + save JSON dir.
+- Netlify still optional — CLI not logged in on this machine (`npx netlify status` → Not logged in). GitHub Pages cannot run the API.
+- Preferred subdomain `lvfe-save.iconiaglobal.com`: DNS empty; human Cloudflare + cPanel steps documented in `hosting/lvfe-save/README.md`.
+
+**Why:** Namecheap origin is Apache/PHP (no Node). Netlify needs login. Path URL on working HTTPS apex ships today; CNAME subdomain later.
+
+**How verified:**
+- `curl https://iconiaglobal.com/lvfe-save/health` → `{"ok":true,"service":"lvfe-save","host":"php",…}`
+- PUT/GET round-trip with `Bearer lvfe-dev:<key>` + Bearer `SAVE_SECRET` ok.
+- `keytool` SHA-1 re-verified `2E:48:31:66:B1:07:A2:4C:FB:25:35:EE:EA:9C:B6:B3:E5:E4:35:E5`.
+- `./gradlew assembleDebug` SUCCESS; `adb -s bea6919f install -r` Success; **`lastUpdateTime=2026-09-03 07:38:16`**.
+
+**Current state:** Cloud save default on for web + Nord APK. Dev auth still on (pre-Google). Google Web client ID still empty. Netlify undeployed. Subdomain DNS not set.
+
+**Rotate SAVE_SECRET:** Edit host `public_html/lvfe-save/config.local.php` only → re-upload via FTP. Do not commit. `lvfe-dev:` clients unaffected until `LVFE_ALLOW_DEV_AUTH=0`.
+
+**Next steps:** Human pastes Google Web client ID into `google-auth.config.js` + `strings.xml` + host `GOOGLE_WEB_CLIENT_ID`, rebuild APK, set `LVFE_ALLOW_DEV_AUTH=0`. Optional: Cloudflare A/CNAME `lvfe-save` + cPanel subdomain → then switch `SAVE_API_BASE` to `https://lvfe-save.iconiaglobal.com`. Optional: `npx netlify login` + deploy function as backup.
+
+**Blockers / risks:** Dev auth on a public URL is intentional until OAuth; tighten after Google. FTP password lives in FileZilla (not in repo). No Netlify auth token on disk.
 
 ### 2026-09-03 — Server saves + AR pins + world catalog (ordered delivery)
 

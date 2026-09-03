@@ -7,12 +7,13 @@
   const BLOCKER_CODE = "oauth_not_configured";
   const BLOCKER_TITLE = "Google sign-in is not wired yet.";
   const BLOCKER_STEPS = [
-    "Open Google Cloud Console → APIs & Services → Credentials.",
-    "OAuth consent screen: External (or Internal). App name Lvfe. Scopes: openid, email, profile. Do not add Maps SDK, Places, or Photorealistic 3D.",
-    "Create OAuth client ID → Web application. Copy the Client ID (…apps.googleusercontent.com).",
-    "Paste that Web client ID into web/js/google-auth.config.js (WEB_CLIENT_ID) AND android/app/src/main/res/values/strings.xml (google_web_client_id). Same value in both.",
-    "Create OAuth client ID → Android. Package name: com.lvfe.xperience. SHA-1: debug keystore (this machine: 2E:48:31:66:B1:07:A2:4C:FB:25:35:EE:EA:9C:B6:B3:E5:E4:35:E5 — keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android).",
-    "Rebuild the APK. Tap Sign in with Google again. Username stays a unique in-game name — Gmail is the account key, not the display name.",
+    "Google Cloud Console → create or select a project (Identity / OAuth only — do not enable Maps SDK, Places, or Photorealistic 3D).",
+    "APIs & Services → OAuth consent screen: External or Internal. App name Lvfe. Scopes: openid, email, profile only.",
+    "Credentials → Create credentials → OAuth client ID → Application type: Web application.",
+    "Authorized JavaScript origins: https://iconiaglobal.com (and any desktop origin you use) plus https://appassets.androidplatform.net for the Android WebView. Add Authorized redirect URIs if GIS / Credential Manager docs for your flow require them.",
+    "Copy the Client ID (…apps.googleusercontent.com). Paste into web/js/google-auth.config.js as WEB_CLIENT_ID AND android/app/src/main/res/values/strings.xml as google_web_client_id (same value).",
+    "Also create OAuth client ID → Android. Package: com.lvfe.xperience. SHA-1 from debug keystore (re-verify: keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android — prior: 2E:48:31:66:B1:07:A2:4C:FB:25:35:EE:EA:9C:B6:B3:E5:E4:35:E5).",
+    "Rebuild the APK. Set the same Web client ID on the save host as GOOGLE_WEB_CLIENT_ID (hosting/lvfe-save/config.local.php or Netlify env). Then set LVFE_ALLOW_DEV_AUTH=0. Username stays a unique in-game name — Gmail is the account key.",
   ];
 
   function isConfigured(id) {

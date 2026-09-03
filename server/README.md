@@ -32,6 +32,8 @@ Up to 8 photos. Data-URLs over ~400 KB become meta-only on the server. Keep Expo
 
 ## Client
 
-Set `SAVE_API_BASE` in `web/js/save-api.config.js`, or `?saveApi=http://LAN:18787`, or `localStorage.lvfe.saveApiBase`.
+Default public base: **`https://iconiaglobal.com/lvfe-save`** (PHP on Iconia; see `hosting/lvfe-save/`).
 
-Optional Netlify: `netlify.toml` + `netlify/functions/save.js` (set `SAVE_SECRET`, `LVFE_ALLOW_DEV_AUTH=0`, `GOOGLE_WEB_CLIENT_ID` in the site UI).
+Overrides: `SAVE_API_BASE` in `web/js/save-api.config.js`, or `?saveApi=http://LAN:18787`, or `localStorage.lvfe.saveApiBase`.
+
+Optional Netlify: `netlify.toml` + `netlify/functions/save.js` (requires `npx netlify login`; set `SAVE_SECRET`, `LVFE_ALLOW_DEV_AUTH=0`, `GOOGLE_WEB_CLIENT_ID` in the site UI). GitHub Pages cannot host the save API.

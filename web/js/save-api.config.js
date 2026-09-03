@@ -1,10 +1,11 @@
 /* Save sync API base. Empty = offline-only (localStorage + Export/Import).
-   Local verify: start `node server/index.js` then set SAVE_API_BASE to
-   http://127.0.0.1:18787 (desktop) or http://<lan-ip>:18787 (Nord WebView).
-   Override: ?saveApi=http://… or localStorage lvfe.saveApiBase.
+   Public default: Iconia PHP host (HTTPS). Local override: start
+   `node server/index.js` then ?saveApi=http://127.0.0.1:18787 or
+   localStorage lvfe.saveApiBase. Preferred subdomain later:
+   https://lvfe-save.iconiaglobal.com (needs Cloudflare DNS + cPanel).
    Never put production secrets here. */
 (function (global) {
-  const SAVE_API_BASE = "";
+  const SAVE_API_BASE = "https://iconiaglobal.com/lvfe-save";
   const DEV_AUTH_PREFIX = "lvfe-dev:";
   const QUEUE_KEY = "lvfe.save.queue.v1";
   const LAST_SYNC_KEY = "lvfe.save.lastSync.v1";

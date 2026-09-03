@@ -1,0 +1,2 @@
+# Deny web access to save JSON files
+Require all denied

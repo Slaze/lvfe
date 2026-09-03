@@ -2,9 +2,11 @@
   publish = "web"
   functions = "netlify/functions"
 
-# Optional: host the static web/ on Netlify and proxy save API.
+# Optional alternate host (primary public save is Iconia PHP:
+# https://iconiaglobal.com/lvfe-save — see hosting/lvfe-save/).
+# Requires: npx netlify login && npx netlify deploy --prod
 # Set SAVE_SECRET, LVFE_ALLOW_DEV_AUTH=0, GOOGLE_WEB_CLIENT_ID in the site UI.
-# Client: localStorage lvfe.saveApiBase = https://<site>
+# Client override: localStorage lvfe.saveApiBase = https://<site>
 
 [[redirects]]
   from = "/v1/save/*"
