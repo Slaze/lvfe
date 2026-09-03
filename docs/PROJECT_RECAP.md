@@ -126,6 +126,7 @@ Location-based territorial game. World data from OpenStreetMap (no paid Google M
 - One-shot apply: `affected:1`, content length 14 → 11494.
 - `curl`/fetch `https://iconiaglobal.com/pages/terms-and-conditions` HTTP 200; **Coming soon** absent; **Lvfe: The Xperience**, NCN, `lvfe-save`, Google Maps Platform disclosure, Enugu address, +234 703 547 4827 present. Cloudflare obfuscates mailto in HTML (`[email protected]`), same as footer.
 - `https://iconiaglobal.com/pages/privacy-policy` still the universal privacy policy.
+- Commit **`d65f503`**.
 
 **Current state:** Live ToS usable for consent screen. Privacy unchanged.
 
