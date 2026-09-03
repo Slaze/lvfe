@@ -194,11 +194,11 @@ function titleFor(evt) {
     if (t === TYPES.CLAIM_RIVAL) return "Rival seized asset";
     if (t === TYPES.NEARBY_CLAIMABLE || t === TYPES.ASSET_SIGHTED) {
       if (evt && Number(evt.dist) <= 80) return "Inside claim zone";
-      return "Property Asset sighted";
+      return "Asset sighted";
     }
     if (t === TYPES.ENEMY_NEARBY) return "Enemy asset nearby";
     if (t === TYPES.TRACKING_STARTED) return "Tracking started";
-    if (t === TYPES.APPROACHING) return "Approaching pay ring";
+    if (t === TYPES.APPROACHING) return "Approaching claim zone";
     if (t === TYPES.PASS_TOLL) return "Toll levied";
     if (t === TYPES.TOLL_OWNER) return "Toll collected";
     if (t === TYPES.WATCH_CHANGE) return "Watchlist ping";
@@ -215,7 +215,7 @@ function titleFor(evt) {
     if (t === TYPES.CLAIM_RIVAL) return (evt.rivalName || "Someone") + " claimed " + name + ".";
     if (t === TYPES.NEARBY_CLAIMABLE || t === TYPES.ASSET_SIGHTED) {
       if (evt && Number(evt.dist) <= 80) return "You're in the claim zone at " + name + ".";
-      return "Asset sighted nearby — " + name + " is open.";
+      return name + " open nearby — Track, then Claim with NCN";
     }
     if (t === TYPES.ENEMY_NEARBY) {
       return name + " is held by another side. Bid more NCN to contest, or ignore.";

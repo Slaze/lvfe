@@ -155,10 +155,10 @@ Location-based territorial game. World data from OpenStreetMap (no paid Google M
 **How verified:**
 - Grep: no Overpass/SAVE_API/`g{sub}`/Paystack/LWW leaks in toast/message paths (comments/config steps OK).
 - `node` smoke: claim-zone + toll body player copy.
-- Nord `bea6919f` install **`lastUpdateTime=2026-09-03 12:02:11`** (then voice sibling reinstalls may bump).
-- PWA deploy via Iconia FTP `iconicxy` (not donmaseratte FTP); live `game-notify.js` / `world-catalog.js` / `lvfe-assets.js` / `sw.js` v6 confirmed.
+- Nord `bea6919f` install **`lastUpdateTime=2026-09-03 12:08:44`**.
+- PWA deploy via Iconia FTP `iconicxy` @ `198.54.120.95`; live `game-notify.js` / `world-catalog.js` / `lvfe-assets.js` / `sw.js` v6 confirmed.
 
-**Current state:** Player notifications are game voice. Mission briefing + `LvfeVoice` kept. Dev blockers remain behind debug.
+**Current state:** Player notifications are game voice on Nord + PWA. Commit **`09735fd`**. Mission briefing + `LvfeVoice` kept. Dev blockers remain behind debug.
 
 **Next steps:** Hard-refresh PWA once if CF served stale JS; optional purge CF for `/lvfe/js/*`.
 
@@ -221,10 +221,12 @@ Location-based territorial game. World data from OpenStreetMap (no paid Google M
 **How verified:**
 - `node scripts/test_game_economy.js`, `test_pass_toll_marks.js`, `test_track_layers.js` ok.
 - Dossier smoke: Place file / Money desk / Field wallet / Property Asset sighted present.
-- Nord `bea6919f` reinstall **`lastUpdateTime=2026-09-03 12:05:48`**; CDP screencaps `_state/voice-audit/01-place-tab.png`, `02-money-tab.png`, `03-wallet-hub.png`.
-- PWA FTP deploy; live `game-notify.js` “Asset sighted”; `sw.js` CACHE v6.
+- Nord `bea6919f` reinstall **`lastUpdateTime=2026-09-03 12:05:48`** (later notify-voice ship **12:08:44**).
+- CDP screencaps `_state/voice-audit/01-place-tab.png`, `02-money-tab.png`, `03-wallet-hub.png`.
+- PWA FTP deploy; live `game-voice.js` / “Asset sighted”; `sw.js` CACHE v6.
+- Landed with notify cleanup in commit **`09735fd`** (plus recap **`308c86c`**).
 
-**Current state:** Voice pass live on Nord + PWA. Mission briefing coexists with sibling work. Map/sync/thumbs/username lock untouched intentionally.
+**Current state:** Voice pass live on Nord + PWA. Mission briefing coexists. Map/sync/thumbs/username lock untouched intentionally.
 
 **Next steps:** Sibling may deepen Mission deep-links/notifies — keep using `LvfeVoice`. Optional: punchier Money empty (“no backers yet — be first Claim”).
 
