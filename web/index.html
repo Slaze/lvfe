@@ -2144,7 +2144,11 @@
       const label = signed
         ? (g.email ? ("Signed in as " + g.email) : "Signed in with Google")
         : "";
-      if (who) who.textContent = label || "Signed in";
+      if (who) {
+        who.textContent = signed
+          ? (label + (PLAYER_KEY ? (" · " + PLAYER_KEY) : ""))
+          : (label || "Signed in");
+      }
       if (gNote) {
         if (signed) {
           gNote.hidden = true;
@@ -2153,13 +2157,16 @@
       }
       if (gateSigned) {
         gateSigned.hidden = !signed;
-        gateSigned.textContent = signed ? label : "";
+        gateSigned.textContent = signed ? (label + (PLAYER_KEY ? (" · " + PLAYER_KEY) : "")) : "";
       }
       if (menuAuth) {
         menuAuth.textContent = signed
-          ? (g.email ? ("Signed in · " + g.email) : "Signed in with Google")
+          ? ((g.email ? ("Signed in · " + g.email) : "Signed in with Google") + " · " + PLAYER_KEY)
           : "Not signed in with Google";
       }
+      try {
+        if (signed) console.info("[lvfe] account", { playerKey: PLAYER_KEY, email: g.email || "", sub: g.sub || "" });
+      } catch (err) { /* */ }
     }
 
     function paintProfileMenu() {
@@ -2816,7 +2823,8 @@
           return;
         }
         toast("Syncing…");
-        Sync.pullAndMerge(PLAYER_KEY, {
+        const pk = syncAccountKey();
+        Sync.pullAndMerge(pk, {
           packOpts: syncPackOpts(),
           afterImport: function (res) {
             if (res && res.playerKey) switchPlayer(res.playerKey);
@@ -2829,7 +2837,7 @@
           if (res && res.pulled) toast("Pulled cloud save.");
           else if (res && res.pushedLocal) toast("Pushed local save (newer).");
           else if (res && res.empty) {
-            return Sync.push(PLAYER_KEY, syncPackOpts()).then(function (p) {
+            return Sync.push(pk, syncPackOpts()).then(function (p) {
               toast(p && p.ok ? "Pushed first cloud save." : ("Sync: " + ((p && p.error) || "failed")));
               paintProfileMenu();
             });
@@ -2882,11 +2890,20 @@
       const coords = featOrProps && featOrProps.geometry && featOrProps.geometry.coordinates;
       const lat = coords ? Number(coords[1]) : Number(props && props.lat);
       const lon = coords ? Number(coords[0]) : Number(props && (props.lon != null ? props.lon : props.lng));
+      const media = window.LvfePlaceThumb.mediaFromProps
+        ? window.LvfePlaceThumb.mediaFromProps(props || {})
+        : {};
       window.LvfePlaceThumb.fill(box, {
         placeId: (props && props.id) || box.getAttribute("data-place-id") || "",
         lat: Number.isFinite(lat) ? lat : Number(box.getAttribute("data-lat")),
         lon: Number.isFinite(lon) ? lon : Number(box.getAttribute("data-lon")),
         title: (props && window.LvfeRules && window.LvfeRules.placeTitle(props)) || box.getAttribute("data-title") || "Place",
+        playerKey: PLAYER_KEY,
+        image: media.image,
+        wikimedia_commons: media.wikimedia_commons,
+        mapillary: media.mapillary,
+        wikipedia: media.wikipedia,
+        tags: props && props.tags,
       });
     }
 
@@ -2990,9 +3007,10 @@
 
     function syncPackOpts() {
       const idn = loadIdentity() || {};
+      const g = googleSignedState();
       return {
-        googleSub: idn.googleSub || (pendingGoogle && pendingGoogle.sub) || "",
-        email: idn.email || (pendingGoogle && pendingGoogle.email) || "",
+        googleSub: idn.googleSub || (pendingGoogle && pendingGoogle.sub) || (g && g.sub) || "",
+        email: idn.email || (pendingGoogle && pendingGoogle.email) || (g && g.email) || "",
       };
     }
 
@@ -3003,7 +3021,8 @@
       if (!g || !g.sub || g.mock) return; /* guest stays local until Google */
       clearTimeout(savePushTimer);
       savePushTimer = setTimeout(function () {
-        window.LvfeSaveSync.push(PLAYER_KEY, syncPackOpts()).then(function (res) {
+        const pk = syncAccountKey();
+        window.LvfeSaveSync.push(pk, syncPackOpts()).then(function (res) {
           if (res && res.stale && res.pack) {
             window.LvfeSaveSync.applyPack(res.pack, {
               afterImport: function () {
@@ -3014,6 +3033,8 @@
               },
             });
             toast("Server had a newer save — merged (last-write-wins).");
+          } else if (res && res.ok === false && res.code === "key_mismatch") {
+            toast("Cloud save: Google account key mismatch — sign in again.");
           }
           paintProfileMenu();
         });
@@ -3024,17 +3045,27 @@
       const Sync = window.LvfeSaveSync;
       if (!Sync || !Sync.enabled()) return;
       const g = googleSignedState();
-      /* Guest: local-only until Google sign-in. Signed-in: pull shared pack. */
+      /* Guest: local-only until Google sign-in. Signed-in: pull shared pack under g{sub}. */
       if (!g || !g.sub || g.mock) {
         paintProfileMenu();
         window.addEventListener("online", function () {
           if (!requireGoogleForCloudSyncQuiet()) return;
-          Sync.flushQueue(PLAYER_KEY, syncPackOpts()).then(function () { paintProfileMenu(); });
+          Sync.flushQueue(syncAccountKey(), syncPackOpts()).then(function () { paintProfileMenu(); });
         });
         return;
       }
+      const pk = syncAccountKey();
+      const idn = loadIdentity(pk);
+      if (idn && (!idn.googleSub || !idn.email) && g.sub) {
+        saveIdentity({
+          playerName: idn.playerName,
+          factionId: idn.factionId,
+          googleSub: g.sub,
+          email: g.email || idn.email || "",
+        }, pk);
+      }
       ownershipSnap = ownershipMap();
-      Sync.pullAndMerge(PLAYER_KEY, {
+      Sync.pullAndMerge(pk, {
         packOpts: syncPackOpts(),
         afterImport: function (res) {
           if (res && res.playerKey) switchPlayer(res.playerKey);
@@ -3050,13 +3081,15 @@
         if (res && res.pulled) toast("Cloud save loaded.");
         else if (res && res.ok === false && res.code === "oauth_not_configured") {
           toast("Cloud save: Google OAuth not configured on server.");
+        } else if (res && res.ok === false && res.code === "key_mismatch") {
+          toast("Cloud save: sign in again — player key must be g{sub}.");
         } else if (res && res.ok === false && !res.skipped && !res.empty && !res.offline) {
           toast("Cloud save: " + (res.error || "failed"));
         }
         paintProfileMenu();
       });
       window.addEventListener("online", function () {
-        Sync.flushQueue(PLAYER_KEY, syncPackOpts()).then(function () { paintProfileMenu(); });
+        Sync.flushQueue(syncAccountKey(), syncPackOpts()).then(function () { paintProfileMenu(); });
       });
     }
 
@@ -4925,8 +4958,13 @@
     function bootstrapIdentity() {
       const qName = (params.get("player") || "").trim();
       const qFac = (params.get("faction") || "").trim();
+      const Acc = window.LvfeAccount;
       let idn = loadIdentity();
-      if (!idn && qName) {
+      /* Never invent a username from a Google playerKey (g+digits) — that split accounts. */
+      const qIsGoogleKey = Acc && Acc.looksLikeGooglePlayerKey
+        ? Acc.looksLikeGooglePlayerKey(qName)
+        : /^g[0-9]{8,}$/.test(qName);
+      if (!idn && qName && !qIsGoogleKey) {
         idn = {
           playerName: qName.slice(0, 32),
           factionId: qFac || "",
@@ -4939,8 +4977,15 @@
         if (!FACTION_NAMES[qFac]) FACTION_NAMES[qFac] = qFac;
         saveIdentity(idn);
       }
+      if (idn && Acc && Acc.isPlaceholderGoogleName && Acc.isPlaceholderGoogleName(idn.playerName, PLAYER_KEY)) {
+        /* Force a real display name once */
+        creatingProfile = false;
+        showIdentityGate();
+      }
       refreshLocalFactions(userPos || forcedPos);
-      hideIdentityGate();
+      if (!(idn && Acc && Acc.isPlaceholderGoogleName && Acc.isPlaceholderGoogleName(idn.playerName, PLAYER_KEY))) {
+        hideIdentityGate();
+      }
       loadWallet();
       renderHud();
     }

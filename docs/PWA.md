@@ -60,15 +60,29 @@ Authorised domain on the consent screen remains `iconiaglobal.com` (domain only)
 
 ## APK ↔ PWA sync
 
-1. Sign in with Google on either client → JWT `sub` → `playerKey` = `g` + sanitized sub.
-2. Save pack `lvfe.save.v1` pull/push `GET/PUT https://iconiaglobal.com/lvfe-save/v1/save/:playerKey` with `Authorization: Bearer google:<id_token>`.
-3. Last-write-wins by `pack.updatedAt`.
-4. **Guest** (no Google): local play only; **Sync now** fails loud until signed in.
-5. Service worker is **not** registered when `LvfeNative` exists or host is `appassets.androidplatform.net` (APK path unchanged).
+1. Sign in with Google on **both** clients using the **same Gmail**.
+2. JWT `sub` → canonical `playerKey` = `g` + sanitized sub (never the guest slug / `default`).
+3. After sign-in: pull cloud → merge/LWW → push. Guest progress under `default`/slug **migrates once** into `g{sub}` (automatic if cloud empty; confirm if cloud already has a pack).
+4. Save pack `lvfe.save.v1` at `GET/PUT https://iconiaglobal.com/lvfe-save/v1/save/:playerKey` with `Authorization: Bearer google:<id_token>` (or `lvfe-dev:` while `LVFE_ALLOW_DEV_AUTH=1`).
+5. Cold start restores `playerKey` from `?player=` → `localStorage lvfe.activePlayer.v1` → Google map — **not** hard-coded `default` (that bug split APK vs iPhone).
+6. **Guest** (no Google): local play only; **Sync now** fails loud until signed in.
+7. Service worker is **not** registered when `LvfeNative` exists or host is `appassets.androidplatform.net` (APK path unchanged).
+
+### Re-link devices (same Gmail)
+
+1. iPhone PWA: Account → Sign in with Google → Sync now. Confirm email + username + NCN.
+2. Nord APK: same Google account → Sync now. Both must show `playerKey` starting with `g` (check via WebView console / account chip).
+3. If Nord had guest progress and cloud was empty, it uploads under `g{sub}` automatically. If cloud already had iPhone data, confirm merge when prompted.
+
+### Google Console checklist
+
+- Authorized JavaScript origins: `https://iconiaglobal.com` (required for iPhone GIS).
+- Android OAuth client: package `com.lvfe.xperience` + debug SHA-1 (required for real Credential Manager tokens on Nord).
+- Web client ID must match `google-auth.config.js`, `strings.xml`, and save host `GOOGLE_WEB_CLIENT_ID`.
 
 ## Service worker cache
 
-Current shell cache id: **`lvfe-shell-v4`**. HTML/CSS/JS are network-first; bump the `CACHE` string again when shipping shell changes so old clients drop stale menus/theme.
+Current shell cache id: **`lvfe-shell-v5`**. HTML/CSS/JS are network-first; bump the `CACHE` string again when shipping shell changes so old clients drop stale menus/theme.
 
 ## Deploy
 

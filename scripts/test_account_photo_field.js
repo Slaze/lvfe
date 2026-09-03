@@ -32,8 +32,48 @@ if (!C.isConfigured()) {
   assert(G.configured(), "Web client ID is wired");
 }
 
-global.__lvfeAccountMem = {};
 assert(Acc.playerKeyFromSub("1234567890") === "g1234567890", "stable sub key");
+assert(Acc.isPlaceholderGoogleName("g1234567890", "g1234567890"), "placeholder name");
+assert(!Acc.isPlaceholderGoogleName("Ada", "g1234567890"), "real name not placeholder");
+assert(Acc.looksLikeGooglePlayerKey("g106492884200240479117"), "google key shape");
+assert(!Acc.looksLikeGooglePlayerKey("ada"), "slug not google key");
+
+global.__lvfeAccountMem = {};
+Acc.unpackSave({
+  kind: Acc.PACK_KIND,
+  identity: { "lvfe.identity.default": { playerName: "NordGuest", factionId: "independence_layout" } },
+  places: {
+    p9: {
+      value: 12,
+      ownerId: "default",
+      ownerName: "NordGuest",
+      stakes: { default: { amount: 12 } },
+    },
+  },
+  wallets: { "lvfe.nc.iou.v1.default": { atomic: 8800000000, faucetGranted: true } },
+  factionPool: {},
+  google: {},
+  field: { type: "FeatureCollection", features: [] },
+});
+assert(Acc.hasLocalProgress("default"), "guest has progress");
+const mig = Acc.migrateLocalPlayer("default", "g999888777666", {
+  googleSub: "999888777666",
+  email: "n@x.com",
+});
+assert(mig.ok && mig.migrated, "migrate ok");
+const afterId = JSON.parse(global.__lvfeAccountMem["lvfe.identity.g999888777666"]);
+assert(afterId.playerName === "NordGuest", "name moved to g key");
+assert(afterId.googleSub === "999888777666", "sub bound on identity");
+const afterPlaces = JSON.parse(global.__lvfeAccountMem["lvfe.places.v1"]);
+assert(afterPlaces.p9.ownerId === "g999888777666", "owner remapped");
+assert(afterPlaces.p9.stakes.g999888777666.amount === 12, "stake remapped");
+assert(!afterPlaces.p9.stakes.default, "old stake gone");
+const afterW = JSON.parse(global.__lvfeAccountMem["lvfe.nc.iou.v1.g999888777666"]);
+assert(afterW.atomic === 8800000000, "wallet moved");
+const gMap = JSON.parse(global.__lvfeAccountMem["lvfe.google.v1"]);
+assert(gMap["999888777666"].playerKey === "g999888777666", "google map canonical");
+
+global.__lvfeAccountMem = {};
 assert(!Acc.nameTaken("Ada"), "empty store");
 Acc.unpackSave({
   kind: Acc.PACK_KIND,
