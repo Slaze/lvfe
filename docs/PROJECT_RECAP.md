@@ -125,6 +125,7 @@ Location-based territorial game. World data from OpenStreetMap (no paid Google M
 - CDP: `menuFit:true`, `boxSizing:border-box`, peek **300** / expand **617**, `fabsAbove:true`, idle sheet `display:none`, map full-bleed, `lvfeFitMap` function, gold≠fabs collision, account open h≈635 rows 48px, tabs 44px, `bodyOW:false`.
 - Screencaps: `_state/layout-audit/60-splash.png` … `66-idle.png`.
 - `assembleDebug` + `adb install -r` + force-stop; **`lastUpdateTime=2026-09-03 10:16:10`**.
+- Commit **`d53d896`** pushed to `https://github.com/Slaze/lvfe` (`main`).
 
 **Current state:** Layout P0s closed on installed APK. Pocket-mode OS overlay can blank screencaps if proximity trips — dismiss circles / keep device awake for visual QA.
 
