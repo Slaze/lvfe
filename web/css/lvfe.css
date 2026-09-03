@@ -54,3 +54,92 @@ button.ghost { background: var(--line); color: var(--ink); }
   pointer-events: none;
 }
 #toast[hidden] { display: none; }
+.sec-toggles {
+  display: flex; flex-wrap: wrap; gap: 8px 14px; margin: 0 0 12px;
+  padding: 10px 12px; background: var(--panel); border-radius: 10px;
+}
+.sec-toggles label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink); cursor: pointer; }
+.cat-list { display: flex; flex-direction: column; gap: 6px; }
+.cat-row {
+  display: block; width: 100%; text-align: left;
+  background: var(--panel); color: inherit; border: 1px solid var(--line);
+  border-radius: 10px; padding: 12px 14px; font: inherit; cursor: pointer;
+}
+.cat-row strong { display: block; font-size: 15px; }
+.cat-row span { color: var(--muted); font-size: 12px; }
+#catFile {
+  position: fixed; z-index: 8; left: 0; right: 0; bottom: 0;
+  height: 78vh; max-height: 78vh;
+  background: #f3ead6; color: #2a241c;
+  border-radius: 14px 14px 0 0;
+  box-shadow: 0 -6px 28px rgba(0,0,0,.35);
+  overflow: hidden;
+}
+#catFile[hidden] { display: none !important; }
+#catFile .sheet-bar {
+  display: flex; align-items: center; justify-content: center;
+  position: relative; min-height: 36px;
+}
+#catFile .sheet-close {
+  position: absolute; right: 4px; top: 0;
+  width: 44px; height: 44px; border: 0; background: transparent;
+  color: #3a3228; font-size: 28px; line-height: 1; cursor: pointer;
+}
+#catFile .dossier { display: flex; flex-direction: column; height: calc(78vh - 36px); background: #f7f1e4; }
+.dossier-head { padding: 0 16px 10px; border-bottom: 1px solid #d8cbb4; position: relative; }
+.dossier-mark {
+  display: block; font-size: 11px; letter-spacing: 0.14em;
+  text-transform: uppercase; color: #8a7a62; font-weight: 650;
+}
+.dossier-head h2 { margin: 4px 96px 0 0; font-size: 20px; line-height: 1.25; font-weight: 700; color: #1f1a14; }
+.track-toggle {
+  position: absolute; right: 8px; top: 0;
+  min-height: 36px; padding: 6px 12px; border: 0; border-radius: 18px;
+  background: #1a73e8; color: #fff; font: 650 13px/1 system-ui, sans-serif; cursor: pointer;
+}
+.track-toggle[aria-pressed="true"] { background: #c0392b; }
+.dossier-tabs {
+  display: flex; gap: 2px; padding: 6px 8px 0;
+  background: #e6dcc6; border-bottom: 1px solid #c9bba3;
+}
+.dossier-tabs button {
+  flex: 1; min-height: 40px; border: 0; background: transparent;
+  color: #5c5346; font: 650 12px/1 system-ui, sans-serif;
+  border-radius: 8px 8px 0 0; padding: 8px 2px; cursor: pointer;
+}
+.dossier-tabs button[aria-selected="true"] { background: #f7f1e4; color: #1f1a14; }
+.dossier-pages { flex: 1; min-height: 0; overflow: hidden; }
+.dossier-page { display: none; padding: 16px 16px 20px; height: 100%; overflow: auto; }
+.dossier-page.active { display: block; }
+.dossier-page .row-label {
+  margin: 12px 0 2px; font-size: 11px; letter-spacing: 0.06em;
+  text-transform: uppercase; color: #8a7a62; font-weight: 650;
+}
+.dossier-page .row-label:first-child { margin-top: 0; }
+.dossier-page .row-value { margin: 0; font-size: 16px; color: #1f1a14; }
+.dossier-page .note { margin: 10px 0 0; font-size: 14px; color: #4a4338; }
+.dossier-photo {
+  display: flex; align-items: center; justify-content: center;
+  min-height: 72px; margin: 0 0 8px; border-radius: 4px;
+  background: #e8dcc6; color: #6d6250; font-size: 13px;
+}
+button.claim {
+  background: #1a73e8; color: #fff; border: 0;
+  border-radius: 24px; min-height: 48px; padding: 12px 14px; font-weight: 650;
+  cursor: pointer; font: inherit; width: 100%; margin-top: 16px;
+}
+button.claim:disabled { background: #cfc4ae; color: #6d6250; cursor: not-allowed; }
+.stake-row { display: flex; flex-direction: column; gap: 8px; }
+.stake-row input[type="number"] {
+  width: 100%; min-height: 44px; background: #fff; color: #1f1a14;
+  border: 1px solid #c9bba3; border-radius: 8px; padding: 8px; font: inherit;
+}
+.pay-wait { color: #8a5a16; }
+.visit-form { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.rules h2 { font-size: 16px; margin: 22px 0 6px; }
+.rules p { margin: 0 0 10px; color: #cfd6de; }
+.rules .lede { color: var(--ink); font-size: 16px; line-height: 1.45; }
+.asset-row { text-decoration: none; }
+.asset-kicker { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
+.asset-earn, .asset-race { margin: 8px 0 0; font-size: 13px; color: #d5dde6; }
+.asset-race { color: #f4c430; }

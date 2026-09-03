@@ -13,9 +13,17 @@
     return L;
   }
 
+  let overrideKey = null;
+
   function playerKey() {
+    if (overrideKey) return overrideKey;
     const q = new URLSearchParams(location.search);
     return ((q.get("player") || "").trim() || "default").slice(0, 32);
+  }
+
+  function setPlayerKey(pk) {
+    overrideKey = ((pk || "").trim() || "default").slice(0, 32);
+    return overrideKey;
   }
 
   function places() {
@@ -79,6 +87,7 @@
 
   global.LvfeCatalogWallet = {
     playerKey,
+    setPlayerKey,
     owned: iOwn,
     iOwn,
     myStake,

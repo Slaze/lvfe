@@ -10,12 +10,105 @@
     }[c]));
   }
 
+  const TYPE_LABELS = {
+    market: "Market",
+    shop: "Shop",
+    mall: "Mall",
+    food: "Food",
+    bank: "Bank",
+    atm: "ATM",
+    pharmacy: "Pharmacy",
+    fuel: "Fuel station",
+    transit: "Transit",
+    park: "Park",
+    pitch: "Pitch",
+    worship: "Worship",
+    school: "School",
+    hospital: "Hospital",
+    civic: "Civic",
+    civic_unknown: "Unidentified building",
+    hotel: "Hotel",
+    landmark: "Landmark",
+    ruin: "Ruin",
+    unmapped: "Unmapped",
+  };
+
   function qualityLabel(q) {
     if (q === "A") return "photo";
     if (q === "B") return "named";
     if (q === "C") return "needs a name";
     if (q === "D") return "unknown building";
     return String(q || "");
+  }
+
+  function qualityWords(q) {
+    if (q === "A") return "Has a photo";
+    if (q === "B") return "Named";
+    return "Needs a name";
+  }
+
+  /** Player copy: never show "-" / empty / undefined. */
+  function wordOr(v, fallback) {
+    const s = v == null ? "" : String(v).trim();
+    if (!s || s === "-" || s === "—" || s === "–" || s === "undefined" || s === "null") {
+      return fallback;
+    }
+    return s;
+  }
+
+  function noOwnerYet() {
+    return "No owner yet";
+  }
+
+  function walkMinutes(distM) {
+    const m = Number(distM);
+    if (!Number.isFinite(m) || m < 0) return 0;
+    return Math.max(1, Math.round(m / 5000 * 60));
+  }
+
+  function walkEtaText(distM, minutes) {
+    const mins = Number.isFinite(minutes) ? Math.max(1, Math.round(minutes)) : walkMinutes(distM);
+    if (mins < 1) return "Under a minute walk";
+    if (mins === 1) return "1 min walk";
+    return mins + " min walk";
+  }
+
+  function headingWords(deviceHeading, bearing) {
+    if (!Number.isFinite(deviceHeading) || !Number.isFinite(bearing)) return "Walk toward it";
+    const delta = ((bearing - deviceHeading + 540) % 360) - 180;
+    const abs = Math.abs(delta);
+    if (abs <= 22) return "Ahead";
+    if (abs >= 158) return "Behind you";
+    if (delta > 0) return abs > 70 ? "Turn right" : "Slight right";
+    return abs > 70 ? "Turn left" : "Slight left";
+  }
+
+  function typeLabel(p) {
+    const t = p && typeof p === "object"
+      ? String(p.catalog_type || p.type || "").trim()
+      : String(p || "").trim();
+    if (TYPE_LABELS[t]) return TYPE_LABELS[t];
+    if (!t) return "Place";
+    return t.replace(/_/g, " ");
+  }
+
+  /** One title helper for catalog, nearby, AR, search, dossier. */
+  function placeTitle(p) {
+    const type = typeLabel(p);
+    const raw = p && typeof p === "object" ? (p.name != null ? p.name : p.title) : p;
+    const s = raw == null ? "" : String(raw).trim();
+    if (!s || s === "-" || s === "—" || s === "–" || /^undefined$/i.test(s) || /^null$/i.test(s)) {
+      return type;
+    }
+    if (TYPE_LABELS[s]) return TYPE_LABELS[s];
+    const unnamed = s.match(/^unnamed(?:\s+|_)(.+)$/i);
+    if (unnamed) {
+      const rest = unnamed[1].trim();
+      if (TYPE_LABELS[rest]) return TYPE_LABELS[rest];
+      return type;
+    }
+    if (/^unnamed$/i.test(s)) return type;
+    return s;
   }
 
   function qualityFilterLabel(q) {
@@ -69,7 +162,16 @@
     CLAIM_RADIUS_M,
     NO_FARM,
     esc,
+    TYPE_LABELS,
     qualityLabel,
+    qualityWords,
+    wordOr,
+    noOwnerYet,
+    walkMinutes,
+    walkEtaText,
+    headingWords,
+    typeLabel,
+    placeTitle,
     qualityFilterLabel,
     areaLabel,
     roleLabel,

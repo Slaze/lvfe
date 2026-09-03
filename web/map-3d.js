@@ -22,7 +22,7 @@
   const OMT_SENTINEL_M = 5;
   const EXTRUSION_ID = "building-3d";
   const FILL_2D_ID = "building";
-  const STORE_KEY = "lvfe.map3d";
+  const STORE_KEY = "lvfe.map3d.v2";
   const POLE_ID = "place-poles";
   const POLE_SRC = "place-poles";
   const POLE_HEIGHT_M = 24;
@@ -183,17 +183,6 @@
     return undefined;
   }
 
-  function ensureAttrib() {
-    const el = document.querySelector(".attrib");
-    if (!el || el.dataset.lvfeDem === "1") return;
-    el.dataset.lvfeDem = "1";
-    el.appendChild(document.createTextNode(" · terrain "));
-    const a = document.createElement("a");
-    a.href = "https://github.com/tilezen/joerd/blob/master/docs/attribution.md";
-    a.textContent = "AWS/Mapzen";
-    el.appendChild(a);
-  }
-
   function ensureDem(map) {
     if (map.getSource(DEM_ID)) return true;
     try {
@@ -203,9 +192,8 @@
         tileSize: 256,
         encoding: "terrarium",
         maxzoom: 15,
-        attribution: "Terrain AWS/Mapzen",
+        attribution: "",
       });
-      ensureAttrib();
       return true;
     } catch (err) {
       return false;
@@ -314,8 +302,9 @@
     const orig = map.setFilter.bind(map);
     map.setFilter = function (id, filter, options) {
       const r = orig(id, filter, options);
-      if (id === "places-circles" && map.getLayer(POLE_ID)) {
-        orig(POLE_ID, filter, options);
+      if (id === "places-circles") {
+        if (map.getLayer(POLE_ID)) orig(POLE_ID, filter, options);
+        if (map.getLayer("places-hit")) orig("places-hit", filter, options);
       }
       return r;
     };
@@ -328,7 +317,7 @@
   }
 
   function raisePinLayers(map) {
-    [POLE_ID, "places-circles", "places-nearby", "you-dot"].forEach((id) => {
+    [POLE_ID, "places-hit", "places-circles", "places-nearby", "you-dot"].forEach((id) => {
       if (!map.getLayer(id)) return;
       try { map.moveLayer(id); } catch (err) { /* ignore */ }
     });
@@ -370,7 +359,7 @@
         try { map.setPaintProperty(POLE_ID, "fill-extrusion-height", POLE_HEIGHT_M); } catch (err) { /* ignore */ }
       }
       const box = document.getElementById("toggle3d");
-      const on = box ? box.checked : readPref();
+      const on = pitchedNow(map) || (box && box.checked);
       map.setLayoutProperty(POLE_ID, "visibility", on ? "visible" : "none");
       raisePinLayers(map);
       return true;
@@ -379,26 +368,43 @@
     }
   }
 
+  function pitchedNow(map) {
+    try {
+      return Boolean(map && map.getPitch && map.getPitch() > 1);
+    } catch (err) {
+      return false;
+    }
+  }
+
+  function sync3dFab(map) {
+    const box = document.getElementById("toggle3d");
+    const on = pitchedNow(map) || (box && box.checked);
+    const btn = document.getElementById("btn3d");
+    if (btn) btn.setAttribute("aria-pressed", on ? "true" : "false");
+  }
+
   function liftCatalogPins(map) {
-    ["places-circles", "places-nearby", "you-dot"].forEach((id) => {
+    const on = pitchedNow(map) || (document.getElementById("toggle3d") || {}).checked;
+    ["places-circles", "places-nearby", "you-dot", "places-hit"].forEach((id) => {
       if (!map.getLayer(id)) return;
       try { map.setPaintProperty(id, "circle-pitch-alignment", "viewport"); } catch (err) { /* ignore */ }
       try { map.setPaintProperty(id, "circle-pitch-scale", "viewport"); } catch (err) { /* ignore */ }
     });
-    if (map.getLayer("places-circles")) {
-      try { map.setPaintProperty("places-circles", "circle-translate", [0, -16]); } catch (err) { /* ignore */ }
-      try { map.setPaintProperty("places-circles", "circle-translate-anchor", "viewport"); } catch (err) { /* ignore */ }
-    }
+    ["places-circles", "places-hit"].forEach((id) => {
+      if (!map.getLayer(id)) return;
+      try { map.setPaintProperty(id, "circle-translate", on ? [0, -16] : [0, 0]); } catch (err) { /* ignore */ }
+      try { map.setPaintProperty(id, "circle-translate-anchor", "viewport"); } catch (err) { /* ignore */ }
+    });
     ensurePoles(map);
   }
 
-  function readPref() {
+    function readPref() {
     try {
       const v = localStorage.getItem(STORE_KEY);
-      if (v === "0") return false;
       if (v === "1") return true;
+      if (v === "0") return false;
     } catch (err) { /* private mode */ }
-    return true;
+    return false;
   }
 
   function writePref(on) {
@@ -423,45 +429,17 @@
     const opts = { pitch, duration: animate ? 450 : 0 };
     if (!animate && on && Math.abs(map.getBearing()) < 2) opts.bearing = BEARING_3D;
     map.easeTo(opts);
-  }
-
-  function ensureHint(box) {
-    let hint = document.querySelector(".lvfe-3d-hint");
-    if (!hint) {
-      hint = document.createElement("span");
-      hint.className = "lvfe-3d-hint";
-      const row = box.closest("label") || box.parentElement;
-      if (row && row.parentNode) row.parentNode.insertBefore(hint, row.nextSibling);
-      else return;
-    }
-    hint.textContent = "";
-    hint.hidden = true;
+    liftCatalogPins(map);
+    sync3dFab(map);
   }
 
   function ensureToggle(map) {
     let box = document.getElementById("toggle3d");
-    if (!box) {
-      const panel = document.querySelector(".panel");
-      if (!panel) return null;
-      const label = document.createElement("label");
-      label.className = "row";
-      label.setAttribute("data-lvfe-3d", "1");
-      const input = document.createElement("input");
-      input.type = "checkbox";
-      input.id = "toggle3d";
-      const cube = document.createElement("span");
-      cube.className = "cube";
-      const text = document.createTextNode(" 3D");
-      label.appendChild(input);
-      label.appendChild(cube);
-      label.appendChild(text);
-      panel.appendChild(label);
-      box = input;
-    }
-    ensureHint(box);
-    box.checked = readPref();
+    if (!box) return null;
     if (box.dataset.lvfeBound === "1") return box;
     box.dataset.lvfeBound = "1";
+    /* First bind: camera only. Ignore stale lvfe.map3d.v2 so a pitch-0 map never looks pressed. */
+    box.checked = pitchedNow(map);
     box.addEventListener("change", () => {
       writePref(box.checked);
       setPitched(map, box.checked, true);
@@ -491,14 +469,25 @@
     }
   }
 
+  function styleOk(map) {
+    try {
+      const s = map.getStyle && map.getStyle();
+      return Boolean(s && s.layers && s.layers.length);
+    } catch (err) {
+      return false;
+    }
+  }
+
   function onStyleReady(map) {
     map.__lvfeFill2d = null;
     hideOsmPoiLabels(map);
     applyExtrusion(map);
     liftCatalogPins(map);
     const box = ensureToggle(map);
-    const on = box ? box.checked : readPref();
+    /* Apply 3D only if the user already asked (checkbox). Never from stale storage alone. */
+    const on = !!(box && box.checked);
     setPitched(map, on, false);
+    sync3dFab(map);
   }
 
   function lvfeEnable3d(map) {
@@ -507,11 +496,18 @@
     global.lvfeMap = map;
     enableControls(map);
     ensureToggle(map);
+    sync3dFab(map);
 
     const boot = () => onStyleReady(map);
-    if (map.loaded()) boot();
-    else map.once("load", boot);
+    if (styleOk(map) || map.loaded() || (map.isStyleLoaded && map.isStyleLoaded())) boot();
+    else {
+      map.once("style.load", boot);
+      map.once("load", boot);
+      setTimeout(() => { if (styleOk(map)) boot(); }, 800);
+    }
     map.on("style.load", boot);
+    map.on("pitch", () => sync3dFab(map));
+    map.on("move", () => sync3dFab(map));
 
     const waitPins = () => {
       liftCatalogPins(map);
@@ -528,4 +524,5 @@
   }
 
   global.lvfeEnable3d = lvfeEnable3d;
+  global.lvfePaint3dFab = sync3dFab;
 })(typeof window !== "undefined" ? window : globalThis);

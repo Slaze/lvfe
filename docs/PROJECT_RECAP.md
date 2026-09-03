@@ -14,11 +14,20 @@ Location-based territorial game. World data from OpenStreetMap (no paid Google M
 - `scripts/ingest_places.py` — Overpass → cluster 80 m → `data/lvfe.sqlite`; points outside all polygons get `territory_id=unclaimed`.
 - `scripts/claim_points.py` — min stake: `round(BASE[type] * QUALITY[q] * ROLE[role])`, min 1. Not claim XP.
 - `scripts/export_catalog.py` — sqlite/geojson → `data/catalog.json` + `data/catalog.csv` (ownable **min stake**; bank/atm **0**).
-- `web/index.html` — MapLibre + OpenFreeMap; catalog/territory layers attach on **style.load** (not `map.loaded()`). Liberty POI/amenity labels hidden; road names kept. Fail banner if style never arrives. 80 m GPS; photo + NairaCoin into the place. **localStorage, not a shared world.**
-- `web/catalog.html` — default **My places** (owned / stakes from `lvfe.places.v1`); optional all typed pins with **min stake** (not a visit payout).
-- `web/ar-overlay.js` — camera overlay on the map (distinct from 3D buildings). `web/ar.html` is the same nearby-pin camera, stake still on the map.
-- `web/map-3d.js` / `web/map-3d.css` — pitch/tilt, OSM-true Liberty extrusion (no 9 m city), AWS/Mapzen Terrarium DEM + hillshade, **3D buildings** toggle (not AR). No Three.js.
+- `web/index.html` — MapLibre + OpenFreeMap **GMaps-style chrome**: full-bleed map, top search pill, CSS bottom sheet (**hidden until pin tap**). **SAT / MAP FAB** (top of the right stack) toggles free **Esri World Imagery** raster (`web/js/satellite.js`, `{z}/{y}/{x}`) over Liberty streets. No `setStyle`. Pins, gold walk, 80 m ring, you-dot re-attach via `reattachOverlays` / idempotent `ensureLayers`. Hybrid OSM road names optional (profile ⋯). Fail banner **Satellite couldn’t load** → stay on streets. Pin tap opens a **paper file / dossier** (`.sheet.doc`, ~70vh) with **Place / Mission / Land / Money / Wallet** tabs (tap or horizontal swipe). Wallet **Pay** is `disabled` unless GPS and `dist <= 80`. Track chip + gold OSRM walk line + 80 m pay ring. × + swipe-down close. **Open file or tracking:** map `movestart`/`dragstart` do **not** `closeSheet`. Idle map still auto-hides. No left `.panel`, no always-on `#hud`, no MapLibre Popup, no OSM/Esri wordmark on the map (About only). ⋯ is a **profile menu** (How to play, My assets, catalog, name switcher). Default pitch **0**. 80 m GPS; photo + NairaCoin. **localStorage, not a shared world.**
+- `web/js/satellite.js` — Esri World Imagery overlay; SAT FAB; never billed Google tiles; never `setStyle`.
+- `web/rules.html` — player How to play (walk, photo, NairaCoin, 80 m, highest backer owns, faction, Pay gate, beep/track, AR, catalog, banks).
+- `web/assets.html` + `web/js/assets.js` — owned/backed places, visit interest (10%), gap vs next backer; dossier-style section toggles.
+- `web/js/dossier.js` — one place-file HTML builder for map + catalog.
+- `web/js/track-guide.js` — marked pin, AudioContext + `navigator.vibrate` pulse, OSRM walking (geodesic + 5 km/h fail-open). Gold `guide-line` / `guide-casing` + 80 m `pay-ring`. `line-join`/`line-cap` live in **layout**. `ensureLayers` adds missing layers even if the GeoJSON source already exists.
+- `web/js/claim-rules.js` — `placeTitle` (`"-"` / `undefined` / `Unnamed civic_unknown` → type words).
+- `android/…/MainActivity.kt` — FrameLayout: CameraX `PreviewView` (PERFORMANCE / SurfaceView) behind the WebView. On `onCreate` / first load, request **FINE + COARSE + CAMERA** if missing (skip OS dialog when granted). AR: software WebView layer + transparent CSS so the preview punches through. JS does not add a second grant wall; location grant auto-starts MapLibre geo.
+- `web/catalog.html` — same dossier as pin tap; section toggles (Place / Mission / Land / Money / Wallet); compact list (not table-only). Default **My places**.
+- `web/ar-overlay.js` — map-page AR (not `ar.html`). **Nord/Android:** CameraX `PreviewView` under a transparent WebView (`LvfeNative.startArCamera`); no getUserMedia (rear WebView stream is #000). `#arThree` hidden. HTML pins (FOV + compass). Marked-pin HUD (`#arTrackHud`) live metres + heading every tick, even outside 80 m. Empty-range / GPS-off copy, × → map. **Desktop:** visible `<video id="arCam">` (opacity 1); canvas2d `drawImage` optional via `lvfeArUseCanvas`. Pin labels do **not** touch `LvfeCatalogWallet` (`W`). `web/ar.html` leftover.
+- `web/map-3d.js` / `web/map-3d.css` — pitch/tilt, OSM-true Liberty extrusion (no 9 m city), AWS/Mapzen Terrarium DEM + hillshade, **3D buildings** toggle (not AR). Boots on **style-ready** (not only `load`). 3D FAB pressed iff toggle on **or** `getPitch() > 1` (unpressed at boot pitch 0). Not stale `lvfe.map3d.v2`. No Three.js.
 - `data/places.geojson` — typed pins. Place value/owner live in `lvfe.places.v1`.
+- `web/js/lvfe-assets.js` — URL helper so `/data` and `/geojson` work from the python server **and** the APK (`https://appassets.androidplatform.net/assets/www/`).
+- `android/` — debug WebView APK (`com.lvfe.xperience`, minSdk 24). `sync-www.sh` bundles `web/` + `data/places.geojson` + `data/catalog.json` + `geojson/enugu-factions.geojson` + MapLibre JS/CSS. OpenFreeMap tiles still need the network. No Google Maps SDK. Not the Don Maseratte shop.
 
 ## Inception → now timeline
 
@@ -38,8 +47,545 @@ Location-based territorial game. World data from OpenStreetMap (no paid Google M
 - 2026-09-02: OSM-true building heights + free Terrarium terrain (no 9 m fallback).
 - 2026-09-02: NairaCoin coin-layer API rounded up (atomic getBalance/credit/debit; honest IOU; RPC stub).
 - 2026-09-02: Catalog layers attach on style.load; Liberty POI/amenity labels hidden.
+- 2026-09-02: Sideloadable debug APK for OnePlus Nord (`com.lvfe.xperience`).
+- 2026-09-02: Independent map UI/UX critic vs Google Maps mobile chrome — **fail** (dashboard cards, no sheet, OSM wordmark). No code changes.
+- 2026-09-02: Player map chrome rewritten to GMaps mobile layout (sheet + FABs + pill); OSM off the map; location on GPS tap; camera on AR tap.
+- 2026-09-02: Independent critic re-score vs GMaps mobile — **fail** (no 48dp CTA outside 80 m; Nord 3D FAB selected on pitch-0 map; default zoom pins untappable).
+- 2026-09-02: Closed those three P0s (sheet CTA, 3D FAB vs pitch, pin hit at z12.2). APK reinstalled on Nord DE2118.
+- 2026-09-02: Nord double-prompt: persist WebView geo for `appassets.androidplatform.net`; skip OS dialogs when already granted.
+- 2026-09-02: Independent GMaps UX re-score — **fail** (`getPitch() > 8`, FAB unpressed at pitch 8). No code changes.
+- 2026-09-02: Closed remaining GMaps P0: 3D FAB `getPitch() > 1` (or toggle on); APK reinstalled on Nord.
+- 2026-09-02: Independent GMaps UX re-score vs `74cbdbb7` — **pass**. Last P0 (FAB unpressed at pitch 8) closed on installed Nord APK.
+- 2026-09-02: Pokémon GO AR — live camera + Three.js billboards; critic `d0002cf5` fail (black canvas lid / undefined `W` / no X).
+- 2026-09-02: Independent Pokémon GO AR re-score vs builder `e7a599a8` — **FAIL**. Street still not in Nord viewfinder (live camera + black WebGL lid). × does return to map. `W` / `ar.html` closed.
+- 2026-09-02: AR viewfinder is VideoTexture on one WebGL canvas (no stacked `<video>` under `#arThree`). Independent critic on the 21:56 Nord APK still saw a black viewfinder.
+- 2026-09-02: Pin tap opens a paper file (Place / Mission / Land / Money). Launch requests FINE+COARSE+CAMERA (skip if granted).
+- 2026-09-02: Pokémon GO AR — Nord WebView VideoTexture / `<video>` / canvas2d all failed for rear camera (#000 frames). CameraX PreviewView under transparent WebView produces a live viewfinder.
+- 2026-09-02: Independent Pokémon GO AR re-score vs last FAIL `f409acc1` / builder CameraX overlay — **pass**. Nord rear viewfinder is live camera (not #000); empty 80 m copy + × to map.
+- 2026-09-02: Independent critic — walk-to-pin loop (beep, AR numbers, wallet+gated Pay, no dash junk, catalog dossier, free route). **FAIL.** No code.
+- 2026-09-02: Closed critic `c2cb1cc7` six P0s (beep, live AR HUD, Wallet Pay gate, placeTitle, catalog dossier, OSRM gold walk line).
+- 2026-09-02: Independent re-score of that loop-exit vs builder `9da3e482` / Nord `bea6919f` — **FAIL.** P0-3 (geolocate closes file) and P0-6 (walk line layers never paint) remain. No code.
+- 2026-09-02: Closed critic `46b2a779` P0-3 + P0-6 (dossier stays on geolocate; gold walk layers attach). Kept 1,2,4,5. Nord `bea6919f` reinstall.
+- 2026-09-02: Independent re-score of `c2cb1cc7` / `46b2a779` vs builder `6bbb8245` / Nord `bea6919f` 23:03 — **pass**. P0-3 and P0-6 closed on live WebView CDP. No remaining P0s on this gate.
+- 2026-09-03: Independent critic — satellite toggle vs Google Maps satellite feel. **FAIL.** Feature absent on disk.
+- 2026-09-03: SAT/MAP FAB + Esri World Imagery overlay; How to play + My assets; profile ⋯. Closed critic `d819a262` absence.
 
 ## Sessions
+
+### 2026-09-03 — Satellite FAB + profile rules/assets (critic `d819a262`)
+
+**Goal:** Close independent critic `d819a262` / satellite-vs-GMaps FAIL (no satellite on disk). Obvious SAT/MAP FAB, free Esri only. Profile ⋯ → How to play + My assets. Commit and push `main`.
+
+**What changed:**
+- `web/js/satellite.js` — Esri World Imagery raster `{z}/{y}/{x}` (`server.arcgisonline.com` World_Imagery). Overlay only; **no `setStyle`**. SAT FAB shows SAT on streets / MAP on imagery. Optional hybrid OSM labels (⋯ checkbox). If tiles never arrive: banner “Satellite couldn’t load”, imagery hidden, Liberty streets stay. Pins / gold walk / 80 m ring / you-dot raised above imagery.
+- `web/index.html` — `#btnSat` FAB (not buried in ⋮). `#satFail` banner. About credits Esri. ⋯ is a profile menu (How to play, My assets, Catalog, name switcher, hybrid labels). `ensureLayers` is idempotent; `style.load` sets `layersReady = false` and `reattachOverlays()` restores catalog + track layers.
+- `web/rules.html` — full player rules (no Architect / IOU / RPC / genesis).
+- `web/assets.html` + `web/js/assets.js` — owned/backed, 10% visit interest, gap vs 2nd / vs owner; section toggles.
+- `web/js/nairacoin.js` — `setPlayerKey` so the map profile switcher and catalog share one key.
+- `scripts/test_satellite.js` — Enugu z15/z18 tile math, no Google SKU, no `setStyle`, FAB + pages present.
+
+**Why:** Critic law: satellite must exist as a visible Map/Satellite control, Enugu z12–18 rooftops, fail-to-streets, no billed Google. `ensureLayers` was one-shot so a style swap would eat pins/route/3D — overlay + re-attach instead of `setStyle`.
+
+**How verified:**
+- `node scripts/test_satellite.js` ok. `node scripts/test_track_layers.js` ok. `node scripts/test_place_title.js` ok.
+- Esri Enugu 6.45,7.515 z12/15/17/18 HTTP 200 (~11–19 KB JPEG) with `{z}/{y}/{x}`.
+- `cd android && ./gradlew assembleDebug` BUILD SUCCESSFUL. APK has `js/satellite.js`, `rules.html`, `assets.html`, `#btnSat`.
+- `adb -s bea6919f install -r …/app-debug.apk` Success. `lastUpdateTime=2026-09-03 05:34:42` on Nord DE2118.
+- No Google Maps SKU in `web/` or `android/` source.
+
+**Current state:** Satellite is a SAT/MAP FAB over OpenFreeMap. Default is streets. Imagery is opt-in Esri. Profile pages: `web/rules.html`, `web/assets.html`.
+
+**Next steps:** Street walk on Nord: SAT at z12.2 city, z16–18 roofs, MAP back, Track gold line still paints on imagery, Pay gate unchanged.
+
+**Blockers / risks:** Esri tiles need network (same as OpenFreeMap). Public OSRM can 429. Not a Google Maps SKU.
+
+### 2026-09-03 — Independent critic: satellite vs GMaps (no code)
+
+**Goal:** Harsh pass/fail of Lvfe satellite vs Google Maps (toggle, imagery, labels, zoom). Free Esri/OSM hybrid only. No billed Google SKU. Do not implement.
+
+**What changed:** Docs only (this recap). No `web/` / `android/` edits.
+
+**Why:** Human bar is “as well as Google Maps.” Loop-exit is toggle on Nord/web, imagery visible, pins still tappable, no Google SKU. Score disk, not a planned builder.
+
+**How verified:**
+- Repo-wide grep: `satellite` / `esri` / `World_Imagery` / `arcgisonline` / `btnSat` / `toggleSat` / `hybrid` — **zero** hits in `web/`, `android/`, scripts.
+- `googleapis` / Maps SDK — **zero** hits (SKU clean).
+- Read `web/index.html` chrome + Map constructor, `web/map-3d.js` DEM, `web/map-3d.css`.
+- Nord not exercised: nothing to toggle. APK tree has the same absence.
+
+**Current state:** **FAIL.** Four P0s. Only SKU check passes. Liberty vector map only.
+
+**Next steps:** Builder must add a real Map/Satellite switch, Esri (or equivalent free) raster + OSM label overlay, keep pins/3D/route/GPS across the switch (`layersReady` one-shot will eat overlays if they `setStyle`). Then critic re-score on web + Nord.
+
+**Blockers / risks:** Esri World Imagery ToS / attribution in About. Enugu z18 readability is unproven until tiles are wired. `ensureLayers` `layersReady` (`index.html:1945–1948`) + `style.load` (`2186`) is a landmine for a style swap.
+
+### 2026-09-02 — Independent re-score critic `46b2a779` / `c2cb1cc7` (no code)
+
+**Goal:** Harsh pass/fail of builder `6bbb8245` claim that P0-3 (dossier dies on movestart) and P0-6 (guide layers never attach) are closed, and that 1,2,4,5 still hold. Do not implement.
+
+**What changed:** Docs only (this recap). No `web/` / `android/` edits.
+
+**Why:** Loop-exit must be independently scored against the last FAIL, not the builder’s recap.
+
+**How verified:**
+- Read `web/js/track-guide.js`, `web/index.html` sheet/geolocate, `web/js/dossier.js`, `web/ar-overlay.js`, `web/catalog.html`, `web/js/catalog.js`, `web/js/claim-rules.js`.
+- `node scripts/test_track_layers.js` ok. `node scripts/test_place_title.js` ok. 1044 catalog rows → 0 dash / `Unnamed civic_unknown` titles.
+- Nord DE2118 `bea6919f` `lastUpdateTime=2026-09-02 23:03:03`. Bundled `track-guide.js` / `dossier.js` match disk. APK `index.html` is vendor MapLibre (hash differs) but has `dossierPinned` + `refreshOpenDossier`.
+- Nord WebView CDP (`appassets.androidplatform.net` `index.html`): radius 80; `__lvfeLastBeep` `track` vs `pay-radius`; Mute + `#arTrackHud` exist; wallet 100 NairaCoin; Pay disabled at 1112 m / no GPS, enabled at 22 m.
+- After Track: `guide-line` + `guide-casing` + `pay-fill` + `pay-ring` all in `getStyle().layers`; `ensureLayers` true; no throw; 80 m ring (65 pts, vertex 80 m); geodesic 2-pt line + chip `13 min walk (as the crow flies) · 80 m pay ring`. Public OSRM walking HTTP 200 (69 coords). No Google Maps SKU / scripts.
+- Open file + `map.fire('movestart'|'dragstart')` → sheet stays `doc`, dossier remains. Synthetic GeolocateControl `geolocate` far→near: file stays; Wallet Pay `disabled` then enabled from live dist.
+
+**Current state:** **Pass.** No remaining P0s on this gate. 1 (beep), 2 (AR HUD), 4 (placeTitle), 5 (catalog dossier) still hold. Last-fail P0-3 and P0-6 closed on the installed APK.
+
+**Next steps:** None for this critic loop. Optional human street walk for ear-beep + gold line on an unlocked screen (NotificationShade covered the panel; screencap was 0 bytes).
+
+**Blockers / risks:** Phone shade/lock — no ear-proof of the beep, no bitmap of the gold line. Device route this sample was geodesic (OSRM public 200; code fail-opens). Not remaining P0s.
+
+### 2026-09-02 — Close critic `46b2a779` P0-3 + P0-6 (dossier stay / walk line)
+
+**Goal:** Fix the two remaining P0s from critic `46b2a779` / prior `c2cb1cc7` re-score. Keep beep, AR HUD, titles, catalog dossier. No billed Google.
+
+**What changed:**
+- `web/js/track-guide.js` — `line-join` / `line-cap` moved from `paint` to `layout` on `guide-casing` + `guide-line`. `ensureLayers` adds source and layers independently (`addSourceOnce` / `addLayerOnce`) so a prior failed `addLayer` (source already exists) still attaches the gold walk line + 80 m ring.
+- `web/index.html` — `dossierPinned()` is true while a place file is open (`dossierPlaceId`) or `LvfeTrack.get()` is set. `movestart` / `dragstart` hide menus but **do not** `closeSheet` when pinned. Geolocate `refreshOpenDossier()` can re-render Pay with live dist. × / swipe-down still close.
+- `scripts/test_track_layers.js` — mock MapLibre throws if join/cap are in paint; asserts retry when source exists; greps dossier pin.
+
+**Why:** GeolocateControl `trackUserLocation` `easeTo` fires `movestart` → old `closeSheet()` nulled `dossierPlaceId` → Pay stayed stale. MapLibre rejects `line-join`/`line-cap` in paint (`unknown property`); catch left the `guide` source in place so later `ensureLayers` skipped the layers.
+
+**How verified:**
+- `node scripts/test_track_layers.js` ok. `node scripts/test_place_title.js` ok.
+- `cd android && ./gradlew assembleDebug` BUILD SUCCESSFUL (4s). Assets include layout join/cap + `dossierPinned`.
+- `adb -s bea6919f install -r …/app-debug.apk` Success. `am force-stop com.lvfe.xperience`. `lastUpdateTime=2026-09-02 23:03:03` on Nord DE2118.
+- No Google Maps SKU added. No street walk this pass.
+
+**Current state:** P0-3 and P0-6 coded + installed. 1,2,4,5 unchanged. Player must Track a pin: gold walk line + 80 m ring should paint; walking 1112 m → 22 m should enable Pay without re-tap (file stays open).
+
+**Next steps:** Critic re-score on unlocked Nord: Track → see gold line + ring; geolocate while file open → Pay flips at 80 m.
+
+**Blockers / risks:** Public OSRM can 429 (geodesic still draws). No CDP walk this session — phone install only.
+
+### 2026-09-02 — Independent re-score critic `c2cb1cc7` loop-exit (no code)
+
+**Goal:** Harsh pass/fail of builder `9da3e482` claim that all six P0s are on disk + Nord `bea6919f`. Do not implement.
+
+**What changed:** Docs only (this recap). No `web/` / `android/` edits.
+
+**Why:** Loop-exit must be independently scored. Four P0s are real on disk/APK. Two still fail a player walk.
+
+**How verified:**
+- Read `web/index.html`, `web/js/track-guide.js`, `web/js/dossier.js`, `web/ar-overlay.js`, `web/js/catalog.js`, `web/js/claim-rules.js`, `web/catalog.html`.
+- APK `lastUpdateTime=2026-09-02 22:49:04` on Nord DE2118 `bea6919f`. JS hashes match disk. `index.html` differs only vendor vs unpkg (APK bundles MapLibre).
+- `node scripts/test_place_title.js` ok. 1044 catalog rows → 0 dash / `Unnamed` / `civic_unknown` titles (`Unnamed civic_unknown` → Unidentified building).
+- Public OSRM walking HTTP 200 (69 coords). No Google Maps SKU in `web/` or `android/`.
+- Nord WebView CDP (`appassets.androidplatform.net` `index.html`): `LvfeTrack`/`LvfeDossier`/`LvfeRules`/`LvfeCatalogWallet` present; radius 80; Mute exists; `__lvfeLastBeep` `track` vs `pay-radius`; dossier Pay disabled at 1112 m / no GPS, enabled at 22 m; wallet tab 100 NairaCoin; chip `13 min walk` then OSRM `4 min walk (walk) · 80 m pay ring`.
+- CDP after Track: `guide` source 108 OSRM coords, `pay-fill`+`pay-ring` layers exist, **`guide-line` / `guide-casing` absent** from `getStyle().layers`. `map.fire('movestart')` → sheet collapsed, dossier gone.
+- No street walk: last fused GPS `et=+6d`; lock/notification shade covered the panel; screencaps were lock UI / black, not the map. Score is code+CDP.
+
+**Current state:** **FAIL.** Remaining P0s:
+3. Wallet+Pay gate exists, but `geolocate` cannot refresh a live file — `trackUserLocation` camera `easeTo` fires `movestart` → `closeSheet()`; `refreshOpenDossier()` then no-ops.
+6. OSRM/geodesic + time + 80 m ring exist; **walk line does not paint.** `line-join`/`line-cap` in `paint` throw; `ensureLayers` then skips guide layers because the source already exists.
+
+**Next steps:** Builder: move `line-join`/`line-cap` to `layout` (or drop them) and add layers even if `guide` source exists. Stop closing the dossier on geolocate camera moves (`ignorePan` during geo, or don't `closeSheet` on programmatic move). Then re-score with an unlocked Nord walk.
+
+**Blockers / risks:** Phone was locked; no ear-proof of the beep, no AR camera bitmap this pass. Those two are coded and CDP-exercised; not the remaining P0s.
+
+### 2026-09-02 — Close critic `c2cb1cc7` six P0s (track / AR HUD / Pay / titles / catalog / OSRM)
+
+**Goal:** Ship all six P0s. Same 80 m radius. No Google Directions.
+
+**What changed:**
+- `web/js/claim-rules.js` — `placeTitle` for `-` / undefined / `Unnamed civic_unknown` → Shop / Unidentified building / etc.
+- `web/js/dossier.js` — shared Place/Mission/Land/Money/Wallet file. **Pay** `disabled` unless `userPos` and `dist <= 80`.
+- `web/js/track-guide.js` — Track pulse (AudioContext + `navigator.vibrate`); distinct double-beep inside 80 m; Mute; `__lvfeLastBeep` + `[lvfe-beep]` log. OSRM walking `router.project-osrm.org`; geodesic + 5 km/h fail-open. Gold walk line + 80 m pay ring (not Google blue).
+- `web/index.html` — Wallet tab, Track chip, rebuild file on every `geolocate`, route layers.
+- `web/ar-overlay.js` — `#arTrackHud` live metres + heading every GPS/compass tick for the marked pin outside 80 m. Nearby pin metres update in place (not frozen `htmlIds` text).
+- `web/catalog.html` + `catalog.js` — same dossier + section toggles.
+
+**Why:** Critic `c2cb1cc7` FAIL: no beep, frozen AR HTML, Pay stale after GPS, unnamed junk, catalog table ≠ pin file, no walk line.
+
+**How verified:** `node scripts/test_place_title.js` ok. Dossier Pay disabled at 400 m, enabled at 40 m. OSRM public walking HTTP 200. `cd android && ./gradlew assembleDebug` BUILD SUCCESSFUL (3s). `adb -s bea6919f install -r …/app-debug.apk` Success. `am force-stop com.lvfe.xperience`. APK has `js/dossier.js`, `js/track-guide.js`.
+
+**Current state:** Six P0s on disk and installed APK. CameraX AR, document tabs, OSM off map kept. `CLAIM_RADIUS_M` still 80.
+
+**Next steps:** Critic re-score on Nord. Human: Track a pin → pulse; walk into 80 m → distinct beep; AR HUD metres move; Pay flips on geolocate; catalog file matches pin tap.
+
+**Blockers / risks:** Public OSRM can 429 — geodesic still draws and shows walk time. WebView AudioContext needs the Track tap (user gesture).
+
+### 2026-09-02 — Independent critic: walk-to-pin / Pay / catalog / route (no code)
+
+**Goal:** Harsh pass/fail vs disk for beep, live AR distance+heading to the marked pin, place-file wallet + Pay gated at 80 m, no "-" titles, catalog = pin-tap dossier with toggles, OSRM/Valhalla walk polyline + time that beats a generic Google blue line for this game. Do not implement.
+
+**What changed:** Docs only (this recap). No `web/` / `android/` edits.
+
+**Why:** Human asked an independent critic. Six P0s are missing or only half-wired. 80 m radius already exists (`CLAIM_RADIUS_M`). Wallet exists but is hidden on the place file. Catalog is a table. No beep, no live AR HUD, no route source.
+
+**How verified:** Read `web/index.html`, `web/ar-overlay.js`, `web/catalog.html`, `web/js/catalog.js`, `web/js/claim-rules.js`, `web/js/ar.js`, `android/` (no Tone/Sound), `data/catalog.json` / `places.geojson` (0 literal `"-"` names; 60 `Unnamed {type}` titles including `Unnamed civic_unknown`). Grep: no `AudioContext` / beep / OSRM / Valhalla / polyline route layer. `git rev-parse` HEAD `75bb465` plus dirty working tree (same files as prior sessions).
+
+**Current state:** **FAIL.** Six P0s. Radius constant is the only piece already defined. Submit-time 80 m check exists; the visible Pay/CTA is stale after GPS moves. Catalog is not the pin file.
+
+**Next steps:** Builder loop-exit (all must be true on disk + Nord):
+1. Audible beep while tracking the marked pin, and again / continuously when inside 80 m. No silent path.
+2. AR HUD on the marked pin: live metres + heading that update every GPS/compass tick (not cached HTML). Visible beyond 80 m.
+3. Place file shows total wallet. Button labeled **Pay** is `disabled` outside 80 m and enabled only while `dist <= 80`. Re-render on each `geolocate`.
+4. No title/caption/content is `"-"`, `Unnamed civic_unknown`, or raw `catalog_type`. Use type words or honest empty states.
+5. `catalog.html` opens the same dossier as pin tap (all player fields) with toggle-able sections, not a 6-column table-only page.
+6. MapLibre line from user GPS to marked pin via free OSRM/Valhalla/OSM (no Google Directions). Show walk time + direction + pay-radius / beep / faction context. Not a mute blue line.
+
+**Blockers / risks:** Public OSRM can 429; need a documented free endpoint and a straight-line fallback that still shows walk time. WebView audio may need a user gesture. Do not add billed Google Directions.
+
+### 2026-09-02 — Independent Pokémon GO AR re-score (CameraX overlay)
+
+**Goal:** Harsh re-score vs last FAIL `f409acc1` (black WebGL lid). No code. Pass only if Nord bitmap is live camera, copy/× sit on it, native fail speaks, free stack.
+
+**What changed:** Docs only (this recap). No `web/` / `android/` edits.
+
+**Why:** Builder claimed CameraX `PreviewView` behind transparent WebView, no getUserMedia viewfinder, HTML pins, ×, Nord screencap not `#000`. Critic must not trust that without a rear-lens-uncovered bitmap.
+
+**How verified:**
+- Installed `com.lvfe.xperience` lastUpdate **22:21:21**. APK `assets/www/ar-overlay.js` SHA matches source. AR CSS/HTML in APK `index.html` identical to source. CameraX 1.4.1. Nord DE2118 `bea6919f`, CAMERA+LOCATION granted. OS `location_mode=3`.
+- App GPS **on** (Independence Layout `~6.4261, 7.5210`, acc ~30–50 m). Catalog 1044 places; **0 within 80 m** (closest German Leprosy & Tb Relief Association **403 m**). Not GPS-off.
+- CDP tap AR FAB: `arOn` + `arNative`; html/body/`#arStage` `rgba(0,0,0,0)`; `#arCam`/`#arThree` `display:none`; map `display:none`; **no gum tracks**; `previewLuma` **98**. Device **0 rear OPEN** (`SurfaceView` BLAST consumer). Hint **“No places within 80 m”**. White ×. `THREE` still loaded from unpkg but canvas hidden — not a lid.
+- adb screencap `/tmp/lvfe-ar/critic-ar.png` (4.1 MB, 1080×2400): indoor room (lamp/cables), **y300–2000 exact `#000` = 0%**, band luma **90.3**. Not the 36 KB compositor black of `f409acc1`.
+- CDP null `lvfeUserPos` one frame: hint **“Turn on GPS to see nearby places.”** Restored. × (`#arExit`): `arOn` false, map + FABs back, camera **DISCONNECT**, Device 0 closed. After-X screencap is Independence Layout map.
+
+**Current state:** **Pass.** No P0. Rear CameraX viewfinder is the camera world. Empty-80 m copy is honest at this GPS. HTML pins-on-buildings **unverified** (none in range, not GPS-off). Native fail banner code-wired (`notifyNativeFail` → `lvfeArNativeFail`); deny/bind-fail not live-exercised this session. Free stack (CameraX local). Dead `three@0.160.1` script is leftover, not a lid.
+
+**Next steps:** Optional: stand within 80 m of a catalog pin and confirm HTML `.ar-pin` on the camera. Drop unused Three.js. Trim debug `setFacingFront` / `previewLuma` / max exposure.
+
+**Blockers / risks:** Rear getUserMedia in this WebView is still black if anyone calls it while CameraX holds the camera. SOFTWARE WebView layer during AR.
+
+### 2026-09-02 — Pokémon GO AR: drop WebGL lid (critic `f409acc1`)
+
+**Goal:** Nord viewfinder must not be exact `#000` in the middle. Trust critic: camera track was live, `#arThree` was a black lid, VideoTexture did not punch frames.
+
+**What changed:**
+- `web/ar-overlay.js` — no Three.js / VideoTexture. Visible `<video id="arCam">` on desktop; **Android uses `LvfeNative.startArCamera()`** (no getUserMedia, so it does not steal CameraX). HTML pins via compass/FOV; paintHtml never reads `W` (wallet). GPS-off / empty 80 m copy on the viewfinder. × → `stopArCamera` + map.
+- `web/index.html` — AR CSS only (dossier sheet untouched): `#arCam` opacity 1; `#arThree { display:none }`; `body.ar-native` transparent stage/html, map `display:none`.
+- `android/app/src/main/java/com/lvfe/xperience/MainActivity.kt` — CameraX `PreviewView` behind WebView; software layer + transparent background during AR.
+- `android/app/build.gradle.kts` — camera-core / camera2 / lifecycle / view 1.4.1.
+
+**Why:** CSS `<video>` under WebGL was a black lid. Hiding video + VideoTexture still `#000`. Visible video alone still `#000` (middle band exact black). canvas2d `drawImage` + `ImageCapture.grabFrame` on the **rear** track: avg 0. **Front** getUserMedia samples ~168. Rear WebView MediaStream never delivers pixels on this Nord/WebView 151. Native Camera2 preview does.
+
+**How verified:**
+- `cd android && ./gradlew assembleDebug` BUILD SUCCESSFUL. `adb -s bea6919f install -r …/app-debug.apk` Success; `am force-stop`; screen **ON**.
+- Visible `<video>` screencap: middle y300–1200 **exact #000** (36 KB PNG). Track live 480×640 `readyState:4`.
+- canvas2d: same; `ImageCapture` rear max 0, front avg 168.
+- CameraX native, rear `previewLuma` **14** (lens dark/covered). Front `previewLuma` **207**. Front screencap 10:21 `/tmp/lvfe-ar/ar-front.png` (~937 KB): **overexposed camera world** (not #000), white ×, “No places within 80 m”. CDP: `arOn` `arNative`, `#arThree`/`#arCam` `display:none`, map `display:none`, no gum stream.
+- ×: `arOn` false, map visible, camera client **DISCONNECT**.
+
+**Current state:** Installed APK default viewfinder is **CameraX rear PreviewView** under transparent WebView (HTML pins + ×). Rear scene on the desk was dark (luma 14, not compositor `#000`). Front proof shot is a bright live camera. No WebGL lid. Dossier sheet not reverted.
+
+**Next steps:** Critic re-score with Nord **rear lens uncovered** (street/room). GPS-on 80 m HTML pins on that camera world. Optional: drop debug `setFacingFront` / `previewLuma` / `setTorch`.
+
+**Blockers / risks:** Rear getUserMedia in this WebView is still black if anyone calls it while CameraX holds the camera. SOFTWARE WebView layer during AR. Headless Chrome has no camera.
+
+### 2026-09-02 — Place file tabs + perms on open
+
+**Goal:** Nord pin tap opens a paper **file/document** (not a thin empty card). Ask location + camera when the app opens.
+
+**What changed:**
+- `web/index.html` — pin sheet is a dossier: tabs **Place** (name, type, photo/quality words), **Mission** (one next action + 48dp CTA), **Land** (neighbourhood, Unclaimed vs faction, owner, conquered), **Money** (cost to back, place value, “owner earns N from visits”). Banks/ATMs: cannot be owned, no yield essay. Fallbacks: Unknown owner / Unclaimed / No one has backed this yet. × kept. Sheet still hidden on idle map.
+- `web/js/claim-rules.js` — `typeLabel` (Shop/Food/…) and `qualityWords` (Has a photo / Named / Needs a name).
+- `MainActivity.kt` — `requestAllLaunchPerms()` on `onCreate` and first `onPageFinished`; skip if FINE+COARSE+CAMERA already granted. JS `requestLaunchPerms` + `lvfeOnNativePerms` starts GPS when loc is on. No activity-recognition perm.
+
+**Why:** Thin half-sheet looked empty. Human wants all needed OS perms at launch (overrides FAB-only).
+
+**How verified:** `node` claim-rules labels. `./gradlew assembleDebug` SUCCESS (19s). `adb -s bea6919f install -r` Success; `am force-stop com.lvfe.xperience`. Bundled `assets/www/index.html` has `dossier-tabs`.
+
+**Current state:** Installed on Nord `bea6919f` (lastUpdate 22:10:28). FINE+COARSE+CAMERA already granted — launch will skip the OS dialog. AR overlay / OSM-off-map unchanged.
+
+**Next steps:** Human on Nord: cold start → one OS perm dialog (or none if granted). Tap a pin → file with four tabs. Swipe tabs. × closes. Map idle stays clear.
+
+**Blockers / risks:** If the Nord already granted camera+location, no dialog (correct). Denied-forever needs Settings.
+
+### 2026-09-02 — Independent Pokémon GO AR re-score (builder `6de9d97e`)
+
+**Goal:** Harsh re-score vs last FAIL `f0afbaca` and the Pokémon GO bar. No code.
+
+**What changed:** Docs only (this recap). No `web/` / `android/` edits.
+
+**Why:** Builder claimed one WebGL canvas, `VideoTexture` quad, hidden `<video>`, street/room on Nord screencap, ×, GPS-off copy. Pass only if the installed APK bitmap is the camera world.
+
+**How verified:**
+- Read `web/ar-overlay.js` + `web/index.html` AR CSS. Bundled `android/app/src/main/assets/www/ar-overlay.js` identical; APK `index.html` only vendors MapLibre/Three. `#arCam { opacity: 0 }`, `#arThree { background:#000 }`, `WebGLRenderer({ alpha: false })`, `setClearColor(0x000000, 1)`. `lvfeEnableAr({ getNearby: nearbyFeatures })`; `syncBillboards` Three sprites + HTML `.ar-pin`; empty 80 m / GPS-off copy in `paintHtml`. Free stack (getUserMedia + Three 0.160.1). No Niantic.
+- Nord DE2118 `bea6919f`, `com.lvfe.xperience` lastUpdate **21:56:40**, CAMERA+LOCATION granted. OS location_mode=3. App GPS unused (`lvfeUserPos` null) until GPS FAB.
+- Cold start, tap AR FAB. Three adb screencaps while `media.camera` Device 0 **open** for Lvfe: viewfinder band **y≈300–1200 is exact #000**. White × top-left. Leaked half sheet (place card) over the bottom. Not a room or street.
+- CDP during that black frame: `arOn` true; map `visibility:hidden`; rear track **live** `camera 0, facing back` 480×640, video `paused:false` `readyState:4`; `#arCam` opacity **0**; `#arThree` 848×1764 z-index 1; `#arFail` **hidden**; hint “Turn on GPS to see nearby places.” WebGL Adreno 619, context not lost.
+- × (`#arExit`) → `arOn` false, map visible, FABs back. After-X screencap: search pill + map (avg luminance ~193, 1.1MB), not black.
+
+**Current state:** **FAIL.** Same player-visible bug as `f0afbaca`: live camera under/inside an opaque black WebGL lid. Hiding `<video>` and drawing a `VideoTexture` quad did not put the street on the Nord viewfinder. Pins-on-buildings untested (no camera world; GPS FAB not tapped). × to map works. Fail banner does **not** speak on this path (gum succeeded; texture attach is treated as success while frames are black). Pass-with-note denied — camera world not proven.
+
+**Next steps:** Builder: viewfinder bitmap must be the rear camera (not CSS theory). If `VideoTexture` samples black on this WebView, fail loud or draw frames another way that actually shows. Then GPS-on 80 m billboards on that camera world. Critic re-score only after a Nord bitmap shows street/room.
+
+**Blockers / risks:** Headless Chrome has no camera. Place sheet (`z-index:12`) still stacks over `#arStage` (`z-index:8`) in AR.
+
+### 2026-09-02 — Pokémon GO AR VideoTexture (critic `f0afbaca` FAIL)
+
+**Goal:** Stop the opaque WebGL lid. Camera must live **inside** one canvas.
+
+**What changed:** `web/ar-overlay.js` — `WebGLRenderer({ alpha: false })`, ortho `THREE.VideoTexture` quad behind sprites; fail if texture cannot attach. `web/index.html` — `#arCam` decoder-only (`opacity: 0`); `#arThree` is the viewfinder. APK rebuilt and `adb -s bea6919f install -r`.
+
+**Why:** CSS `setClearColor(0,0)` does not punch `<video>` through Android WebView WebGL.
+
+**How verified:** `./gradlew assembleDebug` SUCCESS. `adb -s bea6919f install -r` Success; `am force-stop`. CDP: rear track live 480×640, `arOn`, `#arFail` hidden. Screencap with Lvfe focused / screen ON: **live camera (indoor room), white ×, “Turn on GPS to see nearby places.”** Not a black lid. GPS was off so 80 m pins untested.
+
+**Current state:** Viewfinder is the camera on Nord. Pins-on-buildings still need GPS on.
+
+**Next steps:** Critic re-score with GPS on for billboards on the camera world.
+
+**Blockers / risks:** None for the black-lid fix. Indoor capture (not a street) because the Nord was inside.
+
+### 2026-09-02 — Independent Pokémon GO AR re-score (builder `e7a599a8`)
+
+**Goal:** Harsh re-score vs last FAIL `d0002cf5` and Pokémon GO bar: street in viewfinder, pins on buildings, × back to map. No code.
+
+**What changed:** Docs only (this recap). No `web/` / `android/` edits.
+
+**Why:** Builder claimed CSS opacity 1, no black canvas lid, Three.js billboards, × to map, play/getUserMedia errors speak, APK on Nord `bea6919f` — but they did not visually confirm (screen asleep). Pass only if all five gates hold on the installed APK.
+
+**How verified:**
+- Read `web/index.html` AR CSS, `web/ar-overlay.js`, bundled `android/app/src/main/assets/www/` (same: `#arCam { opacity: 1 }`, `#arThree { background: transparent }`, no `#arCanvas` / `0.34`, `#arExit`, `vendor/three.min.js`). `ar-overlay.js` has no `W`. Map AR FAB does not open `ar.html`.
+- Nord DE2118 `bea6919f`, `com.lvfe.xperience` lastUpdate 21:43:15, CAMERA granted. `adb` wake + AR FAB tap.
+- AR screenshot: solid black viewfinder, white × top-left, “Turn on GPS to see nearby places.” Status bar green camera indicator.
+- CDP while black: `arOn` true; `#arCam` opacity 1, `paused:false`, `readyState:4`, `480×640`, track **camera 0, facing back** live; `#arThree` 848×1764 z-index 2, CSS bg transparent; `#arFail` hidden; map `visibility:hidden`.
+- × tap: AR chrome gone, MapLibre + FABs back (sheet leaked from the tap; map GL still only fills the top third after unlock).
+
+**Current state:** **FAIL.** Last-fail `W` / no-X / `ar.html`-as-world / CSS opacity 0.34 are closed. The player still does not see the street. Live camera is under an opaque WebGL canvas lid (`#arThree` over `<video>` on Android WebView). Pins-on-buildings untested because there is no camera world; GPS was off (`lvfeUserPos` null).
+
+**Next steps:** Builder: make the viewfinder the camera (video in front of / punched through WebGL, or draw camera into the GL texture — CSS `alpha:0` is not enough on this WebView). Then GPS-on pins that move with heading, visually on the street/buildings. Critic re-score only after a Nord bitmap shows street.
+
+**Blockers / risks:** Headless Chrome has no camera. Nord lockscreen/NotificationShade ate several captures; the AR black frames were taken with Lvfe focused and camera live.
+
+### 2026-09-02 — Pokémon GO AR (camera world, critic `d0002cf5`)
+
+**Goal:** AR FAB must show **street in the viewfinder, pins on the camera, × back to map**. Not a blank overlay.
+
+**What changed:**
+- `web/index.html` — `#arStage` full-bleed camera (`opacity: 1`). `#arThree` canvas **transparent** (no `#000` lid). `#arCanvas` / `#arLayer` removed. Dedicated **×** (`#arExit`). Search / 3D / GPS FABs hidden while AR is on (`body.ar-on`). Map `visibility: hidden` only after a camera stream exists. Fail banner `#arFail` one line, not a full-screen.
+- `web/ar-overlay.js` — getUserMedia + `video.play()` errors speak (“Camera couldn’t start”). Three.js sprites + HTML billboards for 80 m pins; compass/pitch moves them. No `W` (that ReferenceError killed the old draw loop). Empty 80 m: “No places within 80 m” on the camera. Tap billboard → same place sheet (name, type, Back / Walk closer). Does **not** open `ar.html`.
+- `android/sync-www.sh` — vendors Three.js `0.160.1` next to MapLibre.
+
+**Why:** Critic `d0002cf5`: `#arCanvas { background:#000 }` + `clearRect` painted a black lid over `#arCam` at opacity **0.34**; `W is not defined` stopped the rAF loop; `#arLayer { display:none !important }` hid nearby copy; `play()` errors were swallowed; exit was the same AR FAB. Android WebView video is an opaque layer, so a dim “overlay on the map” reads as a blank viewfinder.
+
+**How verified:** `cd android && ./gradlew assembleDebug` — BUILD SUCCESSFUL (6s); sync-www vendored MapLibre 5.6.1 + Three.js 0.160.1. Bundled `assets/www/index.html`: `#arCam { opacity: 1 }`, `#arThree { background: transparent }`, `#arExit` present, `vendor/three.min.js` loaded, no `#arCanvas` / `0.34`. `adb -s bea6919f install -r …/app-debug.apk` — **Success**. `am force-stop com.lvfe.xperience`. Nord display **Asleep** — no live viewfinder bitmap this session.
+
+**Current state:** Camera-first AR on disk. MapLibre unchanged when AR is off.
+
+**Next steps:** Human on Nord: AR FAB → street, pins if within 80 m, × → map. Critic re-score.
+
+**Blockers / risks:** Compass needs `deviceorientation`. Pins need GPS. Headless Chrome has no camera.
+
+### 2026-09-02 — Independent Pokémon GO AR UX critic (read-only)
+
+**Goal:** Harsh AR score vs Pokémon GO player feel. No code. Surfaces: map AR FAB (`web/index.html` + `web/ar-overlay.js`), `web/ar.html` + `web/js/ar.js`, Android WebView camera. Free stack only (getUserMedia + Three.js/WebGL; no billed Niantic/ARCore Cloud Anchors).
+
+**What changed:** Docs only (this recap). No `web/` / `android/` edits.
+
+**Why:** Human: AR button → blank screen. Pass only if camera is the world, nearby places are in-world objects, X/map exit, compass-stable, no OSM on AR, no second permission wall when already granted, camera-fail is a real message not a void.
+
+**How verified:** Read `index.html` AR CSS/FAB/`lvfeEnableAr`, `ar-overlay.js`, `ar.html`/`js/ar.js`, `MainActivity.kt` camera grant path. No Three.js / ARCore in repo. No device replay this session.
+
+**Current state:** **FAIL.** Success path paints a full-bleed black `#arCanvas` over the map; live camera is 34% opacity under it. Nearby list is `display:none`. Draw loop references undeclared `W` (throws). No AR X. `ar.html` is a dark HUD card page.
+
+**Next steps:** Builder loop-exit: opaque live camera, hide map, in-world markers, X + map exit, fail copy not blank. Critic re-score after.
+
+**Blockers / risks:** None for this read. Implementer must not ship billed Cloud Anchors.
+
+### 2026-09-02 — Kill stuck blank half-screen overlay (Nord)
+
+**Goal:** Idle map shows the city with **no** bottom card. The stuck blank half overlay was a blocking layer (not a swipeable peek).
+
+**What changed:** `web/index.html` — `#sheet` starts `hidden` + `collapsed` (`display:none !important`, height 0, `pointer-events:none`). Half/full only after pin tap with name/type/CTA. × Close + swipe-down. GPS no longer auto-peeks. `#identityGate` is a small bottom pill, not an `inset:0` dimmer, and does not open on boot. `[hidden]{display:none !important}`.
+
+**Why:** Percentage `translateY(calc(100% - 22px))` can leave a ~46–72vh panel on Nord WebView with **no drag handler**; identity `display:flex` + `inset:0` ate all touches. Human could not slide it away.
+
+**How verified:** `cd android && ./gradlew assembleDebug` BUILD SUCCESSFUL (5s). `adb -s bea6919f install -r …/app-debug.apk` — **Success**. `am force-stop com.lvfe.xperience`. CDP idle: sheet `hidden` `display:none` height **0** `pointer-events:none`; identity/mapFail/about/arCam hidden; `#sheetClose` present. Nord display was **asleep** (`innerHeight` 0) — no bitmap.
+
+**Current state:** Fix on disk and installed APK. Idle overlay gone in DOM. Human: open app, confirm full map; tap pin → filled sheet + ×.
+
+**Next steps:** Human visual check on Nord (screen on). Critic re-score if needed.
+
+**Blockers / risks:** Screen off this session; CDP layout size was 0 until wake.
+
+### 2026-09-02 — Independent GMaps UX re-score (`getPitch() > 8`)
+
+**Goal:** Harsh re-score vs last fail `74cbdbb7`. Read-only. Implementer `787eb543` claimed 3D FAB pressed iff `#toggle3d` checked OR `getPitch() > 1`. APK on Nord `bea6919f`.
+
+**What changed:** Docs only (this recap). No `web/` / `android/` edits.
+
+**Why:** Pass only if all of: full-bleed + pill + FABs + sheet auto-hide; OSM off map; 48dp CTA on every pin sheet; FAB unpressed iff pitch 0 / 3D off (pressed at pitch 8); pins tappable at default zoom; free MapLibre.
+
+**How verified:**
+- Read `web/map-3d.js` `pitchedNow` = `getPitch() > 1`; `web/index.html` 3D click uses the same test. Bundled APK `assets/www/map-3d.js` matches. `google` absent; MapLibre 5.x + OpenFreeMap.
+- Headless Chrome 390×844 `http://127.0.0.1:8765/web/?player=critic` (Swiftshader): map 390×844 full-bleed; zoom **12.2**; attrib/logo nodes **0**; tap `queryRenderedFeatures` **1918** hits → half sheet **Walk closer** **48px**; FAB `false` at pitch 0, `true` at pitch 8.
+- Nord DE2118 WebView CDP (`com.lvfe.xperience`, lastUpdate **20:10:39**): boot pitch **0** zoom **12.2** FAB **false**; `jumpTo(8)` FAB **true** blue `#1a73e8`; `0.4` unpressed (jitter deadzone); bank **Cannot be owned** / school **Walk closer** `min-height: 48px`; pan → sheet **collapsed**. `adb screencap` black — screen **OFF** / NotificationShade. No device photo.
+
+**Current state:** **Pass.** Last-fail P0 closed. No remaining P0s on this gate.
+
+**Next steps:** None for this critic loop. Human: screen on, two-finger tilt, confirm FAB follows pitch.
+
+**Blockers / risks:** Nord display was off this session; score used WebView CDP + phone-width Chrome, not an adb bitmap.
+
+### 2026-09-02 — Close GMaps critic P0 (`getPitch() > 8`)
+
+**Goal:** Close last P0 from critic `74cbdbb7`: FAB unpressed iff pitch 0 (or 3D off).
+
+**What changed:** `web/map-3d.js` `pitchedNow` / FAB paint: pressed when `#toggle3d` checked **or** `getPitch() > 1`. `web/index.html` 3D click uses the same test. Permission + chrome untouched.
+
+**Why:** `> 8` left the FAB unpressed at pitch 8; two-finger tilt must match the button. `> 1` ignores float jitter; boot pitch 0 stays unpressed.
+
+**How verified:** `cd android && ./gradlew assembleDebug` BUILD SUCCESSFUL (3s). Bundled www has `> 1`. `adb -s bea6919f install -r …/app-debug.apk` — **Success** (DE2118 / OnePlusN200TMO).
+
+**Current state:** P0 closed on disk and installed APK. Chrome + Nord geo/camera grants kept.
+
+**Next steps:** Critic re-score. Human: boot FAB unpressed; tap 3D → pressed; two-finger tilt → pressed.
+
+**Blockers / risks:** None.
+
+### 2026-09-02 — Independent GMaps UX re-score (CTA / 3D FAB / z12.2)
+
+**Goal:** Re-score vs last fail `a7b6ee3d`. Read-only. Implementer `1aedfac0` claimed the three P0s closed.
+
+**What changed:** Docs only (this recap). No `web/` / `android/` edits.
+
+**Why:** Pass gate is all of: full-bleed + one pill + FABs + auto-hide + OSM off map; 48dp CTA on every pin sheet; 3D FAB unpressed iff pitch 0; pins tappable at z12.2; free MapLibre.
+
+**How verified:** Read `web/index.html`, `web/map-3d.js`. Headless Chrome 390×844 `http://127.0.0.1:8765/web/?player=critic` (map WebGL up). Nord `bea6919f` not on adb — no device screencap.
+
+**Current state:** **Fail.** Last-fail CTA + z12.2 hit + pitch-0 FAB lie are closed on disk/web. Remaining P0: 3D FAB uses `getPitch() > 8`.
+
+**Next steps:** Implementer: FAB pressed for any pitch ≠ 0 (or drop the 8° deadzone). Critic re-score. No new features.
+
+**Blockers / risks:** Nord not attached this session.
+
+### 2026-09-02 — Stop double location/camera prompts (Nord)
+
+**Goal:** If system location + camera are already granted, GPS/AR must not show another OS dialog.
+
+**What changed:**
+- `android/.../MainActivity.kt` — `GeolocationPermissions.allow(origin)` for `https://appassets.androidplatform.net`; if FINE/COARSE already GRANTED, `callback.invoke(origin, true, false)` with no `requestPermissions`. Same for camera: `request.grant()` immediately. JS bridge `LvfeNative.hasLocation` / `hasCamera`.
+- `web/index.html` — GPS tap locates only (no native re-ask if granted); GeolocateControl `trigger()` not double-fired; AR FAB starts overlay if camera granted; copy is “Tap GPS”, not “Allow location”.
+- `web/ar-overlay.js` — camera only on AR FAB; no grant-camera banner when native says granted.
+
+**Why:** Two layers (Activity runtime perms + WebView geo/media + JS `geo.trigger()` + HUD copy) stacked. WebView did not persist geo for the asset origin, so Chromium asked again. Second `geo.trigger()` could toggle tracking off.
+
+**How verified:** `cd android && ./gradlew assembleDebug` — BUILD SUCCESSFUL (15s). `/Users/ugoookogeri/Library/Android/sdk/platform-tools/adb -s bea6919f install -r …/app-debug.apk` — **Success** (DE2118 / OnePlusN200TMO).
+
+**Current state:** GMaps chrome kept (pill, sheet, FABs). Double-prompt fix installed on Nord. Force-stop + GPS tap should locate with no OS dialog if location is already allowed.
+
+**Next steps:** Human on Nord: force-stop Lvfe, open, tap GPS — should just locate, no dialog if already allowed. AR FAB: camera overlay, no second camera dialog.
+
+**Blockers / risks:** OxygenOS may still show a settings reminder overlay that is not `requestPermissions`. WebView `permissions.query` often stays `prompt` until `allow(origin)`.
+
+### 2026-09-02 — Close GMaps critic P0s (CTA, 3D FAB, pin hit)
+
+**Goal:** Close the three P0s from critic `a7b6ee3d`. No new game systems.
+
+**What changed:**
+- `web/index.html` — every pin sheet always has a 48dp CTA: ownable+≤80 m **Back this place**; far **Walk closer** (recenters / asks GPS); bank/ATM **Cannot be owned** (disabled). Title 18px. Pin `circle-radius` 12–14px at z11–14, plus transparent `places-hit` (16px) and an 18px padded `queryRenderedFeatures` click. `text-size-adjust: 100%`.
+- `web/map-3d.js` — enable 3D on style-ready (`style.load` / `isStyleLoaded` / 800 ms fallback), not only `load`. FAB `aria-pressed` follows `getPitch() > 8`. Do not paint checkbox from stale `lvfe.map3d.v2`. Circle translate only when 3D is on.
+- `android/.../MainActivity.kt` — `textZoom = 100` so WebView does not shrink 18px titles to 16.2px.
+
+**Why:** Critic fail was no primary action outside 80 m, 3D FAB selected on a flat map, and 2.2px circles at default zoom.
+
+**How verified:**
+- Headless Chrome `http://127.0.0.1:8765/web/` — far school **Walk closer**, near civic **Back this place**, bank **Cannot be owned**; title 18px; FAB unpressed at pitch 0; at zoom **12.2** `queryRenderedFeatures` returned 24 hits and a click opened the half sheet.
+- Nord DE2118 WebView CDP: stale pref `lvfe.map3d.v2=1` but FAB `false`, pitch **0**, zoom **12.2**, 24 then 157 hit-layer hits; `map.fire("click")` opened sheet with **Walk closer**. `adb -s bea6919f install -r` **Success** (twice; second build had `textZoom=100`).
+- `./gradlew assembleDebug` BUILD SUCCESSFUL.
+
+**Current state:** P0s closed on disk and in the installed debug APK. Chrome + Nord inspect prove CTA / FAB / tappable pins at default zoom. Nord screen was asleep with NotificationShade focused, so a finger screenshot of the new APK was not captured.
+
+**Next steps:** Human on Nord: dismiss shade, confirm 3D FAB unpressed until tap, tap a pin at idle zoom (no double-tap zoom), confirm sheet CTA. Critic re-score.
+
+**Blockers / risks:** Nord NotificationShade / display-off still blocks visual screencap. Dense z12 pins can open a neighbour (padded hit). Poles still minzoom 14 (circles+hit cover z12). OpenFreeMap needs network. 3D pref is written but not restored on boot (intentional: 2D until tap). Title ≥18px after `textZoom=100` not re-measured (inspect socket wedged after reinstall).
+
+### 2026-09-02 — Independent critic re-score vs GMaps mobile
+
+**Goal:** Re-score player map chrome against Google Maps mobile. Read-only. No fixes.
+
+**What changed:** Docs only (this recap). No `web/` / `android/` edits.
+
+**Why:** Implementer `1f56673f` claimed the prior critic fail (`3307feda`: dashboard cards, no sheet, OSM wordmark) was closed.
+
+**How verified:** Read `web/index.html`, `web/map-3d.js`, `web/ar-overlay.js`, `android/.../MainActivity.kt`. Nord DE2118 `com.lvfe.xperience` 0.1-debug installed (18:39). Screencap idle map 1080×2400. Headless Chrome CDP on `http://127.0.0.1:8765/web/index.html` (map tiles failed in that session; chrome + `openPlacePopup` still measurable).
+
+**Current state:** Previous P0s (left panel, 46vh HUD, MapLibre Popup, OSM wordmark on the map) are gone. **Still fail.** Pin sheet has no 48dp CTA outside 80 m; Nord 3D FAB is selected on a pitch-0 map; default zoom circles are not tap targets.
+
+**Next steps:** Implementer: 48dp primary on every pin sheet; 3D FAB must match pitch; pin hit area tappable at z12.
+
+**Blockers / risks:** None for this review. Nord NotificationShade stuck after later adb; pin-tap on-device not re-tried after that.
+
+### 2026-09-02 — GMaps-style map chrome (Nord critic pass)
+
+**Goal:** Fix critic fail on phone 390×844 / Nord. Full-bleed MapLibre map. No new game systems. No Google Maps SDK.
+
+**What changed:**
+- Deleted left `.panel` and always-on 46vh `#hud`. One top search pill (catalog names). Wallet + nearby live in the CSS bottom sheet (peek / half / full).
+- Pin tap writes a **CSS sheet** (name, type, cost, Back this place) — **killed MapLibre Popup**. Sheet is UI-anchored, never blank (fallback title “This place”).
+- 48dp FABs lower-right: GPS, 3D, AR (hidden checkboxes still drive existing modules). Default pitch **0** / 3D off (`lvfe.map3d.v2`).
+- Android: **no** location/camera at `onCreate` / first page load. `LvfeNative.requestLocation` on GPS tap; camera only on AR FAB / `onPermissionRequest`. `onGeolocationPermissionsShowPrompt` requests FINE then invokes the JS callback.
+- AR camera is a 34% overlay; map stays visible (no `opacity:0` + second AR card). `#arLayer` stays hidden.
+- OSM / OpenFreeMap / MapLibre logo + attribution control off the map. ODbL text only in About.
+- Auto-hide sheet on `movestart`/`dragstart` (pill stays). `flyTo` from search sets `ignorePan` so the sheet is not eaten.
+
+**Why:** Critic checklist is layout/gesture law. Blank pin was MapLibre Popup on a pitched 3D map (off-screen / zero-height / wrong anchor). Permissions never re-asked from WebView if the first Activity dialog was missed.
+
+**How verified:** `cd android && ./gradlew assembleDebug` — BUILD SUCCESSFUL (1m 22s). `/Users/ugoookogeri/Library/Android/sdk/platform-tools/adb -s bea6919f install -r …/app-debug.apk` — **Success** (DE2118 / OnePlusN200TMO). Bundled `assets/www/index.html` has `#sheet`, `pitch: 0`, no MapLibre Popup, no `.panel`.
+
+**Current state:** Player map chrome matches the GMaps checklist on disk. GPS 80 m, back-this-place, NairaCoin, no “The Architect”. Tiles still OpenFreeMap (network).
+
+**Next steps:** Human on Nord: GPS FAB → location prompt; pin → sheet with name/type/CTA; pan → sheet collapses; AR FAB → camera prompt only then; no OSM chip.
+
+**Blockers / risks:** OpenFreeMap public tiles. OxygenOS permission UX. WebView `getUserMedia` quality. `ignorePan` is needed because literal `movestart` would hide the sheet during `flyTo`.
+
+### 2026-09-02 — Independent critic: map vs Google Maps mobile UX
+
+**Goal:** Score player map chrome against Google Maps **mobile UX** (layout, sheets, gestures), not billed Maps SKUs. Read-only. No fixes.
+
+**What changed:** Docs only (this recap). No `web/` / `android/` edits.
+
+**Why:** Human asked for a harsh pass/fail before implementer loop. Free stack (MapLibre, OpenFreeMap, CSS) must feel like GMaps, not look like a Mapbox admin demo.
+
+**How verified:** Read `web/index.html`, `web/map-3d.js`, `web/map-3d.css`, `web/ar-overlay.js`, `android/MainActivity.kt` + manifest. Headless Chrome 390×844 `http://127.0.0.1:8765/web/index.html?lat=6.45633&lon=7.52432&player=diag` — WebGL map failed (`Map failed to start. Reload.`), but chrome is fully visible: tall left panel, ~half-screen bottom HUD, OSM/OpenFreeMap wordmark, AR/3D as checkboxes, nearby stake forms, no search pill / sheet / FABs. Nord not attached.
+
+**Current state:** Map **does not** feel like Google Maps. Place tap is a MapLibre popup (not a peek→half→full sheet). No pan auto-hide. Location+camera requested together at Activity start. OSM attribution HTML still on the map.
+
+**Next steps:** Implementer must meet loop-exit checklist (pill, sheet, FABs, auto-hide, no OSM wordmark, permissions, non-blank pin sheet) before critic re-pass. Do not add game systems.
+
+**Blockers / risks:** Headless cannot prove Nord WebGL; critic used CSS + DOM + one screenshot of chrome. Another agent is removing OSM tile branding — HTML `.attrib` still says OpenStreetMap.
+
+### 2026-09-02 — Sideloadable debug APK (OnePlus Nord)
+
+**Goal:** One debug APK the Nord can install (USB / Files) so a human can walk Enugu and test map + pins + GPS + camera. Wrap existing `web/`. No Flutter rewrite. No Google Maps.
+
+**What changed:**
+- `android/` — tiny Kotlin WebView (`MainActivity.kt`). Loads bundled assets at `https://appassets.androidplatform.net/assets/www/index.html` (AndroidX `WebViewAssetLoader`) so geolocation and `getUserMedia` see a **HTTPS** origin, not `file://`.
+- Permissions: `ACCESS_FINE_LOCATION`, `CAMERA`, `INTERNET`. File chooser + camera for visit photos. No `usesCleartextTraffic`.
+- `android/sync-www.sh` (runs on `preBuild`) copies `web/` + catalog geojson + vendors MapLibre 5.6.1 so unpkg is not required.
+- `web/js/lvfe-assets.js` + fetch sites in `index.html` / `catalog.js` / `ar.js` — APK uses paths next to HTML; `python3 -m http.server` from lvfe root still uses `/data` and `/geojson`.
+- Player copy unchanged (NairaCoin / back this place). IOU/RPC not shown.
+
+**Why:** Simplest wrap that keeps MapLibre + OSM. Capacitor would be extra Node. `file://` would block camera. Bundled pins so the Nord does not need `http://127.0.0.1:8765`.
+
+**How verified:** `cd android && ./gradlew assembleDebug` — BUILD SUCCESSFUL. `aapt dump badging`: `com.lvfe.xperience`, sdk 24–35, label Lvfe. APK lists `assets/www/index.html`, `catalog.html`, `ar.html`, `data/places.geojson`, `data/catalog.json`, `geojson/enugu-factions.geojson`, `vendor/maplibre-gl.js`. Not installed on the Nord from this session (no device attached here).
+
+**APK path:** `/Applications/MAMP/htdocs/lvfe/android/app/build/outputs/apk/debug/app-debug.apk` (also copied to `/Applications/MAMP/htdocs/lvfe/android/app-debug.apk`). ~3.8 MB. Signed with the local debug keystore.
+
+**Install on the Nord:**
+1. Copy the APK (USB, AirDrop via Mac, Files).
+2. **Files:** Settings → Additional settings / Security → **Install unknown apps** → allow the Files (or Bluetooth) app → tap `app-debug.apk`.
+3. **USB debug:** Settings → About phone → tap Build number 7× → Developer options → USB debugging (+ Install via USB on OxygenOS) → on the Mac: `adb install -r /Applications/MAMP/htdocs/lvfe/android/app/build/outputs/apk/debug/app-debug.apk`.
+4. First launch: allow **Location** and **Camera**. Open the map, wait for OpenFreeMap tiles, confirm catalog pins.
+
+**GPS / camera caveats:** Origin is HTTPS virtual (`appassets.androidplatform.net`), not `file://` and not LAN HTTP — that is what makes camera/GPS legal in WebView. Basemap + 3D terrain still need **internet** (OpenFreeMap / Terrarium). Pins and catalog JSON are offline. If AR camera stays black, update **Android System WebView** in Play Store; visit photo (`input capture`) still works via the system picker. Chrome inspect: USB debug + `chrome://inspect`. Progress is **localStorage on that phone**, not a shared world.
+
+**What still needs the Mac:** Rebuild after `web/` or catalog changes (`cd android && ./gradlew assembleDebug`). Overpass ingest / `export_catalog.py`. Desktop GPU preview (`python3 -m http.server 8765`). NairaCoin daemon / genesis. iOS. Play Store signing. A real shared backend (none exists).
+
+**Current state:** Debug APK built on this Mac. Shop Flutter gradle was not mixed in (only reused the already-installed Android SDK + a generic Gradle wrapper jar). Human still needs to sideload onto the Nord.
+
+**Next steps:** Human installs on Nord, walks New Haven, confirms pins + GPS + photo + AR overlay. Report WebView/camera OEM issues.
+
+**Blockers / risks:** OpenFreeMap public tiles. Debug keystore (not Play). OxygenOS may extra-prompt unknown sources. WebView `getUserMedia` quality varies by System WebView version.
 
 ### 2026-09-02 — Blank map + hide OSM POI labels
 

@@ -13,11 +13,19 @@
     <span class="sub" id="ncNote">demo faucet</span>
     <div class="links">
       <a href="index.html">Map</a>
-      <a href="ar.html">AR</a>
+      <a href="rules.html">How to play</a>
+      <a href="assets.html">My assets</a>
     </div>
   </div>
   <div class="wrap">
-    <p class="sub">Places you put NairaCoin into on this phone. Highest backer owns. Banks and ATMs cannot be owned.</p>
+    <p class="sub">Same place file as a map pin. Toggle which sections you need. Banks and ATMs cannot be owned.</p>
+    <div class="sec-toggles" id="secToggles">
+      <label><input type="checkbox" data-sec="place" checked /> Place</label>
+      <label><input type="checkbox" data-sec="mission" checked /> Mission</label>
+      <label><input type="checkbox" data-sec="land" checked /> Land</label>
+      <label><input type="checkbox" data-sec="money" checked /> Money</label>
+      <label><input type="checkbox" data-sec="wallet" checked /> Wallet</label>
+    </div>
     <div class="filters">
       <label>Search<input type="search" id="qSearch" placeholder="Name, type, neighbourhood" /></label>
       <label>Show<select id="qView">
@@ -40,33 +48,29 @@
       </select></label>
     </div>
     <p class="meta" id="meta">Loading catalog…</p>
-    <div style="overflow:auto">
-      <table class="cat">
-        <thead>
-          <tr>
-            <th data-sort="name">Name</th>
-            <th data-sort="type">Type</th>
-            <th data-sort="quality">Quality</th>
-            <th data-sort="territory">Neighbourhood</th>
-            <th data-sort="stake">Cost to back</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody id="catBody"></tbody>
-      </table>
-    </div>
+    <div class="cat-list" id="catList"></div>
     <div class="pager">
       <button type="button" class="ghost" id="prev">Prev</button>
       <span id="pageLabel" class="sub">Page 1</span>
       <button type="button" class="ghost" id="next">Next</button>
     </div>
   </div>
+  <div id="catFile" hidden>
+    <div class="sheet-bar">
+      <button type="button" class="sheet-close" id="catFileClose" aria-label="Close">×</button>
+    </div>
+    <div id="catCard"></div>
+  </div>
   <div id="toast" hidden></div>
+  <script src="js/lvfe-assets.js"></script>
   <script src="js/claim-rules.js"></script>
+  <script src="js/dossier.js"></script>
+  <script src="js/track-guide.js"></script>
   <script src="nairacoin/protocol.js"></script>
   <script src="nairacoin/iou-ledger.js"></script>
   <script src="nairacoin/rpc-stub.js"></script>
   <script src="js/nairacoin.js"></script>
+  <script src="js/place-ledger.js"></script>
   <script src="js/catalog.js"></script>
 </body>
 </html>

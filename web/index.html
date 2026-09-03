@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Lvfe — Enugu catalog</title>
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.1/dist/maplibre-gl.css" />
   <link rel="stylesheet" href="map-3d.css" />
@@ -13,20 +13,68 @@
       --ink: #e8edf4;
       --muted: #8b98a8;
     }
-    html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); font: 14px/1.4 system-ui, sans-serif; }
+    html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); font: 14px/1.4 system-ui, sans-serif; overflow: hidden; text-size-adjust: 100%; -webkit-text-size-adjust: 100%; }
+    [hidden] { display: none !important; }
     #map { position: absolute; inset: 0; }
-    .panel {
-      position: absolute; z-index: 3; top: 12px; left: 12px;
-      background: color-mix(in srgb, var(--panel) 92%, transparent);
-      backdrop-filter: blur(8px);
-      border: 1px solid #2a3340;
-      border-radius: 10px;
-      padding: 12px 14px;
-      max-width: 280px;
+    .maplibregl-ctrl-logo,
+    .maplibregl-ctrl-attrib,
+    .maplibregl-compact,
+    .maplibregl-ctrl-attrib-inner,
+    .maplibregl-ctrl-zoom-in,
+    .maplibregl-ctrl-zoom-out,
+    .maplibregl-ctrl-geolocate { display: none !important; }
+    .top-chrome {
+      position: absolute; z-index: 4; top: calc(10px + env(safe-area-inset-top, 0px));
+      left: 12px; right: 12px;
     }
-    h1 { font-size: 15px; margin: 0 0 4px; font-weight: 650; }
+    .search-pill {
+      display: flex; align-items: center; gap: 8px;
+      background: #fff; color: #202124;
+      border-radius: 24px;
+      box-shadow: 0 1px 3px rgba(0,0,0,.24), 0 4px 8px rgba(0,0,0,.12);
+      padding: 0 6px 0 14px; height: 48px;
+    }
+    .search-pill input {
+      flex: 1; border: 0; background: transparent; outline: none;
+      font: 16px/1.3 system-ui, sans-serif; color: #202124; min-width: 0;
+    }
+    .search-pill input::placeholder { color: #5f6368; }
+    .search-pill .more {
+      width: 40px; height: 40px; border: 0; background: transparent;
+      border-radius: 50%; color: #3c4043; font-size: 20px; cursor: pointer;
+    }
+    .search-hits, .more-menu, .filter-pop {
+      margin-top: 8px;
+      background: #fff; color: #202124;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.2);
+      overflow: auto; max-height: 40vh;
+    }
+    .search-hits button, .more-menu button, .more-menu a {
+      display: block; width: 100%; text-align: left;
+      background: none; border: 0; border-bottom: 1px solid #eee;
+      padding: 12px 14px; font: inherit; color: inherit; cursor: pointer;
+      text-decoration: none;
+    }
+    .search-hits button:last-child, .more-menu *:last-child { border-bottom: 0; }
+    .more-menu .menu-who {
+      padding: 12px 14px 8px; font-size: 12px; color: #5f6368; border-bottom: 1px solid #eee;
+    }
+    .more-menu .menu-who strong { color: #202124; }
+    .more-menu .menu-switch { padding: 8px 14px 10px; border-bottom: 1px solid #eee; }
+    .more-menu .menu-switch label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #5f6368; }
+    .more-menu .menu-switch select {
+      font: inherit; color: #202124; min-height: 40px; border: 1px solid #dadce0; border-radius: 8px; padding: 6px 8px;
+    }
+    .more-menu .menu-check {
+      display: flex; align-items: center; gap: 8px; padding: 12px 14px;
+      border-bottom: 1px solid #eee; color: #202124; cursor: pointer; margin: 0;
+    }
+    .search-hits strong { display: block; font-size: 14px; }
+    .search-hits span { color: #5f6368; font-size: 12px; }
+    .filter-pop { padding: 10px 14px 12px; }
+    .filter-pop label { color: #202124; }
     .sub { color: var(--muted); font-size: 12px; margin-bottom: 10px; }
-    .panel a { color: #9ecbff; }
     .who { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
     .who button.link {
       background: none; border: 0; color: #9ecbff; cursor: pointer;
@@ -45,39 +93,285 @@
     .poly { width: 12px; height: 8px; border-radius: 2px; border: 2px solid; background: transparent; }
     .count { margin-left: auto; color: var(--muted); font-variant-numeric: tabular-nums; }
     .row { display: flex; align-items: center; gap: 8px; }
-    .hud {
-      position: absolute; z-index: 3; left: 12px; bottom: 36px;
-      width: min(320px, calc(100% - 24px));
-      background: color-mix(in srgb, var(--panel) 92%, transparent);
-      backdrop-filter: blur(8px);
-      border: 1px solid #2a3340;
-      border-radius: 10px;
-      padding: 10px 12px;
-      max-height: 46vh;
-      overflow: auto;
+    .fabs {
+      position: absolute; z-index: 3;
+      right: max(12px, env(safe-area-inset-right, 0px));
+      bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+      display: flex; flex-direction: column; gap: 10px;
     }
-    .hud-wallet { margin-bottom: 8px; }
-    #arCam, #arCanvas {
+    .fab {
+      width: 48px; height: 48px; min-width: 48px; min-height: 48px;
+      border-radius: 50%; border: 0;
+      background: #fff; color: #202124;
+      box-shadow: 0 1px 3px rgba(0,0,0,.3), 0 2px 8px rgba(0,0,0,.18);
+      font: 650 12px/1 system-ui, sans-serif; cursor: pointer;
+    }
+    .fab[aria-pressed="true"] { background: #1a73e8; color: #fff; }
+    .sheet {
+      position: absolute; z-index: 12; left: 0; right: 0; bottom: 0;
+      background: var(--panel);
+      border-radius: 16px 16px 0 0;
+      box-shadow: 0 -4px 24px rgba(0,0,0,.35);
+      display: none;
+      height: 0;
+      overflow: hidden;
+      transform: translateY(100%);
+      pointer-events: none;
+      visibility: hidden;
+      padding-bottom: env(safe-area-inset-bottom, 8px);
+      touch-action: pan-y;
+    }
+    .sheet.collapsed,
+    .sheet[hidden] {
+      display: none !important;
+      height: 0 !important;
+      transform: translateY(100%);
+      pointer-events: none !important;
+      visibility: hidden !important;
+    }
+    .sheet.peek, .sheet.half, .sheet.full, .sheet.doc {
+      display: block;
+      pointer-events: auto;
+      visibility: visible;
+      transform: translateY(0);
+    }
+    .sheet.peek { height: 76px; max-height: 76px; overflow: hidden; }
+    .sheet.half { height: 46vh; max-height: 46vh; overflow: hidden; }
+    .sheet.full { height: 72vh; max-height: 72vh; overflow: auto; }
+    .sheet.doc {
+      height: 70vh; max-height: 70vh; overflow: hidden;
+      background: #f3ead6;
+      color: #2a241c;
+      border-radius: 0 14px 0 0;
+      box-shadow: 0 -6px 28px rgba(0,0,0,.28);
+    }
+    .sheet-bar {
+      display: flex; align-items: center; justify-content: center;
+      position: relative; min-height: 36px;
+    }
+    .sheet-handle {
+      display: block; width: 36px; height: 4px; margin: 8px auto 6px;
+      background: #5a6573; border-radius: 4px; border: 0; padding: 0;
+    }
+    .sheet-close {
+      position: absolute; right: 4px; top: 0;
+      width: 44px; height: 44px; border: 0; background: transparent;
+      color: #e8edf4; font-size: 28px; line-height: 1; cursor: pointer;
+    }
+    .sheet-peek {
+      display: flex; justify-content: space-between; align-items: baseline;
+      gap: 8px; padding: 0 16px 10px; font-size: 13px; color: var(--muted);
+    }
+    .sheet-peek strong { color: #2ecc71; }
+    .sheet-scroll { padding: 0 16px 16px; overflow: auto; max-height: 62vh; }
+    .sheet.collapsed .sheet-scroll,
+    .sheet.peek .sheet-scroll { display: none; }
+    .sheet.half #nearbyBlock,
+    .sheet.half #myPlacesWrap { display: none; }
+    .sheet.doc .sheet-handle { background: #c4b49a; }
+    .sheet.doc .sheet-close { color: #3a3228; }
+    .sheet.doc .sheet-peek,
+    .sheet.doc #whoLine,
+    .sheet.doc #ncNote,
+    .sheet.doc #factionLine,
+    .sheet.doc #nearbyBlock,
+    .sheet.doc #myPlacesWrap { display: none !important; }
+    .sheet.doc .sheet-scroll {
+      display: block;
+      padding: 0;
+      max-height: none;
+      height: calc(70vh - 36px);
+      overflow: hidden;
+      background: #f3ead6;
+    }
+    .sheet.doc #placeCard { height: 100%; }
+    .dossier {
+      display: flex; flex-direction: column; height: 100%;
+      background: #f7f1e4; color: #2a241c;
+    }
+    .dossier-head { padding: 0 16px 10px; border-bottom: 1px solid #d8cbb4; }
+    .dossier-mark {
+      display: block; font-size: 11px; letter-spacing: 0.14em;
+      text-transform: uppercase; color: #8a7a62; font-weight: 650;
+    }
+    .dossier-head h2 {
+      margin: 4px 40px 0 0; font-size: 20px; line-height: 1.25;
+      font-weight: 700; color: #1f1a14;
+    }
+    .dossier-tabs {
+      display: flex; gap: 2px; padding: 6px 8px 0;
+      background: #e6dcc6; border-bottom: 1px solid #c9bba3;
+    }
+    .dossier-tabs button {
+      flex: 1; min-height: 40px; border: 0; background: transparent;
+      color: #5c5346; font: 650 12px/1 system-ui, sans-serif;
+      border-radius: 8px 8px 0 0; padding: 8px 2px; cursor: pointer;
+    }
+    .dossier-tabs button[aria-selected="true"] {
+      background: #f7f1e4; color: #1f1a14;
+    }
+    .dossier-pages { flex: 1; min-height: 0; overflow: hidden; }
+    .dossier-page {
+      display: none; padding: 16px 16px 20px; height: 100%;
+      overflow: auto; -webkit-overflow-scrolling: touch;
+    }
+    .dossier-page.active { display: block; }
+    .dossier-page .row-label {
+      margin: 12px 0 2px; font-size: 11px; letter-spacing: 0.06em;
+      text-transform: uppercase; color: #8a7a62; font-weight: 650;
+    }
+    .dossier-page .row-label:first-child { margin-top: 0; }
+    .dossier-page .row-value { margin: 0; font-size: 16px; color: #1f1a14; }
+    .dossier-page .note { margin: 10px 0 0; font-size: 14px; color: #4a4338; }
+    .dossier-photo {
+      display: flex; align-items: center; justify-content: center;
+      min-height: 72px; margin: 0 0 8px; border-radius: 4px;
+      background: #e8dcc6; color: #6d6250; font-size: 13px;
+    }
+    .sheet.doc button.claim { margin-top: 16px; }
+    .dossier-head { position: relative; }
+    .track-toggle {
+      position: absolute; right: 48px; top: 0;
+      min-height: 36px; padding: 6px 12px; border: 0; border-radius: 18px;
+      background: #1a73e8; color: #fff; font: 650 13px/1 system-ui, sans-serif;
+      cursor: pointer;
+    }
+    .track-toggle[aria-pressed="true"] { background: #c0392b; }
+    .pay-wait { color: #8a5a16; }
+    #trackChip {
+      margin-top: 8px;
+      display: flex; align-items: center; gap: 8px;
+      background: #fff8e1; color: #3a2a10;
+      border: 2px solid #f4c430; border-radius: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.18);
+      padding: 8px 10px 8px 14px;
+    }
+    #trackChip[hidden] { display: none !important; }
+    #trackChip .track-copy { flex: 1; min-width: 0; }
+    #trackChip strong { display: block; font-size: 14px; }
+    #trackChip span { display: block; font-size: 12px; color: #5c4a28; }
+    #trackChip button {
+      border: 0; border-radius: 16px; min-height: 36px; padding: 6px 10px;
+      font: 650 12px/1 system-ui, sans-serif; cursor: pointer;
+      background: #3a2a10; color: #fff8e1;
+    }
+    #trackChip #trackMute[aria-pressed="true"] { background: #8a7a62; }
+    #arTrackHud {
+      position: absolute; z-index: 4;
+      left: 68px; right: 16px;
+      top: calc(14px + env(safe-area-inset-top, 0px));
+      background: rgba(14,17,22,0.78);
+      color: #fff8e1; border-radius: 12px; padding: 8px 12px;
+      pointer-events: none;
+      text-shadow: 0 1px 3px #000;
+    }
+    #arTrackHud[hidden] { display: none !important; }
+    #arTrackHud strong { display: block; font-size: 22px; font-variant-numeric: tabular-nums; }
+    #arTrackHud span { display: block; font-size: 14px; color: #f4c430; }
+    #arStage {
+      display: none;
+      position: absolute; inset: 0; z-index: 8;
+      background: #000;
+      pointer-events: auto;
+    }
+    body.ar-on #arStage { display: block; z-index: 16; }
+    body.ar-on #map { visibility: hidden; }
+    html.ar-native, body.ar-native { background: transparent !important; }
+    body.ar-native #arStage { background: transparent !important; }
+    body.ar-native #arCam { display: none !important; }
+    body.ar-native #map { display: none !important; }
+    body.ar-on .top-chrome,
+    body.ar-on #btn3d,
+    body.ar-on #btnLoc,
+    body.ar-on #btnAr,
+    body.ar-on .fabs { display: none !important; }
+    body.ar-on #sheet { z-index: 12; }
+    body.ar-on #sheet.peek,
+    body.ar-on #sheet.half,
+    body.ar-on #sheet.full,
+    body.ar-on #sheet.doc { z-index: 20; }
+    body.ar-on #toast { z-index: 21; }
+    body.ar-on #identityGate { z-index: 22; }
+    /* Viewfinder is the <video>. Do not cover with WebGL on Android WebView. */
+    #arCam {
       position: absolute; inset: 0; z-index: 1;
       width: 100%; height: 100%; object-fit: cover;
+      opacity: 1; background: #000; pointer-events: none;
+    }
+    #arThree {
+      display: none !important;
+      position: absolute; inset: 0; z-index: 1;
+      width: 100%; height: 100%;
       background: #000;
+      pointer-events: none;
     }
-    #arCanvas { z-index: 2; pointer-events: none; }
-    #arLayer {
-      position: absolute; z-index: 3; top: 12px; right: 12px;
-      width: min(220px, calc(100% - 24px));
-      max-height: 40vh; overflow: auto;
-      background: color-mix(in srgb, var(--panel) 88%, transparent);
-      border: 1px solid #2a3340; border-radius: 10px; padding: 8px 10px;
+    body.ar-canvas #arCam { opacity: 0; }
+    body.ar-canvas #arThree { display: block !important; }
+    #arPins {
+      position: absolute; inset: 0; z-index: 3;
+      pointer-events: none;
     }
-    body.ar-on #map { opacity: 0; pointer-events: none; }
-    .ar-pin {
-      display: block; width: 100%; text-align: left;
-      background: none; border: 0; border-top: 1px solid #2a3340;
-      color: inherit; padding: 8px 0; cursor: pointer; font: inherit;
+    #arPins .ar-pin {
+      position: absolute; left: 0; top: 0;
+      pointer-events: auto;
+      transform: translate(-50%, -118%);
+      min-width: 128px; max-width: 220px;
+      text-align: center;
+      background: rgba(14,17,22,0.88);
+      border: 0; border-radius: 12px;
+      color: #e8edf4; padding: 8px 12px; cursor: pointer; font: inherit;
+      box-shadow: 0 2px 10px rgba(0,0,0,.35);
     }
-    .ar-pin strong { display: block; font-size: 13px; }
-    .ar-pin span { color: var(--muted); font-size: 12px; }
+    #arPins .ar-pin strong { display: block; font-size: 14px; }
+    #arPins .ar-pin span { color: #b4c0cc; font-size: 12px; }
+    #arHint {
+      position: absolute; z-index: 4; left: 16px; right: 16px;
+      bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+      margin: 0; text-align: center;
+      color: #e8edf4; font-size: 14px;
+      text-shadow: 0 1px 4px #000;
+      pointer-events: none;
+    }
+    #arExit {
+      position: absolute; z-index: 5;
+      top: calc(10px + env(safe-area-inset-top, 0px));
+      left: 12px;
+      width: 48px; height: 48px; min-width: 48px; min-height: 48px;
+      border-radius: 50%; border: 0;
+      background: #fff; color: #202124;
+      box-shadow: 0 1px 3px rgba(0,0,0,.3), 0 2px 8px rgba(0,0,0,.18);
+      font: 400 28px/1 system-ui, sans-serif; cursor: pointer;
+      pointer-events: auto;
+    }
+    #arFail {
+      position: absolute; z-index: 15;
+      left: 12px; right: 12px;
+      top: calc(12px + env(safe-area-inset-top, 0px));
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 8px;
+      background: #161b22; color: #e8edf4;
+      border: 1px solid #2a3340; border-radius: 12px;
+      padding: 10px 6px 10px 14px;
+      font-size: 14px;
+    }
+    #arFail[hidden] { display: none !important; }
+    #arFailClose,
+    #satFailClose {
+      width: 44px; height: 44px; border: 0; background: transparent;
+      color: #e8edf4; font-size: 28px; line-height: 1; cursor: pointer;
+    }
+    #satFail {
+      position: absolute; z-index: 15;
+      left: 12px; right: 12px;
+      top: calc(68px + env(safe-area-inset-top, 0px));
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 8px;
+      background: #161b22; color: #e8edf4;
+      border: 1px solid #2a3340; border-radius: 12px;
+      padding: 10px 6px 10px 14px;
+      font-size: 14px;
+    }
+    #satFail[hidden] { display: none !important; }
     .assets { font-size: 12px; }
     .assets li { margin: 4px 0; }
     .assets a { color: #9ecbff; }
@@ -97,48 +391,49 @@
     .near-jump strong { display: block; font-size: 13px; }
     .near-jump span { color: var(--muted); font-size: 12px; }
     button.claim {
-      background: #2ecc71; color: #0e1116; border: 0;
-      border-radius: 6px; padding: 8px 10px; font-weight: 650;
-      cursor: pointer; font: inherit;
+      background: #1a73e8; color: #fff; border: 0;
+      border-radius: 24px; min-height: 48px; padding: 12px 14px; font-weight: 650;
+      cursor: pointer; font: inherit; width: 100%;
     }
     button.claim:disabled, button.claimed {
       background: #2a3340; color: #8b98a8; cursor: not-allowed;
     }
-    .attrib {
-      position: absolute; z-index: 2; bottom: 8px; left: 12px;
-      font-size: 11px; color: #c5ced8;
-      background: #161b22cc; padding: 4px 8px; border-radius: 4px;
-    }
-    .attrib a { color: #9ecbff; }
-    .maplibregl-popup-content { background: #161b22; color: #e8edf4; border-radius: 8px; }
-    .maplibregl-popup-tip { border-top-color: #161b22; }
-    .popup h2 { margin: 0 0 2px; font-size: 14px; }
-    .popup .pts { color: #2ecc71; font-size: 16px; font-weight: 650; margin: 4px 0 6px; }
-    .popup p { margin: 0; color: #8b98a8; font-size: 12px; }
+    .popup h2, #placeCard h2 { margin: 0 0 2px; font-size: 18px; line-height: 1.25; font-weight: 650; }
+    .popup .pts { color: #2ecc71; font-size: 15px; font-weight: 650; margin: 4px 0 6px; }
+    .popup p { margin: 0; color: #8b98a8; font-size: 13px; }
     .popup .warn { color: #f39c12; margin-top: 8px; }
     .popup .ok { color: #2ecc71; margin-top: 8px; }
     .popup button.claim { margin-top: 8px; width: 100%; }
     .popup .own { color: #e8edf4; margin-top: 4px; }
     .visit-form { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
     .visit-form .photo-in { font-size: 12px; color: var(--muted); width: 100%; }
-    .stake-row { display: flex; gap: 6px; align-items: stretch; }
+    .stake-row { display: flex; flex-direction: column; gap: 8px; align-items: stretch; }
     .stake-row input[type="number"] {
-      width: 92px; background: #0e1116; color: inherit;
-      border: 1px solid #2a3340; border-radius: 6px; padding: 8px; font: inherit;
+      width: 100%; min-height: 44px; background: #0e1116; color: inherit;
+      border: 1px solid #2a3340; border-radius: 8px; padding: 8px; font: inherit;
     }
-    .stake-row button.claim { flex: 1; margin-top: 0; }
+    .stake-row button.claim { flex: 1; margin-top: 0; width: 100%; min-height: 48px; }
     .meta { font-size: 12px; color: var(--muted); }
     #identityGate {
-      position: absolute; inset: 0; z-index: 4;
-      background: #0e1116cc;
-      display: flex; align-items: center; justify-content: center;
+      position: absolute; z-index: 6;
+      left: 12px; right: 12px; top: auto;
+      bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+      background: transparent;
+      display: none;
+      pointer-events: none;
     }
-    #identityGate[hidden] { display: none; }
+    #identityGate:not([hidden]) {
+      display: block;
+      pointer-events: auto;
+    }
     #identityGate .card {
-      background: var(--panel); border: 1px solid #2a3340; border-radius: 10px;
-      padding: 16px; width: min(320px, calc(100% - 32px));
+      position: relative;
+      background: #161b22; color: #e8edf4;
+      border: 1px solid #2a3340; border-radius: 16px;
+      padding: 16px; width: 100%; max-width: 360px; margin: 0 auto;
+      box-shadow: 0 4px 24px rgba(0,0,0,.4);
     }
-    #identityGate h2 { font-size: 16px; margin: 0 0 6px; }
+    #identityGate h2 { font-size: 16px; margin: 0 40px 6px 0; }
     #identityGate p { color: var(--muted); font-size: 12px; margin: 0 0 12px; }
     #identityGate label { display: flex; flex-direction: column; align-items: stretch; gap: 4px; margin: 0 0 10px; cursor: default; }
     #identityGate input, #identityGate select {
@@ -147,15 +442,14 @@
     }
     #identityGate button.claim { width: 100%; }
     #toast {
-      position: absolute; z-index: 3; left: 50%; bottom: 28px;
+      position: absolute; z-index: 5; left: 50%; bottom: 72px;
       transform: translateX(-50%);
       background: #1e2833; color: var(--ink);
       border: 1px solid #2a3340; border-radius: 8px;
       padding: 8px 12px; font-size: 13px; max-width: 80%;
       pointer-events: none;
     }
-    #toast[hidden] { display: none; }
-    #arCam[hidden], #arLayer[hidden], #arCanvas[hidden] { display: none; }
+    #arStage[hidden] { display: none !important; }
     #mapFail {
       position: absolute; z-index: 5; left: 50%; top: 42%;
       transform: translate(-50%, -50%);
@@ -164,53 +458,121 @@
       padding: 12px 16px; max-width: 280px; text-align: center;
       font-size: 13px; line-height: 1.4;
     }
-    #mapFail[hidden] { display: none; }
+    #about {
+      position: absolute; z-index: 6; inset: 0;
+      background: #0e1116cc;
+      display: flex; align-items: center; justify-content: center;
+      pointer-events: auto;
+    }
+    #about[hidden] { display: none !important; pointer-events: none !important; }
+    #about .card {
+      position: relative;
+      background: #161b22; color: #e8edf4;
+      border: 1px solid #2a3340; border-radius: 10px;
+      padding: 16px; width: 100%; max-width: 320px; margin: 12px;
+    }
+    #about h2 { font-size: 16px; margin: 0 0 8px; }
+    #about p { color: var(--muted); font-size: 12px; margin: 0 0 12px; }
+    .maplibregl-popup { display: none !important; }
   </style>
 </head>
 <body>
   <div id="map"></div>
-  <video id="arCam" playsinline autoplay muted hidden></video>
-  <canvas id="arCanvas" hidden></canvas>
-  <div id="arLayer" hidden>
-    <strong>Nearby places</strong>
-    <div id="arPins">Point the camera at Enugu.</div>
+  <div id="arStage" hidden>
+    <video id="arCam" playsinline webkit-playsinline autoplay muted></video>
+    <canvas id="arThree"></canvas>
+    <div id="arPins"></div>
+    <p id="arHint" hidden>No places within 80 m</p>
+    <div id="arTrackHud" hidden>
+      <strong id="arTrackM">Waiting for GPS</strong>
+      <span id="arTrackHead">Walk toward the marked place</span>
+    </div>
+    <button type="button" id="arExit" aria-label="Map">×</button>
   </div>
-  <div class="panel">
-    <h1>Lvfe · Enugu</h1>
-    <div class="sub">Walk up. Photo + put NairaCoin into the place.</div>
-    <details class="filters">
-      <summary>Filters</summary>
+  <div id="arFail" hidden>
+    <span id="arFailMsg">Camera couldn’t start</span>
+    <button type="button" id="arFailClose" aria-label="Close">×</button>
+  </div>
+  <div id="satFail" hidden>
+    <span id="satFailMsg">Satellite couldn’t load</span>
+    <button type="button" id="satFailClose" aria-label="Close">×</button>
+  </div>
+  <div class="top-chrome">
+    <div class="search-pill">
+      <input id="searchQ" type="search" placeholder="Search Enugu places" autocomplete="off" />
+      <button type="button" class="more" id="btnMore" aria-label="Profile">⋮</button>
+    </div>
+    <div id="searchHits" class="search-hits" hidden></div>
+    <div id="moreMenu" class="more-menu" hidden>
+      <div class="menu-who" id="menuWho">Playing as guest</div>
+      <div class="menu-switch" id="menuSwitch" hidden>
+        <label>Switch profile
+          <select id="profileSelect"></select>
+        </label>
+      </div>
+      <a href="rules.html">How to play</a>
+      <a href="assets.html">My assets</a>
+      <a href="catalog.html">Catalog</a>
+      <button type="button" id="btnFilters">Filters</button>
+      <label class="menu-check"><input type="checkbox" id="satHybrid" checked /> Street names on satellite</label>
+      <button type="button" data-id-edit="1">Your name</button>
+      <button type="button" id="btnNewProfile">Add another name</button>
+      <button type="button" id="btnAbout">About</button>
+    </div>
+    <div id="trackChip" hidden>
+      <div class="track-copy">
+        <strong id="trackName">This place</strong>
+        <span id="trackMeta">Tap GPS to guide</span>
+      </div>
+      <button type="button" id="trackMute">Mute</button>
+      <button type="button" id="trackStop">Stop</button>
+    </div>
+    <div id="filterPop" class="filter-pop" hidden>
       <label class="row"><input type="checkbox" id="qA" checked /><span class="swatch" style="background:#2ecc71"></span> A — photo <span class="count" id="nA">0</span></label>
       <label class="row"><input type="checkbox" id="qB" checked /><span class="swatch" style="background:#3498db"></span> B — named <span class="count" id="nB">0</span></label>
       <label class="row"><input type="checkbox" id="qC" checked /><span class="swatch" style="background:#f39c12"></span> C — needs a name <span class="count" id="nC">0</span></label>
       <label class="row"><input type="checkbox" id="qD" checked /><span class="swatch" style="background:#e74c3c"></span> D — unknown building <span class="count" id="nD">0</span></label>
       <label class="row"><input type="checkbox" id="qOut" checked /><span class="swatch" style="background:#7f8c8d"></span> Unclaimed <span class="count" id="nOut">0</span></label>
       <label class="row"><input type="checkbox" id="showPoly" checked /><span class="poly" style="border-color:#2ecc71"></span> Neighbourhoods</label>
-    </details>
-    <label class="row"><input type="checkbox" id="toggleAr" /><span class="swatch" style="background:#e67e22"></span> AR overlay</label>
-    <label class="row"><input type="checkbox" id="toggle3d" checked /><span class="cube"></span> 3D</label>
-    <div class="sub"><a href="catalog.html">Catalog</a> · <a href="ar.html">AR</a></div>
+    </div>
   </div>
-  <div class="hud" id="hud">
-    <div class="hud-wallet">
-      <div class="who" id="whoLine">Name needed to back a place.</div>
-      <div class="score">NairaCoin <strong id="ncTotal">0</strong></div>
-      <p class="iou-note" id="ncNote">demo faucet</p>
-      <p class="iou-note" id="factionLine" hidden></p>
+  <input type="checkbox" id="toggleAr" hidden />
+  <input type="checkbox" id="toggle3d" hidden />
+  <div class="fabs" id="fabs">
+    <button type="button" class="fab" id="btnSat" aria-pressed="false" aria-label="Satellite">SAT</button>
+    <button type="button" class="fab" id="btn3d" aria-pressed="false" aria-label="3D">3D</button>
+    <button type="button" class="fab" id="btnAr" aria-pressed="false" aria-label="AR">AR</button>
+    <button type="button" class="fab" id="btnLoc" aria-label="My location">GPS</button>
+  </div>
+  <div class="sheet collapsed" id="sheet" hidden>
+    <div class="sheet-bar">
+      <button type="button" class="sheet-handle" id="sheetHandle" aria-label="Close place"></button>
+      <button type="button" class="sheet-close" id="sheetClose" aria-label="Close">×</button>
     </div>
-    <details class="filters" id="myPlacesWrap">
-      <summary>My places</summary>
-      <ul class="assets" id="myPlaces">None yet.</ul>
-      <p class="iou-note"><a href="catalog.html">World catalog</a> · on this phone</p>
-    </details>
-    <div class="hud-top">
-      <strong>Nearby</strong>
+    <div class="sheet-peek">
       <span id="gpsLabel">Location off</span>
+      <span>NairaCoin <strong id="ncTotal">0</strong></span>
     </div>
-    <div id="nearbyList">Turn on location to back nearby places.</div>
+    <div class="sheet-scroll">
+      <div class="who" id="whoLine">Name needed to back a place.</div>
+      <p class="iou-note" id="ncNote" hidden>demo faucet</p>
+      <p class="iou-note" id="factionLine" hidden></p>
+      <div id="placeCard" hidden></div>
+      <div id="nearbyBlock">
+        <div class="hud-top">
+          <strong>Nearby</strong>
+        </div>
+        <div id="nearbyList">Tap GPS to find nearby places.</div>
+      </div>
+      <details class="filters" id="myPlacesWrap">
+        <summary>My places</summary>
+        <ul class="assets" id="myPlaces">None yet.</ul>
+      </details>
+    </div>
   </div>
   <div id="identityGate" hidden>
     <form class="card" id="identityForm">
+      <button type="button" class="sheet-close" id="identityClose" aria-label="Close">×</button>
       <h2>Who’s walking?</h2>
       <p>Pick a unique name. Faction is optional — without one, places you own stay Unclaimed.</p>
       <label>Name <input id="idName" name="playerName" required maxlength="32" autocomplete="username" /></label>
@@ -226,15 +588,27 @@
       <button type="submit" class="claim">Enter Enugu</button>
     </form>
   </div>
-  <div class="attrib">
-    © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>
-    · tiles <a href="https://openfreemap.org/">OpenFreeMap</a>
+  <div id="about" hidden>
+    <div class="card">
+      <h2>About Lvfe</h2>
+      <p>Walk up. Photo + put NairaCoin into the place. Highest backer owns.</p>
+      <p>Map data © OpenStreetMap contributors, ODbL. Streets: OpenFreeMap. Satellite: Esri World Imagery (Esri, Maxar, Earthstar Geographics). Terrain: AWS / Mapzen.</p>
+      <button type="button" class="claim" id="aboutClose">Close</button>
+    </div>
   </div>
-  <div id="mapFail" hidden></div>
+  <div id="mapFail" hidden>
+    <p id="mapFailMsg"></p>
+    <button type="button" class="claim" id="mapFailClose">Close</button>
+  </div>
   <div id="toast" hidden></div>
   <script src="https://unpkg.com/maplibre-gl@5.6.1/dist/maplibre-gl.js"></script>
+  <script src="https://unpkg.com/three@0.160.1/build/three.min.js"></script>
   <script src="map-3d.js"></script>
+  <script src="js/lvfe-assets.js"></script>
   <script src="js/claim-rules.js"></script>
+  <script src="js/dossier.js"></script>
+  <script src="js/track-guide.js"></script>
+  <script src="js/satellite.js"></script>
   <script src="nairacoin/protocol.js"></script>
   <script src="nairacoin/iou-ledger.js"></script>
   <script src="nairacoin/rpc-stub.js"></script>
@@ -274,16 +648,406 @@
     const forcedPos = Number.isFinite(qLat) && Number.isFinite(qLon)
       ? { lat: qLat, lon: qLon, acc: Number.isFinite(parseFloat(params.get("acc"))) ? parseFloat(params.get("acc")) : 12 }
       : null;
-    const PLAYER_KEY = ((params.get("player") || "").trim() || "default").slice(0, 32);
+    let PLAYER_KEY = ((params.get("player") || "").trim() || "default").slice(0, 32);
+    let creatingProfile = false;
+    if (window.LvfeCatalogWallet && window.LvfeCatalogWallet.setPlayerKey) {
+      window.LvfeCatalogWallet.setPlayerKey(PLAYER_KEY);
+    }
 
     let map = null;
     let geo = null;
     let placesFc = EMPTY_FC;
     let userPos = forcedPos;
     window.lvfeUserPos = userPos;
-    let activePopup = null;
     let activePlaceId = null;
     let toastTimer = 0;
+    let sheetMode = "collapsed";
+    let pendingAr = false;
+    let pendingLoc = false;
+    let locGranted = false;
+    let camGranted = false;
+    let ignorePan = false;
+    let dossierTab = "place";
+    let dossierPlaceId = null;
+    let wantGeo = false;
+    const DOSSIER_TABS = window.LvfeDossier ? window.LvfeDossier.TABS : ["place", "mission", "land", "money", "wallet"];
+
+    function placeName(p) {
+      return window.LvfeRules.placeTitle(p);
+    }
+
+    function placeType(p) {
+      return window.LvfeRules.typeLabel(p);
+    }
+
+    function layoutFabs() {
+      const fabs = document.getElementById("fabs");
+      if (!fabs) return;
+      let bottom = 28;
+      if (sheetMode === "peek") bottom = 88;
+      else if (sheetMode === "half") bottom = Math.round(window.innerHeight * 0.46) + 12;
+      else if (sheetMode === "full" || sheetMode === "doc") {
+        bottom = Math.round(window.innerHeight * 0.70) + 12;
+      }
+      fabs.style.bottom = "calc(" + bottom + "px + env(safe-area-inset-bottom, 0px))";
+    }
+
+    function closeSheet() {
+      activePlaceId = null;
+      dossierPlaceId = null;
+      dossierTab = "place";
+      const card = document.getElementById("placeCard");
+      if (card) {
+        card.hidden = true;
+        card.innerHTML = "";
+      }
+      setSheet("collapsed");
+    }
+
+    function dossierPinned() {
+      if (dossierPlaceId) return true;
+      try {
+        return Boolean(window.LvfeTrack && window.LvfeTrack.get());
+      } catch (err) {
+        return false;
+      }
+    }
+
+    function setSheet(mode) {
+      const sheet = document.getElementById("sheet");
+      if (!sheet) return;
+      const next = mode === "hidden" ? "collapsed" : mode;
+      sheetMode = next;
+      sheet.classList.remove("collapsed", "peek", "half", "full", "doc");
+      sheet.classList.add(next);
+      if (next === "collapsed") {
+        sheet.hidden = true;
+        sheet.setAttribute("aria-hidden", "true");
+      } else {
+        sheet.hidden = false;
+        sheet.removeAttribute("aria-hidden");
+      }
+      layoutFabs();
+    }
+
+    function hideMenus() {
+      const hits = document.getElementById("searchHits");
+      const more = document.getElementById("moreMenu");
+      const filters = document.getElementById("filterPop");
+      if (hits) hits.hidden = true;
+      if (more) more.hidden = true;
+      if (filters) filters.hidden = true;
+    }
+
+    function renderSearchHits(q) {
+      const box = document.getElementById("searchHits");
+      if (!box) return;
+      const needle = String(q || "").trim().toLowerCase();
+      if (!needle) {
+        box.hidden = true;
+        box.innerHTML = "";
+        return;
+      }
+      const hits = [];
+      for (const f of placesFc.features) {
+        const p = f.properties || {};
+        const name = placeName(p);
+        if (name.toLowerCase().indexOf(needle) === -1 && String(p.catalog_type || "").indexOf(needle) === -1) continue;
+        hits.push(f);
+        if (hits.length >= 8) break;
+      }
+      if (!hits.length) {
+        box.innerHTML = "<button type='button' disabled>No places</button>";
+        box.hidden = false;
+        return;
+      }
+      box.innerHTML = hits.map((f) => {
+        const p = f.properties || {};
+        return `<button type="button" data-jump="${esc(p.id)}"><strong>${esc(placeName(p))}</strong><span>${esc(placeType(p))}</span></button>`;
+      }).join("");
+      box.hidden = false;
+    }
+
+    function nativeFlag(name) {
+      try {
+        if (!window.LvfeNative || typeof window.LvfeNative[name] !== "function") return false;
+        const v = window.LvfeNative[name]();
+        return v === true || v === 1 || v === "1" || v === "true";
+      } catch (err) {
+        return false;
+      }
+    }
+
+    function nativeHasLocation() {
+      locGranted = locGranted || nativeFlag("hasLocation");
+      return locGranted;
+    }
+
+    function nativeHasCamera() {
+      camGranted = camGranted || nativeFlag("hasCamera");
+      return camGranted;
+    }
+
+    function geoControlOn() {
+      const btn = document.querySelector(".maplibregl-ctrl-geolocate");
+      if (!btn) return Boolean(userPos);
+      return btn.classList.contains("maplibregl-ctrl-geolocate-active") ||
+        btn.classList.contains("maplibregl-ctrl-geolocate-waiting") ||
+        btn.classList.contains("maplibregl-ctrl-geolocate-background");
+    }
+
+    function startGeo() {
+      wantGeo = true;
+      if (!geo || forcedPos) return;
+      if (geoControlOn()) {
+        if (userPos && map) {
+          ignorePan = true;
+          map.easeTo({ center: [userPos.lon, userPos.lat], zoom: Math.max(map.getZoom(), 16) });
+          map.once("moveend", () => { ignorePan = false; });
+        }
+        return;
+      }
+      try { geo.trigger(); } catch (err) { /* not ready */ }
+    }
+
+    function requestLaunchPerms() {
+      if (window.LvfeNative && typeof window.LvfeNative.requestLaunchPerms === "function") {
+        window.LvfeNative.requestLaunchPerms();
+        return;
+      }
+      if (nativeHasLocation()) startGeo();
+    }
+
+    function askLocation() {
+      pendingLoc = true;
+      if (nativeHasLocation()) {
+        pendingLoc = false;
+        startGeo();
+        return;
+      }
+      if (window.LvfeNative && typeof window.LvfeNative.requestLocation === "function") {
+        window.LvfeNative.requestLocation();
+        return;
+      }
+      pendingLoc = false;
+      startGeo();
+    }
+
+    function probeBrowserPerms() {
+      if (!navigator.permissions || !navigator.permissions.query) return;
+      navigator.permissions.query({ name: "geolocation" }).then((s) => {
+        if (s.state === "granted") locGranted = true;
+        if (!userPos) {
+          setGpsLabel();
+          const box = document.getElementById("nearbyList");
+          if (box && !box.querySelector(".near-item")) box.textContent = nearbyEmptyCopy();
+        }
+      }).catch(() => {});
+      navigator.permissions.query({ name: "camera" }).then((s) => {
+        if (s.state === "granted") camGranted = true;
+      }).catch(() => {});
+    }
+
+    function nearbyEmptyCopy() {
+      if (userPos) return "Walk closer.";
+      if (nativeHasLocation()) return "Finding you…";
+      return "Waiting for location.";
+    }
+
+    function setArPressed(on) {
+      const btn = document.getElementById("btnAr");
+      const box = document.getElementById("toggleAr");
+      if (btn) btn.setAttribute("aria-pressed", on ? "true" : "false");
+      if (box && box.checked !== on) {
+        box.checked = on;
+        box.dispatchEvent(new Event("change"));
+      }
+    }
+
+    function bindChrome() {
+      if (bindChrome.done) return;
+      bindChrome.done = true;
+      const search = document.getElementById("searchQ");
+      if (search) {
+        search.addEventListener("input", () => {
+          document.getElementById("moreMenu").hidden = true;
+          document.getElementById("filterPop").hidden = true;
+          renderSearchHits(search.value);
+        });
+        search.addEventListener("focus", () => renderSearchHits(search.value));
+      }
+      document.getElementById("btnMore").addEventListener("click", (e) => {
+        e.stopPropagation();
+        const menu = document.getElementById("moreMenu");
+        const open = menu.hidden;
+        hideMenus();
+        if (open) paintProfileMenu();
+        menu.hidden = !open;
+      });
+      document.getElementById("btnFilters").addEventListener("click", () => {
+        hideMenus();
+        document.getElementById("filterPop").hidden = false;
+      });
+      document.getElementById("btnAbout").addEventListener("click", () => {
+        hideMenus();
+        document.getElementById("about").hidden = false;
+      });
+      document.getElementById("aboutClose").addEventListener("click", () => {
+        document.getElementById("about").hidden = true;
+      });
+      document.getElementById("sheetHandle").addEventListener("click", () => {
+        closeSheet();
+      });
+      const sheetClose = document.getElementById("sheetClose");
+      if (sheetClose) sheetClose.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        closeSheet();
+      });
+      const identClose = document.getElementById("identityClose");
+      if (identClose) identClose.addEventListener("click", (e) => {
+        e.preventDefault();
+        creatingProfile = false;
+        hideIdentityGate();
+      });
+      const mapFailClose = document.getElementById("mapFailClose");
+      if (mapFailClose) mapFailClose.addEventListener("click", () => clearMapFail());
+      bindSheetSwipe();
+      document.getElementById("btnLoc").addEventListener("click", () => {
+        askLocation();
+      });
+      const btnSat = document.getElementById("btnSat");
+      if (btnSat) btnSat.addEventListener("click", () => {
+        if (window.LvfeSatellite) window.LvfeSatellite.toggle();
+      });
+      const profileSelect = document.getElementById("profileSelect");
+      if (profileSelect) profileSelect.addEventListener("change", () => {
+        const v = profileSelect.value;
+        if (!v) return;
+        switchPlayer(v);
+      });
+      const btnNew = document.getElementById("btnNewProfile");
+      if (btnNew) btnNew.addEventListener("click", () => {
+        hideMenus();
+        creatingProfile = true;
+        document.getElementById("idName").value = "";
+        document.getElementById("idFaction").value = "";
+        document.getElementById("identityGate").hidden = false;
+      });
+      document.getElementById("btn3d").addEventListener("click", () => {
+        const box = document.getElementById("toggle3d");
+        const pitched = map && typeof map.getPitch === "function" && map.getPitch() > 1;
+        box.checked = !(pitched || box.checked);
+        box.dispatchEvent(new Event("change"));
+      });
+      document.getElementById("btnAr").addEventListener("click", () => {
+        const box = document.getElementById("toggleAr");
+        if (box.checked) {
+          setArPressed(false);
+          return;
+        }
+        if (nativeHasCamera()) {
+          pendingAr = false;
+          setArPressed(true);
+          return;
+        }
+        pendingAr = true;
+        if (window.LvfeNative && typeof window.LvfeNative.requestCamera === "function") {
+          window.LvfeNative.requestCamera();
+        } else {
+          setArPressed(true);
+          pendingAr = false;
+        }
+      });
+      window.lvfeOnNativePerms = function (p) {
+        if (p && p.loc) locGranted = true;
+        if (p && p.cam) camGranted = true;
+        if (p && p.loc && !forcedPos) {
+          pendingLoc = false;
+          startGeo();
+        }
+        if (p && p.cam && pendingAr) {
+          pendingAr = false;
+          setArPressed(true);
+        } else if (pendingAr && p && !p.cam) {
+          pendingAr = false;
+        }
+        if (!userPos) setGpsLabel();
+      };
+      requestLaunchPerms();
+      layoutFabs();
+      window.addEventListener("resize", layoutFabs);
+      if (typeof lvfeEnableAr === "function") {
+        lvfeEnableAr({
+          getNearby: nearbyFeatures,
+          onFail: null,
+        });
+      }
+      if (window.LvfeTrack) window.LvfeTrack.bindChip();
+      window.lvfeOnTrackChange = function () {
+        if (window.LvfeTrack) window.LvfeTrack.paintChip();
+        refreshOpenDossier();
+      };
+    }
+
+    function bindSheetSwipe() {
+      const sheet = document.getElementById("sheet");
+      if (!sheet || bindSheetSwipe.done) return;
+      bindSheetSwipe.done = true;
+      let y0 = 0;
+      let x0 = 0;
+      sheet.addEventListener("touchstart", (e) => {
+        if (!e.changedTouches || !e.changedTouches[0]) return;
+        y0 = e.changedTouches[0].clientY;
+        x0 = e.changedTouches[0].clientX;
+      }, { passive: true });
+      sheet.addEventListener("touchend", (e) => {
+        if (!e.changedTouches || !e.changedTouches[0]) return;
+        const dy = e.changedTouches[0].clientY - y0;
+        const dx = e.changedTouches[0].clientX - x0;
+        if (dy > 48 && dy > Math.abs(dx)) closeSheet();
+      }, { passive: true });
+    }
+
+    function setDossierTab(name) {
+      dossierTab = DOSSIER_TABS.indexOf(name) >= 0 ? name : "place";
+      const card = document.getElementById("placeCard");
+      if (!card) return;
+      card.querySelectorAll("[data-tab]").forEach((btn) => {
+        btn.setAttribute("aria-selected", btn.getAttribute("data-tab") === dossierTab ? "true" : "false");
+      });
+      card.querySelectorAll("[data-page]").forEach((page) => {
+        page.classList.toggle("active", page.getAttribute("data-page") === dossierTab);
+      });
+    }
+
+    function bindDossierNav() {
+      const card = document.getElementById("placeCard");
+      if (!card || bindDossierNav.done) return;
+      bindDossierNav.done = true;
+      card.addEventListener("click", (e) => {
+        const tab = e.target.closest("[data-tab]");
+        if (!tab || !card.contains(tab)) return;
+        e.preventDefault();
+        setDossierTab(tab.getAttribute("data-tab"));
+      });
+      let x0 = 0;
+      let y0 = 0;
+      card.addEventListener("touchstart", (e) => {
+        if (!e.changedTouches || !e.changedTouches[0]) return;
+        x0 = e.changedTouches[0].clientX;
+        y0 = e.changedTouches[0].clientY;
+      }, { passive: true });
+      card.addEventListener("touchend", (e) => {
+        if (!e.changedTouches || !e.changedTouches[0]) return;
+        const dx = e.changedTouches[0].clientX - x0;
+        const dy = e.changedTouches[0].clientY - y0;
+        if (Math.abs(dx) < 48 || Math.abs(dx) <= Math.abs(dy)) return;
+        const i = DOSSIER_TABS.indexOf(dossierTab);
+        if (dx < 0 && i < DOSSIER_TABS.length - 1) setDossierTab(DOSSIER_TABS[i + 1]);
+        else if (dx > 0 && i > 0) setDossierTab(DOSSIER_TABS[i - 1]);
+      }, { passive: true });
+    }
 
     function esc(s) {
       return String(s).replace(/[&<>"']/g, (c) => ({
@@ -293,6 +1057,10 @@
 
     function qualityLabel(q) {
       return window.LvfeRules.qualityLabel(q);
+    }
+
+    function qualityWords(q) {
+      return window.LvfeRules.qualityWords(q);
     }
 
     function areaLabel(p) {
@@ -340,6 +1108,71 @@
     }
 
     function identityKey(pk) { return "lvfe.identity." + (pk || PLAYER_KEY); }
+
+    function listIdentities() {
+      const out = [];
+      const seen = {};
+      try {
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (!k || k.indexOf("lvfe.identity.") !== 0) continue;
+          const pk = k.slice("lvfe.identity.".length);
+          const idn = loadIdentity(pk);
+          if (!idn || seen[pk]) continue;
+          seen[pk] = true;
+          out.push({ pk: pk, name: idn.playerName, factionId: idn.factionId || "" });
+        }
+      } catch (err) { /* */ }
+      if (!seen[PLAYER_KEY]) {
+        const idn = loadIdentity();
+        out.unshift({
+          pk: PLAYER_KEY,
+          name: (idn && idn.playerName) || (PLAYER_KEY !== "default" ? PLAYER_KEY : "guest"),
+          factionId: (idn && idn.factionId) || "",
+        });
+      }
+      return out;
+    }
+
+    function switchPlayer(pk) {
+      PLAYER_KEY = String(pk || "default").slice(0, 32);
+      if (window.LvfeCatalogWallet && window.LvfeCatalogWallet.setPlayerKey) {
+        window.LvfeCatalogWallet.setPlayerKey(PLAYER_KEY);
+      }
+      try {
+        const url = new URL(location.href);
+        if (PLAYER_KEY && PLAYER_KEY !== "default") url.searchParams.set("player", PLAYER_KEY);
+        else url.searchParams.delete("player");
+        history.replaceState({}, "", url.pathname + url.search + url.hash);
+      } catch (err) { /* */ }
+      renderHud();
+      refreshNearby();
+      refreshOpenDossier();
+      paintProfileMenu();
+    }
+
+    function paintProfileMenu() {
+      const idn = loadIdentity();
+      const who = document.getElementById("menuWho");
+      if (who) {
+        who.innerHTML = idn
+          ? "Playing as <strong>" + esc(idn.playerName) + "</strong>"
+          : (PLAYER_KEY !== "default"
+            ? "Profile <strong>" + esc(PLAYER_KEY) + "</strong>"
+            : "Set a name to back places");
+      }
+      const wrap = document.getElementById("menuSwitch");
+      const sel = document.getElementById("profileSelect");
+      const ids = listIdentities();
+      const show = ids.length > 1 || PLAYER_KEY !== "default" || Boolean(idn);
+      if (wrap) wrap.hidden = !show;
+      if (sel && show) {
+        sel.innerHTML = ids.map((row) =>
+          "<option value=\"" + esc(row.pk) + "\"" + (row.pk === PLAYER_KEY ? " selected" : "") + ">" +
+          esc(row.name) + (row.pk === PLAYER_KEY ? " (now)" : "") + "</option>"
+        ).join("");
+      }
+    }
 
     function loadIdentity(pk) {
       const o = lsGet(identityKey(pk), null);
@@ -430,11 +1263,12 @@
     }
 
     function placeById(id) {
-      return placesFc.features.find((f) => f.properties.id === id);
+      const sid = String(id == null ? "" : id);
+      return placesFc.features.find((f) => String((f.properties && f.properties.id) || "") === sid);
     }
 
     function isOwnable(p) {
-      return W.ownable(p.catalog_type);
+      return W.ownable(p && p.catalog_type);
     }
 
     function photoRequired(p, rec) {
@@ -516,6 +1350,7 @@
         rows.push({
           id: f.properties.id,
           name: f.properties.name,
+          catalog_type: f.properties.catalog_type,
           owned,
           stake: st ? Number(st.amount) || 0 : 0,
           value: Number(rec.value) || 0,
@@ -531,7 +1366,10 @@
       const idn = loadIdentity();
       document.getElementById("ncTotal").textContent = String(whole);
       const note = document.getElementById("ncNote");
-      note.textContent = W.faucetNote();
+      if (note) {
+        note.textContent = W.faucetNote();
+        note.hidden = true;
+      }
       const facLine = document.getElementById("factionLine");
       if (idn && idn.factionId) {
         facLine.hidden = false;
@@ -554,16 +1392,17 @@
       } else {
         list.innerHTML = assets.map((a) =>
           `<li><button type="button" class="near-jump" data-jump="${esc(a.id)}">` +
-          `<strong>${esc(a.name)}</strong> ${a.owned ? "owner" : "backed"} · you put in ${a.stake} · ${a.value} in this place` +
+          `<strong>${esc(placeName({ name: a.name, catalog_type: a.catalog_type }))}</strong> ${a.owned ? "owner" : "backed"} · you put in ${a.stake} · ${a.value} in this place` +
           `</button></li>`
         ).join("");
       }
+      paintProfileMenu();
     }
 
     function setGpsLabel() {
       const el = document.getElementById("gpsLabel");
       if (!userPos) {
-        el.textContent = "Location off";
+        el.textContent = nativeHasLocation() ? "Tap GPS" : "Location off";
         return;
       }
       const acc = Math.round(userPos.acc || 0);
@@ -616,9 +1455,9 @@
 
     function ownerLine(rec) {
       if (rec.ownerId) {
-        return `Owner ${esc(rec.ownerName || rec.ownerId)} · ${esc(factionLabel(rec.factionId))}`;
+        return `Owner ${esc(window.LvfeRules.wordOr(rec.ownerName, window.LvfeRules.noOwnerYet()))} · ${esc(factionLabel(rec.factionId))}`;
       }
-      return "No owner · Unclaimed";
+      return window.LvfeRules.noOwnerYet() + " · Unclaimed";
     }
 
     function placeValueLine(rec, p) {
@@ -626,16 +1465,34 @@
       return `${rec.value} NairaCoin in this place`;
     }
 
-    function visitFormHtml(p, rec, distOk, withMeta) {
+    function ctaButtonHtml(p, rec, distOk) {
       if (!isOwnable(p)) {
-        return `<p class="meta">${esc(farmMsg(p))}</p>`;
+        return `<button type="button" class="claim" disabled>Cannot be owned</button>`;
+      }
+      if (!distOk) {
+        return `<button type="button" class="claim" data-walk-closer="${esc(p.id)}">Walk closer</button>`;
       }
       const mine = rec.stakes[PLAYER_KEY];
       const first = !(mine && mine.amount > 0);
       const need = first ? minStake(p) : 1;
       const needPhoto = photoRequired(p, rec);
+      const bits = [`<form class="visit-form" data-place="${esc(p.id)}" data-kind="stake">`];
+      if (needPhoto) {
+        bits.push(`<input type="file" accept="image/*" capture="environment" class="photo-in" name="photo" />`);
+      } else if (mine && mine.photo) {
+        bits.push(`<span class="meta">Photo already in</span>`);
+      }
+      bits.push(`<div class="stake-row">` +
+        `<input type="number" name="amount" min="${need}" step="1" value="${first ? minStake(p) : need}" />` +
+        `<button type="submit" class="claim">${first ? "Back this place" : "Put more coins"}</button>` +
+        `</div></form>`);
+      return bits.join("");
+    }
+
+    function visitFormHtml(p, rec, distOk, withMeta) {
       const bits = [];
-      if (withMeta) {
+      if (isOwnable(p) && withMeta) {
+        const mine = rec.stakes[PLAYER_KEY];
         bits.push(
           `<p class="meta">${ownerLine(rec)}<br>${esc(propertyLabel(rec))}` +
           `<br>Cost to back this place: ${minStake(p)} NairaCoin · ${rec.value} NairaCoin in this place` +
@@ -646,20 +1503,11 @@
           (mine && mine.amount ? `<br>You put in ${mine.amount}` : "") +
           `</p>`
         );
-      } else if (mine && mine.amount) {
-        bits.push(`<p class="meta">You put in ${mine.amount}</p>`);
+      } else if (isOwnable(p)) {
+        const mine = rec.stakes[PLAYER_KEY];
+        if (mine && mine.amount) bits.push(`<p class="meta">You put in ${mine.amount}</p>`);
       }
-      if (!distOk) return bits.join("");
-      bits.push(`<form class="visit-form" data-place="${esc(p.id)}" data-kind="stake">`);
-      if (needPhoto) {
-        bits.push(`<input type="file" accept="image/*" capture="environment" class="photo-in" name="photo" />`);
-      } else if (mine && mine.photo) {
-        bits.push(`<span class="meta">Photo already in</span>`);
-      }
-      bits.push(`<div class="stake-row">` +
-        `<input type="number" name="amount" min="${need}" step="1" value="${first ? minStake(p) : need}" />` +
-        `<button type="submit" class="claim">${first ? "Back this place" : "Put more coins"}</button>` +
-        `</div></form>`);
+      bits.push(ctaButtonHtml(p, rec, distOk));
       return bits.join("");
     }
 
@@ -675,7 +1523,7 @@
       }
       const box = document.getElementById("nearbyList");
       if (!userPos) {
-        box.textContent = "Turn on location (top right) to back nearby places.";
+        box.textContent = nearbyEmptyCopy();
         return;
       }
       if (!near.length) {
@@ -687,59 +1535,169 @@
         const rec = recomputeOwner(placeRec(p.id));
         return `<div class="near-item">` +
           `<button type="button" class="near-jump" data-jump="${esc(p.id)}">` +
-          `<strong>${esc(p.name)}</strong>` +
-          `<span>${Math.round(dist)} m · ${esc(p.catalog_type)} · ${esc(qualityLabel(p.quality))} · ${esc(placeValueLine(rec, p))}` +
+          `<strong>${esc(placeName(p))}</strong>` +
+          `<span>${Math.round(dist)} m · ${esc(placeType(p))} · ${esc(qualityLabel(p.quality))} · ${esc(placeValueLine(rec, p))}` +
           `<br>${esc(areaLabel(p))}</span>` +
           `</button>${visitFormHtml(p, rec, true, true)}</div>`;
       }).join("");
     }
 
-    function popupBody(p, dist) {
-      const rec = recomputeOwner(placeRec(p.id));
-      const distOk = Boolean(userPos) && dist <= CLAIM_RADIUS_M;
-      const bits = [
-        `<div class="popup"><h2>${esc(p.name)}</h2>`,
-        `<div class="pts">${esc(placeValueLine(rec, p))}</div>`,
-        `<p class="own">${ownerLine(rec)}<br>${esc(propertyLabel(rec))}</p>`,
-      ];
-      if (isOwnable(p) && rec.ownerId && rec.ownerId !== PLAYER_KEY) {
-        bits.push(`<p>Owner earns from visits` +
-          (rec.factionId ? ` · ${esc(factionLabel(rec.factionId))} gets a cut` : "") +
-          `</p>`);
-      } else if (isOwnable(p)) {
-        bits.push(`<p>Cost to back this place: ${minStake(p)} NairaCoin</p>`);
+    function placeHasPhoto(p, rec) {
+      return Boolean((rec && rec.hasPhoto) || (p && (Number(p.has_photo) || p.quality === "A")));
+    }
+
+    function ownerDisplayName(rec) {
+      if (!rec || !rec.ownerId) return window.LvfeRules.noOwnerYet();
+      return window.LvfeRules.wordOr(rec.ownerName, window.LvfeRules.noOwnerYet());
+    }
+
+    function landSideText(rec, p) {
+      if (rec && rec.factionId && FACTION_NAMES[rec.factionId]) return FACTION_NAMES[rec.factionId];
+      return "Unclaimed";
+    }
+
+    function conqueredText(rec) {
+      if (rec && rec.ownerId && rec.factionId && FACTION_NAMES[rec.factionId]) {
+        return "Conquered by " + FACTION_NAMES[rec.factionId];
       }
-      bits.push(`<p>${esc(p.catalog_type)} · ${esc(qualityLabel(p.quality))}<br>`);
-      bits.push(`${esc(areaLabel(p))}</p>`);
-      if (!userPos) {
-        bits.push(`<p class="warn">Turn on location to visit</p>`);
-      } else if (dist > CLAIM_RADIUS_M) {
-        bits.push(`<p class="warn">${Math.round(dist)} m away — walk closer</p>`);
-        bits.push(visitFormHtml(p, rec, false, false));
-      } else {
-        bits.push(visitFormHtml(p, rec, distOk, false));
+      if (rec && rec.ownerId) return "Owned · not conquered";
+      return "Not conquered";
+    }
+
+    function missionCopy(p, rec, dist, distOk) {
+      if (!isOwnable(p)) return farmMsg();
+      if (!userPos) return "Walk closer — get within 80 m, then take a photo and put NairaCoin in to back it.";
+      if (!distOk) {
+        const away = Number.isFinite(dist) ? Math.round(dist) + " m away. " : "";
+        return away + "Walk closer — within 80 m — then take a photo and put NairaCoin in to back it.";
       }
-      bits.push("</div>");
-      return bits.join("");
+      if (photoRequired(p, rec)) return "Take a photo, then put NairaCoin in to back this place.";
+      return "Put NairaCoin in to back this place.";
+    }
+
+    function moneyValueText(rec, p) {
+      if (!isOwnable(p)) return "Cannot be owned";
+      const v = rec && Number(rec.value) || 0;
+      return v > 0 ? v + " NairaCoin" : "No one has backed this yet";
+    }
+
+    function moneyInterestText(p, rec) {
+      if (!isOwnable(p)) return "";
+      const n = yieldOnStake(minStake(p));
+      const who = rec && rec.ownerId === PLAYER_KEY ? "You earn" : "Owner earns";
+      return who + " " + n + " NairaCoin from visits when someone else backs (10% of what they put in).";
+    }
+
+    function dossierTabsHtml() {
+      const labels = window.LvfeDossier && window.LvfeDossier.TAB_LABELS;
+      return `<nav class="dossier-tabs" role="tablist">` +
+        DOSSIER_TABS.map((id) => {
+          const label = (labels && labels[id]) || (id === "place" ? "Place" : id === "mission" ? "Mission" : id === "land" ? "Land" : id === "wallet" ? "Wallet" : "Money");
+          const on = id === dossierTab ? "true" : "false";
+          return `<button type="button" role="tab" data-tab="${id}" aria-selected="${on}">${label}</button>`;
+        }).join("") +
+        `</nav>`;
+    }
+
+    function dossierPageClass(id) {
+      return `dossier-page${id === dossierTab ? " active" : ""}`;
+    }
+
+    function placeSheetHtml(p, dist) {
+      const rec = recomputeOwner(placeRec(p && p.id));
+      const T = window.LvfeTrack;
+      if (window.LvfeDossier) {
+        return window.LvfeDossier.html({
+          p: p,
+          rec: rec,
+          dist: dist,
+          userPos: userPos,
+          walletWhole: walletWhole(),
+          tracking: T && T.isTracking(p && p.id),
+          tab: dossierTab,
+          playerKey: PLAYER_KEY,
+          walkLine: T && T.isTracking(p && p.id) ? T.chipLine() : "",
+        });
+      }
+      return dossierFallbackHtml(p, dist);
+    }
+
+    function dossierFallbackHtml(p, dist) {
+      const distOk = Boolean(userPos) && Number.isFinite(dist) && dist <= CLAIM_RADIUS_M;
+      let cta = `<button type="button" class="claim" disabled>Cannot be owned</button>`;
+      try {
+        if (isOwnable(p) && distOk) {
+          cta = `<button type="button" class="claim" data-pay="1" data-place="${esc(p.id)}">Pay</button>`;
+        } else if (isOwnable(p)) {
+          cta = `<button type="button" class="claim" data-pay="1" disabled>Pay</button>`;
+        }
+      } catch (e2) { /* keep disabled CTA so the sheet is never actionless */ }
+      return `<div class="dossier">` +
+        `<div class="dossier-head"><span class="dossier-mark">File</span>` +
+        `<h2>${esc(placeName(p))}</h2></div>` +
+        dossierTabsHtml() +
+        `<div class="dossier-pages">` +
+        `<section class="${dossierPageClass("place")}" data-page="place" role="tabpanel">` +
+        `<p class="row-label">Name</p><p class="row-value">${esc(placeName(p))}</p>` +
+        `<p class="row-label">Type</p><p class="row-value">${esc(placeType(p))}</p>` +
+        `<p class="row-label">Quality</p><p class="row-value">${esc(qualityWords(p && p.quality))}</p>` +
+        `</section>` +
+        `<section class="${dossierPageClass("mission")}" data-page="mission" role="tabpanel">` +
+        `<p class="note">${isOwnable(p) ? "Walk closer, then back this place." : farmMsg()}</p>${cta}` +
+        `</section>` +
+        `<section class="${dossierPageClass("land")}" data-page="land" role="tabpanel">` +
+        `<p class="row-label">Neighbourhood</p><p class="row-value">${esc(areaLabel(p) || "Unclaimed")}</p>` +
+        `<p class="row-label">Side</p><p class="row-value">Unclaimed</p>` +
+        `<p class="row-label">Who owns it</p><p class="row-value">${esc(window.LvfeRules.noOwnerYet())}</p>` +
+        `<p class="row-label">Status</p><p class="row-value">Not conquered</p>` +
+        `</section>` +
+        `<section class="${dossierPageClass("money")}" data-page="money" role="tabpanel">` +
+        `<p class="row-value">${isOwnable(p) ? "No one has backed this yet" : farmMsg()}</p>` +
+        `</section>` +
+        `<section class="${dossierPageClass("wallet")}" data-page="wallet" role="tabpanel">` +
+        `<p class="row-label">Wallet</p><p class="row-value">${walletWhole()} NairaCoin</p>` +
+        cta +
+        `</section></div></div>`;
     }
 
     function openPlacePopup(feat) {
-      if (!map) return;
-      const p = feat.properties;
-      const [lon, lat] = feat.geometry.coordinates;
-      const dist = userPos ? haversineM(userPos.lat, userPos.lon, lat, lon) : Infinity;
-      if (activePopup) activePopup.remove();
-      activePlaceId = p.id;
-      activePopup = new maplibregl.Popup({ closeButton: true, maxWidth: "280px" })
-        .setLngLat([lon, lat])
-        .setHTML(popupBody(p, dist))
-        .addTo(map);
-      activePopup.on("close", () => {
-        if (activePlaceId === p.id) {
-          activePopup = null;
-          activePlaceId = null;
-        }
-      });
+      const card = document.getElementById("placeCard");
+      if (!feat || !card) return;
+      const p = feat.properties || {};
+      const coords = feat.geometry && feat.geometry.coordinates;
+      const lon = coords && Number(coords[0]);
+      const lat = coords && Number(coords[1]);
+      const dist = userPos && Number.isFinite(lat) && Number.isFinite(lon)
+        ? haversineM(userPos.lat, userPos.lon, lat, lon)
+        : Infinity;
+      const nextId = p.id || null;
+      if (dossierPlaceId !== nextId) dossierTab = "place";
+      dossierPlaceId = nextId;
+      activePlaceId = nextId;
+      try {
+        card.innerHTML = placeSheetHtml(p, dist);
+      } catch (err) {
+        card.innerHTML = dossierFallbackHtml(p, dist);
+      }
+      const filled = Boolean(card.querySelector(".dossier") && card.querySelector("button.claim"));
+      if (!filled) {
+        card.innerHTML = dossierFallbackHtml(p, dist);
+      }
+      if (!card.querySelector(".dossier") || !card.querySelector("button.claim")) {
+        closeSheet();
+        return;
+      }
+      card.hidden = false;
+      hideMenus();
+      setSheet("doc");
+      setDossierTab(dossierTab);
+      bindDossierNav();
+    }
+
+    function refreshOpenDossier() {
+      if (!dossierPlaceId) return;
+      const feat = placeById(dossierPlaceId);
+      if (feat) openPlacePopup(feat);
     }
 
     function applyLocalQuality(feat, rec) {
@@ -778,7 +1736,7 @@
         return;
       }
       if (!userPos) {
-        toast("Turn on location to visit.");
+        toast(nativeHasLocation() ? "Walk within 80 m." : "Walk closer — location needed.");
         return;
       }
       const dist = haversineM(userPos.lat, userPos.lon, lat, lon);
@@ -866,7 +1824,7 @@
         if (split.factionPaid) parts.push(`${split.factionPaid} to neighbourhood`);
       }
       if (promoted) parts.push("photo");
-      toast(parts.join(" · ") + " · " + p.name);
+      toast(parts.join(" · ") + " · " + placeName(p));
     }
 
     function setFilter() {
@@ -883,6 +1841,7 @@
       const parts = ["all", ["in", ["get", "quality"], ["literal", qs.length ? qs : ["__none__"]]]];
       if (!includeOut) parts.push(["!=", ["get", "territory_id"], "unclaimed"]);
       map.setFilter("places-circles", parts);
+      if (map.getLayer("places-hit")) map.setFilter("places-hit", parts);
       refreshNearby();
     }
 
@@ -893,17 +1852,65 @@
         showIdentityGate();
         return;
       }
+      const trackBtn = e.target.closest("[data-track]");
+      if (trackBtn) {
+        e.preventDefault();
+        const feat = placeById(trackBtn.getAttribute("data-track"));
+        if (feat && window.LvfeTrack) {
+          window.LvfeTrack.unlockAudio();
+          window.LvfeTrack.toggle(feat);
+          if (!userPos) askLocation();
+          if (dossierPlaceId) refreshOpenDossier();
+        }
+        return;
+      }
+      const walk = e.target.closest("[data-walk-closer]");
+      if (walk) {
+        e.preventDefault();
+        const feat = placeById(walk.getAttribute("data-walk-closer"));
+        if (!userPos) {
+          askLocation();
+          toast(nativeHasLocation() ? "Walk within 80 m." : "Walk closer — location needed.");
+        } else if (map && feat && feat.geometry && feat.geometry.coordinates) {
+          ignorePan = true;
+          map.easeTo({ center: feat.geometry.coordinates, zoom: Math.max(map.getZoom(), 16.2) });
+          map.once("moveend", () => { ignorePan = false; });
+          toast("Walk closer — within 80 m.");
+        } else {
+          toast("Walk closer — within 80 m.");
+        }
+        return;
+      }
+      const stakeBtn = e.target.closest("button.claim[data-place]");
+      if (stakeBtn && !stakeBtn.disabled) {
+        const form = stakeBtn.closest("form");
+        if (!form) {
+          e.preventDefault();
+          const id = stakeBtn.getAttribute("data-place");
+          const feat = placeById(id);
+          visitPlace(id, { amount: feat ? minStake(feat.properties) : 5 });
+          return;
+        }
+      }
       const jump = e.target.closest("[data-jump]");
       if (jump) {
+        hideMenus();
         const arBox = document.getElementById("toggleAr");
         if (arBox && arBox.checked) {
           arBox.checked = false;
           if (typeof lvfeArStop === "function") lvfeArStop();
+          const arBtn = document.getElementById("btnAr");
+          if (arBtn) arBtn.setAttribute("aria-pressed", "false");
         }
         const feat = placeById(jump.getAttribute("data-jump"));
         if (!feat) return;
-        if (map) map.flyTo({ center: feat.geometry.coordinates, zoom: Math.max(map.getZoom(), 16.2) });
+        if (map) {
+          ignorePan = true;
+          map.flyTo({ center: feat.geometry.coordinates, zoom: Math.max(map.getZoom(), 16.2) });
+          map.once("moveend", () => { ignorePan = false; });
+        }
         openPlacePopup(feat);
+        return;
       }
     });
 
@@ -916,6 +1923,19 @@
         if (!name) {
           toast("A unique name is required.");
           return;
+        }
+        if (creatingProfile) {
+          const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "").slice(0, 32) || name.slice(0, 32);
+          PLAYER_KEY = slug;
+          if (window.LvfeCatalogWallet && window.LvfeCatalogWallet.setPlayerKey) {
+            window.LvfeCatalogWallet.setPlayerKey(PLAYER_KEY);
+          }
+          try {
+            const url = new URL(location.href);
+            url.searchParams.set("player", PLAYER_KEY);
+            history.replaceState({}, "", url.pathname + url.search + url.hash);
+          } catch (err) { /* */ }
+          creatingProfile = false;
         }
         saveIdentity({ playerName: name, factionId: FACTION_NAMES[factionId] ? factionId : "" });
         hideIdentityGate();
@@ -946,8 +1966,10 @@
     function showMapFail(msg) {
       const el = document.getElementById("mapFail");
       if (!el) return;
+      const p = document.getElementById("mapFailMsg");
+      if (p) p.textContent = msg;
+      else el.textContent = msg;
       el.hidden = false;
-      el.textContent = msg;
     }
 
     function clearMapFail() {
@@ -1007,24 +2029,31 @@
         idn.factionId = qFac;
         saveIdentity(idn);
       }
-      if (!idn) showIdentityGate();
-      else hideIdentityGate();
+      hideIdentityGate();
       loadWallet();
       renderHud();
     }
 
     bootstrapIdentity();
+    bindChrome();
+    closeSheet();
+    hideIdentityGate();
+    probeBrowserPerms();
+    nativeHasLocation();
+    nativeHasCamera();
     setGpsLabel();
     if (userPos) {
       document.getElementById("nearbyList").textContent = "Loading catalog…";
+    } else {
+      document.getElementById("nearbyList").textContent = nearbyEmptyCopy();
     }
     ["qA", "qB", "qC", "qD", "qOut", "showPoly"].forEach((id) => {
       document.getElementById(id).addEventListener("change", setFilter);
     });
 
     const dataReady = Promise.all([
-      fetch("/geojson/enugu-factions.geojson").then((r) => r.json()),
-      fetch("/data/places.geojson").then((r) => r.json()),
+      fetch(lvfeAsset("geojson/enugu-factions.geojson")).then((r) => r.json()),
+      fetch(lvfeAsset("data/places.geojson")).then((r) => r.json()),
     ]).then(([territories, places]) => {
       territoriesFc = territories;
       placesFc = places;
@@ -1036,23 +2065,50 @@
       paintCounts();
       refreshNearby();
       ensureLayers();
+      const qOpen = params.get("open");
+      const qTrack = params.get("track");
+      const bootId = qTrack || qOpen;
+      if (bootId) {
+        const feat = placeById(bootId);
+        if (feat) {
+          if (qTrack && window.LvfeTrack) window.LvfeTrack.start(feat, { fit: true });
+          openPlacePopup(feat);
+        }
+      } else if (window.LvfeTrack && window.LvfeTrack.get()) {
+        const t = window.LvfeTrack.get();
+        const feat = placeById(t.id);
+        if (feat) window.LvfeTrack.start(feat);
+        else window.LvfeTrack.start(t);
+        window.LvfeTrack.paintChip();
+      }
     }).catch(() => {
       document.getElementById("nearbyList").textContent =
         "Places didn’t load. Open this from the Lvfe site.";
     });
 
     function ensureLayers() {
-      if (!map || layersReady || !territoriesFc || !basemapReady()) return;
+      if (!map || !territoriesFc || !basemapReady()) return;
+      const pinsUp = Boolean(map.getLayer("places-circles") && map.getLayer("you-dot") && map.getLayer("territories-fill"));
+      if (pinsUp) {
+        layersReady = true;
+        if (window.LvfeTrack) window.LvfeTrack.ensureLayers(map);
+        if (window.LvfeSatellite) {
+          window.LvfeSatellite.ensure(map);
+          window.LvfeSatellite.stack(map);
+        }
+        return;
+      }
+      layersReady = true;
       const territories = territoriesFc;
       const places = placesFc;
-      layersReady = true;
+      const addLy = (spec) => { if (!map.getLayer(spec.id)) map.addLayer(spec); };
 
-      map.addSource("territories", { type: "geojson", data: territories });
-      map.addSource("places", { type: "geojson", data: places });
-      map.addSource("nearby", { type: "geojson", data: EMPTY_FC });
-      map.addSource("you", { type: "geojson", data: EMPTY_FC });
+      if (!map.getSource("territories")) map.addSource("territories", { type: "geojson", data: territories });
+      if (!map.getSource("places")) map.addSource("places", { type: "geojson", data: places });
+      if (!map.getSource("nearby")) map.addSource("nearby", { type: "geojson", data: EMPTY_FC });
+      if (!map.getSource("you")) map.addSource("you", { type: "geojson", data: EMPTY_FC });
 
-      map.addLayer({
+      addLy({
         id: "territories-fill",
         type: "fill",
         source: "territories",
@@ -1068,7 +2124,7 @@
           ],
         },
       });
-      map.addLayer({
+      addLy({)
         id: "territories-line",
         type: "line",
         source: "territories",
@@ -1083,7 +2139,7 @@
           ],
         },
       });
-      map.addLayer({
+      addLy({)
         id: "territories-label",
         type: "symbol",
         source: "territories",
@@ -1094,23 +2150,39 @@
         },
         paint: { "text-color": "#1a1a1a", "text-halo-color": "#fff", "text-halo-width": 1.2 },
       });
-      map.addLayer({
+      addLy({)
         id: "you-accuracy",
         type: "fill",
         source: "you",
         filter: ["==", ["get", "kind"], "accuracy"],
         paint: { "fill-color": "#1d8cff", "fill-opacity": 0.18 },
       });
-      map.addLayer({
+      addLy({)
+        id: "places-hit",
+        type: "circle",
+        source: "places",
+        paint: {
+          "circle-radius": [
+            "interpolate", ["linear"], ["zoom"],
+            11, 16,
+            14, 16,
+            16, 14,
+          ],
+          "circle-color": "#000000",
+          "circle-opacity": 0.04,
+          "circle-stroke-width": 0,
+        },
+      });
+      addLy({)
         id: "places-circles",
         type: "circle",
         source: "places",
         paint: {
           "circle-radius": [
             "interpolate", ["linear"], ["zoom"],
-            11, 2.2,
-            14, 5,
-            16, 8,
+            11, 12,
+            14, 14,
+            16, 12,
           ],
           "circle-color": [
             "case",
@@ -1125,12 +2197,12 @@
               "#7f8c8d",
             ],
           ],
-          "circle-stroke-width": 0.6,
+          "circle-stroke-width": 1.2,
           "circle-stroke-color": "#0e1116",
           "circle-opacity": 0.9,
         },
       });
-      map.addLayer({
+      addLy({)
         id: "places-nearby",
         type: "circle",
         source: "nearby",
@@ -1142,7 +2214,7 @@
           "circle-stroke-color": "#5dade2",
         },
       });
-      map.addLayer({
+      addLy({)
         id: "you-dot",
         type: "circle",
         source: "you",
@@ -1154,31 +2226,70 @@
           "circle-stroke-color": "#ffffff",
         },
       });
+      if (window.LvfeTrack) window.LvfeTrack.bindMap(map);
+      if (window.LvfeSatellite) {
+        window.LvfeSatellite.ensure(map);
+        window.LvfeSatellite.stack(map);
+      }
 
-      map.on("click", "places-circles", (e) => {
-        const id = e.features[0].properties.id;
-        const feat = placeById(id);
+      function openPlaceAtPoint(point) {
+        if (!map || !point) return false;
+        const pad = 18;
+        const bbox = [
+          [point.x - pad, point.y - pad],
+          [point.x + pad, point.y + pad],
+        ];
+        const layers = ["places-hit", "places-circles"].filter((id) => map.getLayer(id));
+        if (map.getLayer("place-poles")) layers.push("place-poles");
+        let hits = [];
+        try {
+          hits = map.queryRenderedFeatures(bbox, { layers });
+        } catch (err) {
+          return false;
+        }
+        if (!hits.length) return false;
+        const raw = hits[0];
+        const feat = placeById(raw.properties && raw.properties.id) || raw;
         if (feat) openPlacePopup(feat);
-      });
-      map.on("mouseenter", "places-circles", () => { map.getCanvas().style.cursor = "pointer"; });
-      map.on("mouseleave", "places-circles", () => { map.getCanvas().style.cursor = ""; });
+        return true;
+      }
+      if (!map.__lvfePlaceClicks) {
+        map.__lvfePlaceClicks = true;
+        map.on("click", (e) => {
+          openPlaceAtPoint(e.point);
+        });
+        ["places-hit", "places-circles"].forEach((id) => {
+          map.on("mouseenter", id, () => { map.getCanvas().style.cursor = "pointer"; });
+          map.on("mouseleave", id, () => { map.getCanvas().style.cursor = ""; });
+        });
+      }
 
       setFilter();
       setYouSource();
       refreshNearby();
       hideOsmPoiLabels();
       clearMapFail();
-      if (!forcedPos) {
-        try { geo.trigger(); } catch (err) { /* GeolocateControl not ready is non-fatal */ }
-      }
     }
 
     function attachWhenStyleReady() {
       dataReady.then(() => ensureLayers());
     }
 
+    function reattachOverlays() {
+      if (!map) return;
+      ensureLayers();
+      if (window.LvfeTrack) {
+        window.LvfeTrack.ensureLayers(map);
+        window.LvfeTrack.bindMap(map);
+      }
+      setYouSource();
+      if (window.LvfeSatellite) window.LvfeSatellite.stack(map);
+    }
+    window.lvfeReattachOverlays = reattachOverlays;
+
     if (typeof maplibregl === "undefined") {
       showMapFail("Map library didn’t load. Check the network and reload.");
+      bindChrome();
     } else try {
       map = new maplibregl.Map({
         container: "map",
@@ -1186,9 +2297,9 @@
         transformStyle: stripOsmPoiLayers,
         center: forcedPos ? [forcedPos.lon, forcedPos.lat] : [7.515, 6.45],
         zoom: forcedPos ? 16.4 : 12.2,
-        pitch: 52,
+        pitch: 0,
         maxPitch: 85,
-        bearing: -16,
+        bearing: 0,
         dragRotate: true,
         touchPitch: true,
         pitchWithRotate: true,
@@ -1202,24 +2313,27 @@
         } catch (err) { /* already added */ }
       });
       if (typeof lvfeEnable3d === "function") lvfeEnable3d(map);
-      if (typeof lvfeEnableAr === "function") {
-        lvfeEnableAr({
-          getNearby: nearbyFeatures,
-          onFail: (msg) => toast(msg),
-        });
+      if (typeof lvfePaint3dFab === "function") lvfePaint3dFab(map);
+      else {
+        const b3 = document.getElementById("btn3d");
+        if (b3) b3.setAttribute("aria-pressed", "false");
       }
       window.lvfeMap = map;
       window.openPlacePopup = openPlacePopup;
       window.placeById = placeById;
       window.visitPlace = visitPlace;
-      map.addControl(new maplibregl.NavigationControl(), "top-right");
+      if (window.LvfeSatellite) {
+        window.LvfeSatellite.bind(map, { reattach: reattachOverlays });
+      }
+      map.addControl(new maplibregl.NavigationControl({ showCompass: true, showZoom: false, visualizePitch: true }), "top-right");
       geo = new maplibregl.GeolocateControl({
         positionOptions: { enableHighAccuracy: true, timeout: 12000 },
         trackUserLocation: true,
         showAccuracyCircle: true,
         showUserLocation: true,
       });
-      map.addControl(geo, "top-right");
+      map.addControl(geo, "bottom-right");
+      if (wantGeo || nativeHasLocation()) startGeo();
       geo.on("geolocate", (e) => {
         if (forcedPos) return;
         userPos = {
@@ -1229,18 +2343,41 @@
         };
         window.lvfeUserPos = userPos;
         refreshNearby();
+        refreshOpenDossier();
+        if (window.LvfeTrack) window.LvfeTrack.onUserPos(userPos);
       });
       geo.on("error", () => {
         if (!forcedPos) {
           userPos = null;
           window.lvfeUserPos = null;
           setGpsLabel();
-          document.getElementById("nearbyList").textContent =
-            "Location blocked. Allow location, or walk with a phone.";
+          document.getElementById("nearbyList").textContent = nativeHasLocation()
+            ? "Couldn't find you. Tap GPS again."
+            : "Location is off.";
         }
       });
-      map.on("style.load", attachWhenStyleReady);
-      map.on("load", attachWhenStyleReady);
+      function stripMapBranding() {
+        document.querySelectorAll(".maplibregl-ctrl-logo, .maplibregl-ctrl-attrib, .maplibregl-compact").forEach((el) => {
+          el.remove();
+        });
+      }
+      map.on("style.load", () => {
+        layersReady = false;
+        stripMapBranding();
+        attachWhenStyleReady();
+      });
+      map.on("load", () => { stripMapBranding(); attachWhenStyleReady(); });
+      map.on("movestart", () => {
+        if (ignorePan) return;
+        hideMenus();
+        if (dossierPinned()) return;
+        closeSheet();
+      });
+      map.on("dragstart", () => {
+        hideMenus();
+        if (ignorePan || dossierPinned()) return;
+        closeSheet();
+      });
       map.on("error", (e) => {
         const msg = (e && e.error && (e.error.message || String(e.error))) || "";
         if (/Could not load image|styleimagemissing|AbortError/i.test(msg)) return;
@@ -1256,9 +2393,15 @@
         }
         attachWhenStyleReady();
       }, 8000);
+      bindChrome();
+      probeBrowserPerms();
+      nativeHasLocation();
+      nativeHasCamera();
+      setGpsLabel();
     } catch (err) {
       showMapFail("Map failed to start. Reload.");
       if (userPos) refreshNearby();
+      bindChrome();
     }
   </script>
 </body>

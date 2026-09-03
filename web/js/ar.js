@@ -103,8 +103,8 @@
       const action = farm
         ? `<span class="sub">0 NairaCoin · cannot be owned.</span>`
         : `<a class="claim" style="display:inline-block;text-decoration:none" href="${R.esc(mapHref())}">Put coins in on the map · ${min} NairaCoin to back</a>`;
-      return `<div class="near-item"><strong>${R.esc(p.name)}</strong>` +
-        `<span class="sub">${Math.round(dist)} m · ${R.esc(p.catalog_type)} · ${R.esc(R.qualityLabel(p.quality))} · ${R.esc(R.areaLabel(p))} · ${farm ? "0 NairaCoin · cannot be owned" : min + " NairaCoin to back"}</span>` +
+      return `<div class="near-item"><strong>${R.esc(R.placeTitle(p))}</strong>` +
+        `<span class="sub">${Math.round(dist)} m · ${R.esc(R.typeLabel(p))} · ${R.esc(R.qualityLabel(p.quality))} · ${R.esc(R.areaLabel(p))} · ${farm ? "0 NairaCoin · cannot be owned" : min + " NairaCoin to back"}</span>` +
         action + `</div>`;
     }).join("");
   }
@@ -139,8 +139,8 @@
       }
       const min = W.minStake(p.claim_nairacoin, p.catalog_type);
       const label = W.ownable(p.catalog_type)
-        ? `${p.name}  ${min} to back  ${Math.round(dist)}m`
-        : `${p.name}  0 NairaCoin  ${Math.round(dist)}m`;
+        ? `${R.placeTitle(p)}  ${min} to back  ${Math.round(dist)}m`
+        : `${R.placeTitle(p)}  0 NairaCoin  ${Math.round(dist)}m`;
       const pad = 8 * (window.devicePixelRatio || 1);
       const tw = ctx.measureText(label).width;
       ctx.fillStyle = "rgba(14,17,22,0.72)";
@@ -243,7 +243,7 @@
   startCamera();
   requestAnimationFrame(draw);
 
-  fetch("/data/places.geojson")
+  fetch(lvfeAsset("data/places.geojson"))
     .then((r) => r.json())
     .then((fc) => {
       places = (fc.features || []).map(asPlace);
