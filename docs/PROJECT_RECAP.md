@@ -123,6 +123,7 @@ Location-based territorial game. World data from OpenStreetMap (no paid Google M
 **How verified:**
 - `node scripts/test_game_economy.js` ok.
 - `./gradlew clean assembleDebug` SUCCESS; `adb -s bea6919f install -r`; force-stop; **`lastUpdateTime=2026-09-03 10:08:26`**.
+- Commit **`f9cf927`** pushed to `https://github.com/Slaze/lvfe` (`main`).
 - Channels `claims`/`nearby`/`enemy`/`game` present in `dumpsys notification`.
 - WebView CDP: Wallet opens (100 NCN + Earn more); Earn pane; Rankings `.hub-pos`; Analytics Test notification → native `tag=lvfe` title “Lvfe test”; sibling `goldHang`+`searchMag`+`mapHint` true.
 
