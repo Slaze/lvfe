@@ -68,7 +68,7 @@ Authorised domain on the consent screen remains `iconiaglobal.com` (domain only)
 
 ## Service worker cache
 
-Current shell cache id: **`lvfe-shell-v3`**. HTML/CSS/JS are network-first; bump the `CACHE` string again when shipping shell changes so old clients drop stale menus/theme.
+Current shell cache id: **`lvfe-shell-v4`**. HTML/CSS/JS are network-first; bump the `CACHE` string again when shipping shell changes so old clients drop stale menus/theme.
 
 ## Deploy
 

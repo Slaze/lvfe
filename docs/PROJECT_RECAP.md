@@ -48,7 +48,7 @@ Location-based territorial game. World data from OpenStreetMap (no paid Google M
 - `web/map-3d.js` / `web/map-3d.css` — **one** `#btn3d` switch (green only when live 3D: pitch ~52 + terrain). Tap 3D from idle 12.2 → pitch 52 **and zoom ≥ 14.2**. Every OSM footprint is a box (tagged height/levels; untagged **OMT 5 m**; cap 80). **SAT-off opacity 1** (solid box city). **SAT+3D opacity 0.35** (ghost walls so draped Esri roofs read). SAT restacks above Liberty beige, under extrusion, under pins. 2D `building` fill hidden while extruded. No skip-filter. Terrain **1.0×** + sky; DEM fail → banner, switch off, stay flat. Labels `text-pitch-alignment: viewport`. Pins billboard (X/circle); no −16 px; no chimney poles. NavigationControl `visualizePitch` off. No Google 3D SKU. No Three.js.
 - `data/places.geojson` — typed pins. Place value/owner live in `lvfe.places.v1`.
 - `web/js/lvfe-assets.js` — URL helper for repo-root python (`/data`), APK `appassets…/www/`, and HTTPS PWA under `/lvfe/`.
-- `web/manifest.webmanifest` + `web/sw.js` + `web/js/pwa-register.js` + `web/js/pwa-install.js` + `web/install.html` — installable PWA (Nord dark theme, standalone). In-app install banner (Chromium `beforeinstallprompt` / iOS Share guide); SW caches shell; network-first for HTML/CSS/JS + `lvfe-save` / tiles / GIS. **SW skipped** when `LvfeNative` or appassets WebView. Cache id **`lvfe-shell-v3`**.
+- `web/manifest.webmanifest` + `web/sw.js` + `web/js/pwa-register.js` + `web/js/pwa-install.js` + `web/install.html` — installable PWA (Nord dark theme, standalone). In-app install banner (Chromium `beforeinstallprompt` / iOS Share guide); SW caches shell; network-first for HTML/CSS/JS + `lvfe-save` / tiles / GIS. **SW skipped** when `LvfeNative` or appassets WebView. Cache id **`lvfe-shell-v4`**. Theme CSS: `web/css/nord-shell-v2.css` (cache-bust rename).
 - `hosting/lvfe/` + `scripts/stage_pwa.sh` / `deploy_pwa.sh` — deploy tree to **`https://iconiaglobal.com/lvfe/`** (FTP Iconia). Apex `.htaccess` pass-through includes `lvfe`. Docs: `docs/PWA.md`.
 - `docs/OAUTH_CONSENT.md` — consent + **Authorized JavaScript origins** for GIS (`https://iconiaglobal.com`, …).
 - `android/` — debug WebView APK (`com.lvfe.xperience`, minSdk 24). `sync-www.sh` bundles `web/` + `data/places.geojson` + `data/catalog.json` + `geojson/enugu-factions.geojson` + MapLibre JS/CSS. OpenFreeMap tiles still need the network. No Google Maps SDK. Not the Don Maseratte shop.
@@ -118,7 +118,7 @@ Location-based territorial game. World data from OpenStreetMap (no paid Google M
 - 2026-09-03: Buy NCN (Paystack) + rank sigils + Google profile FAB; PHP buy routes on Iconia.
 - 2026-09-03: Pass-by toll + contest notify (Outpay/Escape/Accept) + mark watch/threat/takeover (`dc5eba5`); co-landed PWA shell in same commit.
 - 2026-09-03: PWA deployed live to **`https://iconiaglobal.com/lvfe/`** (FTP; apex `lvfe` pass-through; GIS origins documented).
-- 2026-09-03: PWA install prompt + `install.html` guide; co-landed iOS menu/Nord translucent fixes (sibling); SW **`lvfe-shell-v3`**.
+- 2026-09-03: PWA install prompt + `install.html` guide; co-landed iOS menu/Nord translucent fixes (sibling); SW **`lvfe-shell-v4`**.
 
 ## Sessions
 
@@ -160,7 +160,7 @@ Location-based territorial game. World data from OpenStreetMap (no paid Google M
 - `web/js/pwa-install.js` — `beforeinstallprompt` capture; iOS Safari Share guide copy; throttled `#pwaInstallBanner` after Play; skip `LvfeNative`/appassets/standalone.
 - `web/install.html` — iPhone/iPad, Android Chrome, desktop Chrome/Edge, after-install Google sync steps.
 - `web/index.html` — menu **Install app**, account **Install / download game**, banner DOM/CSS; wire after Play / `?play=1`.
-- SW cache bump **`lvfe-shell-v1` → `v3`** (sibling `v2` + this ship); shell includes `install.html` / `pwa-install.js`; network-first HTML/CSS/JS (sibling) retained.
+- SW cache bump **`lvfe-shell-v1` → `v4`** (sibling theme rename + this ship); shell includes `install.html` / `pwa-install.js` / `nord-shell-v2.css`; network-first HTML/CSS/JS retained.
 - Sibling (same tree): iOS menu `position:fixed` / `onActivate` pointerup, inline critical Nord chrome, `pwa-register` SKIP_WAITING reload, `.htaccess` no-cache for css/html/js, nord-shell solid fallback + **`nord-shell-v2.css`**.
 - `docs/PWA.md` + this recap.
 
