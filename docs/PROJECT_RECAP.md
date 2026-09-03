@@ -113,6 +113,7 @@ Location-based territorial game. World data from OpenStreetMap (no paid Google M
 - 2026-09-03: Overlay/layout audit — `box-sizing:border-box`, menu clip, dossier peek/expand px heights, FAB/toast chrome bottom; Nord CDP + screencaps.
 - 2026-09-03: Iconia CMS Terms filled (Lvfe + NCN + Google Identity; live `/pages/terms-and-conditions`).
 - 2026-09-03: Buy NCN (Paystack) + rank sigils + Google profile FAB; PHP buy routes on Iconia.
+- 2026-09-03: Pass-by toll + contest notify (Outpay/Escape/Accept) + mark watch/threat/takeover (`dc5eba5`).
 
 ## Sessions
 
