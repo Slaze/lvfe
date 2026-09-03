@@ -116,6 +116,7 @@ Location-based territorial game. World data from OpenStreetMap (no paid Google M
 - PUT/GET round-trip with `Bearer lvfe-dev:<key>` + Bearer `SAVE_SECRET` ok.
 - `keytool` SHA-1 re-verified `2E:48:31:66:B1:07:A2:4C:FB:25:35:EE:EA:9C:B6:B3:E5:E4:35:E5`.
 - `./gradlew assembleDebug` SUCCESS; `adb -s bea6919f install -r` Success; **`lastUpdateTime=2026-09-03 07:38:16`**.
+- Commit **`17fbb31`** pushed to `https://github.com/Slaze/lvfe` (`main`).
 
 **Current state:** Cloud save default on for web + Nord APK. Dev auth still on (pre-Google). Google Web client ID still empty. Netlify undeployed. Subdomain DNS not set.
 
