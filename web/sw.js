@@ -2,7 +2,7 @@
    HTML/CSS/JS/manifest: network-first (avoid stale Nord chrome + menus).
    Images/icons: cache-first.
    API / cloud save / maps / GIS / tiles: network-first (never stale save). */
-const CACHE = "lvfe-shell-v4";
+const CACHE = "lvfe-shell-v5";
 const SHELL = [
   "./",
   "./index.html",
@@ -21,6 +21,7 @@ const SHELL = [
   "./js/google-auth.config.js",
   "./js/google-auth.js",
   "./js/account.js",
+  "./js/local-factions.js",
   "./js/save-api.config.js",
   "./js/save-sync.js",
 ];
