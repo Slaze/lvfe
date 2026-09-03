@@ -152,7 +152,7 @@
         `<div><strong>${R.esc(R.placeTitle(p))}</strong>` +
         `<span>${R.esc(R.typeLabel(p))} · ${R.esc(R.qualityWords(p.quality))} · ${R.esc(R.areaLabel(p))} · ${note}${money}</span></div>` +
         `</button>`;
-    }).join("") || `<p class="meta">No places match.</p>`;
+    }).join("") || `<p class="meta">No assets match — clear filters or scout the map.</p>`;
     document.getElementById("meta").textContent =
       `${state.view.length} places` +
       (state.view.length !== state.all.length ? ` (of ${state.all.length})` : "") +
@@ -184,6 +184,13 @@
       visibleTabs: state.visible,
       playerKey: W.playerKey(),
       walkLine: T && T.isTracking(p.id) ? T.chipLine() : "",
+      features: state.all,
+      places: (function () {
+        try { return JSON.parse(localStorage.getItem(PLACES_KEY) || "{}") || {}; } catch (err) { return {}; }
+      })(),
+      factionId: (identity() && identity().factionId) || "",
+      factionNames: FACTION_NAMES,
+      identity: identity(),
     });
     file.hidden = false;
     D.bindNav(card, () => state.tab, (name) => {

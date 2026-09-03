@@ -128,8 +128,8 @@
     const who = document.getElementById("whoLine");
     if (who) {
       who.textContent = idn
-        ? ("Playing as " + idn.playerName + " · places you own or have backed.")
-        : "Set your name on the map to back places. Showing this phone’s coins.";
+        ? ("Playing as " + idn.playerName + " · assets you own or backed.")
+        : "Set your name on the map to Claim. Showing this phone’s NCN.";
     }
     document.getElementById("ncBal").textContent = String(W.getBalance(pk));
     const ownedN = rows.filter((r) => r.owned).length;
@@ -141,7 +141,7 @@
     const showBacked = visible.backed;
     const filtered = rows.filter((r) => (r.owned && showOwned) || (!r.owned && showBacked));
     if (!filtered.length) {
-      box.innerHTML = "<p class='meta'>None yet. Walk up, take a photo, and put NCN into a place.</p>";
+      box.innerHTML = "<p class='meta'>No assets marked — scout the map, Track a pin, photo + Claim with NCN.</p>";
       return;
     }
     box.innerHTML = filtered.map((a) => {

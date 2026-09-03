@@ -13,7 +13,7 @@
       code: C.BLOCKER_CODE,
       title: C.BLOCKER_TITLE,
       steps: C.BLOCKER_STEPS.slice(),
-      message: C.blockerMessage(),
+      message: C.BLOCKER_TITLE,
     }, extra || {});
   }
 
@@ -138,7 +138,7 @@
         inflight = false;
         return done(fail({
           code: "paystack_script",
-          message: "Paystack Checkout script did not load. Check network, then retry.",
+          message: "Couldn't open checkout — try again.",
         }));
       }
 
@@ -154,15 +154,18 @@
           if (d.code === "paystack_not_configured" || d.code === "live_keys_missing") {
             return done(fail({
               code: d.code,
-              title: d.title || C.BLOCKER_TITLE,
-              message: d.error || d.message || C.blockerMessage(),
+              title: C.BLOCKER_TITLE,
+              message: C.BLOCKER_TITLE,
               steps: d.steps || C.BLOCKER_STEPS.slice(),
             }));
+          }
+          if (typeof global.lvfeDebugLog === "function") {
+            global.lvfeDebugLog("buy-init", d.code || "", d.error || d.message || res.status);
           }
           return done({
             ok: false,
             code: d.code || "init_failed",
-            message: d.error || d.message || ("Init failed (" + res.status + ")"),
+            message: "Couldn't start purchase — try again.",
           });
         }
 
@@ -190,19 +193,23 @@
               inflight = false;
               const vd = vres.data || {};
               if (!vd.ok) {
+                if (typeof global.lvfeDebugLog === "function") {
+                  global.lvfeDebugLog("buy-verify", vd.code || "", vd.error || vd.message || "");
+                }
                 return done({
                   ok: false,
                   code: vd.code || "verify_failed",
-                  message: vd.error || vd.message || "Payment could not be verified.",
+                  message: "Payment couldn’t be confirmed — try again.",
                 });
               }
               done(applyVerified(playerKey, vd));
             }).catch(function (err) {
               inflight = false;
+              if (typeof global.lvfeDebugLog === "function") global.lvfeDebugLog("buy-verify", err);
               done({
                 ok: false,
                 code: "verify_network",
-                message: String(err && err.message ? err.message : err),
+                message: "Couldn't reach checkout — try again.",
               });
             });
           },
@@ -215,10 +222,11 @@
         handler.openIframe();
       }).catch(function (err) {
         inflight = false;
+        if (typeof global.lvfeDebugLog === "function") global.lvfeDebugLog("buy-init", err);
         done({
           ok: false,
           code: "init_network",
-          message: String(err && err.message ? err.message : err),
+          message: "Couldn't reach checkout — try again.",
         });
       });
     });

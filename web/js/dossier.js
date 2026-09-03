@@ -78,22 +78,210 @@
       `<span class="dossier-photo-ph">${esc(photoLine(p, rec))}</span></div>`;
   }
 
+  function formatDist(dist) {
+    const rules = R();
+    if (rules && typeof rules.formatDistM === "function") return rules.formatDistM(dist);
+    const n = Number(dist);
+    if (!Number.isFinite(n) || n < 0 || n === Infinity) return "—";
+    if (n >= 1000) return (Math.round(n / 100) / 10) + " km";
+    return Math.round(n) + " m";
+  }
+
+  function walkEtaFor(p, dist, opts) {
+    const rules = R();
+    const T = global.LvfeTrack;
+    if (T && p && p.id && T.isTracking(p.id) && typeof T.walkParts === "function") {
+      const w = T.walkParts();
+      if (w && Number.isFinite(w.routeDist)) {
+        return rules.walkEtaText(w.routeDist, w.mins);
+      }
+    }
+    if (!Number.isFinite(dist) || dist === Infinity) return "GPS for ETA";
+    return rules.walkEtaText(dist);
+  }
+
+  function factionNameMap(opts) {
+    const out = Object.assign({}, FACTION_NAMES);
+    const extra = (opts && opts.factionNames) || {};
+    Object.keys(extra).forEach(function (k) {
+      if (extra[k]) out[k] = extra[k];
+    });
+    return out;
+  }
+
+  function listFeatures(opts) {
+    const f = opts && opts.features;
+    if (!f) return [];
+    if (Array.isArray(f.features)) return f.features;
+    if (Array.isArray(f)) return f;
+    return [];
+  }
+
+  function placeLedger(opts) {
+    return (opts && opts.places && typeof opts.places === "object") ? opts.places : {};
+  }
+
+  function playerFactionId(opts, playerKey) {
+    if (opts && opts.factionId) return String(opts.factionId);
+    const idn = opts && opts.identity;
+    if (idn && idn.factionId) return String(idn.factionId);
+    try {
+      const raw = typeof localStorage !== "undefined"
+        ? localStorage.getItem("lvfe.identity." + (playerKey || "default"))
+        : null;
+      if (raw) {
+        const o = JSON.parse(raw);
+        if (o && o.factionId) return String(o.factionId);
+      }
+    } catch (err) { /* */ }
+    return "";
+  }
+
+  /** Counts for Mission briefing: faction stock + owned in/out of faction regions. */
+  function missionFactionStats(playerKey, opts) {
+    const names = factionNameMap(opts);
+    const regionIds = Object.keys(names);
+    const regionSet = {};
+    regionIds.forEach(function (id) { regionSet[id] = true; });
+    const fid = playerFactionId(opts, playerKey);
+    const all = placeLedger(opts);
+    const feats = listFeatures(opts);
+    let inFaction = 0;
+    let ownedIn = 0;
+    let ownedOut = 0;
+    const active = {};
+    for (let i = 0; i < feats.length; i++) {
+      const row = feats[i];
+      const p = row && row.properties ? row.properties : row;
+      if (!p || !p.id) continue;
+      if (!R().isOwnable(p)) continue;
+      const tid = String(p.territory_id || "");
+      if (fid && tid === fid) inFaction += 1;
+      const rec = all[p.id];
+      if (rec && rec.ownerId === playerKey) {
+        if (tid && regionSet[tid]) ownedIn += 1;
+        else ownedOut += 1;
+      }
+      if (rec && rec.ownerId && rec.factionId) active[rec.factionId] = true;
+    }
+    /* Fallback when features not passed: scan ledger only for owned counts. */
+    if (!feats.length) {
+      Object.keys(all).forEach(function (id) {
+        const rec = all[id];
+        if (!rec || rec.ownerId !== playerKey) return;
+        ownedOut += 1;
+        if (rec.factionId) active[rec.factionId] = true;
+      });
+    }
+    const activeList = Object.keys(active).map(function (id) {
+      return names[id] || id;
+    }).sort();
+    return {
+      factionId: fid,
+      factionName: (fid && names[fid]) || (fid || "None"),
+      inFaction: inFaction,
+      ownedIn: ownedIn,
+      ownedOut: ownedOut,
+      activeCount: activeList.length,
+      activeList: activeList,
+    };
+  }
+
+  function missionRankLine(playerKey, opts) {
+    const Rank = global.LvfeRankings;
+    const Sigil = global.LvfeRankSigils;
+    const places = placeLedger(opts);
+    const idOpts = { identities: (opts && opts.identities) || undefined };
+    const fid = playerFactionId(opts, playerKey);
+    let staked = 0;
+    let owned = 0;
+    if (Rank && typeof Rank.playerStats === "function") {
+      const stats = Rank.playerStats(places, idOpts);
+      const me = stats[playerKey];
+      if (me) {
+        staked = Number(me.staked) || 0;
+        owned = Number(me.owned) || 0;
+      }
+    }
+    const pts = Sigil
+      ? Sigil.pointsFrom({ staked: staked, owned: owned })
+      : staked + owned * 10;
+    const tier = Sigil ? Sigil.tierForPoints(pts) : { label: "Initiate" };
+    let gamePos = 0;
+    let facPos = 0;
+    let roleLabel = "";
+    if (Rank && typeof Rank.globalLeaders === "function") {
+      const g = Rank.globalLeaders(places, Object.assign({}, idOpts, { metric: "staked" }));
+      for (let i = 0; i < g.length; i++) {
+        if (g[i].playerKey === playerKey) {
+          gamePos = g[i].rank || (i + 1);
+          break;
+        }
+      }
+    }
+    if (fid && Rank && typeof Rank.factionWhoIsWho === "function") {
+      const who = Rank.factionWhoIsWho(fid, places, idOpts);
+      const members = (who && who.members) || [];
+      for (let i = 0; i < members.length; i++) {
+        if (members[i].playerKey === playerKey) {
+          facPos = members[i].rank || (i + 1);
+          break;
+        }
+      }
+      if (Sigil && facPos) {
+        roleLabel = Sigil.roleForFactionRank(facPos).label;
+      }
+    }
+    const hier = facPos || "—";
+    const game = gamePos || "—";
+    const fac = facPos || "—";
+    const rankName = roleLabel && roleLabel !== "Kin"
+      ? (tier.label + " · " + roleLabel)
+      : tier.label;
+    return {
+      text: rankName + " · hierarchy #" + hier + " · game #" + game + " · faction #" + fac,
+      tierLabel: tier.label,
+      roleLabel: roleLabel,
+      points: pts,
+      gamePos: gamePos,
+      facPos: facPos,
+    };
+  }
+
+  function missionCostBits(p, rec, playerKey, counts) {
+    const rules = R();
+    if (!rules.isOwnable(p)) {
+      return { amount: 0, label: "Cannot be owned", overturn: false };
+    }
+    const need = minNeed(p, rec, playerKey, counts);
+    const coin = rules.ncn ? rules.ncn(need.min) : (need.min + " NCN");
+    if (rec && rec.ownerId === playerKey) {
+      const C = global.LvfeConquest;
+      const v = C ? C.displayValue(rec, p, counts) : (Number(rec.value) || 0);
+      return {
+        amount: need.min,
+        label: (rules.ncn ? rules.ncn(v) : (v + " NCN")) + " · yours",
+        overturn: false,
+        yours: true,
+      };
+    }
+    if (need.overturn) {
+      return { amount: need.min, label: coin + " to overturn", overturn: true };
+    }
+    return { amount: need.min, label: coin, overturn: false };
+  }
+
   function missionCopy(p, rec, dist, ok, userPos, playerKey) {
     const rules = R();
     if (!rules.isOwnable(p)) return rules.farmMsg();
-    if (!userPos) return "Walk closer — get within 80 m, then take a photo and put NCN in to back it.";
-    if (!ok) {
-      const away = Number.isFinite(dist) ? Math.round(dist) + " m away. " : "";
-      return away + "Walk closer — within 80 m — then take a photo and put NCN in to back it.";
-    }
+    if (!userPos) return "Lock GPS, then walk in — 80 m to buy.";
+    if (!ok) return "Out of range. Start tracking — gold/green line guides you in.";
     const pk = playerKey || (global.LvfeCatalogWallet && global.LvfeCatalogWallet.playerKey()) || "default";
     if (rec && rec.ownerId && rec.ownerId !== pk) {
-      const need = minNeed(p, rec, pk, conquestCounts({}));
-      const coin = rules.ncn ? rules.ncn(need.min) : (need.min + " NCN");
-      return "Enemy-held. Deposit " + coin + " so your stake beats theirs (highest stake owns). Or ignore this asset.";
+      return "Enemy-held. Buy to bid past their stake — highest NCN owns.";
     }
-    if (optsPhotoRequired(p, rec)) return "Take a photo, then put NCN in to back this place.";
-    return "Put NCN in to back this place.";
+    if (optsPhotoRequired(p, rec)) return "In range. Snap a photo, then Buy.";
+    return "In range. Buy to back this asset.";
   }
 
   function optsPhotoRequired(p, rec) {
@@ -145,6 +333,10 @@
     };
   }
 
+  function V() {
+    return global.LvfeVoice;
+  }
+
   function marksActionsHtml(p, rec, playerKey, opts) {
     const M = global.LvfeGameMarks;
     if (!M || !p || !p.id) return "";
@@ -152,17 +344,18 @@
     const planned = M.isTakeover(p.id);
     const ownerId = rec && rec.ownerId ? String(rec.ownerId) : "";
     const threatOn = ownerId && ownerId !== playerKey && M.isThreat(ownerId);
+    const cta = (V() && V().CTA) || {};
     const bits = [`<p class="row-label">Marks</p><div class="mark-acts">`];
     bits.push(
       `<button type="button" class="sw-ctl ghost mark-btn" data-mark-watch="${esc(p.id)}" aria-pressed="${watching ? "true" : "false"}">` +
-      `<span class="sw-ctl-name">${watching ? "Unwatch place" : "Mark place"}</span></button>`
+      `<span class="sw-ctl-name">${watching ? "Unwatch" : (cta.watch || "Watch")}</span></button>`
     );
     if (ownerId && ownerId !== playerKey) {
       bits.push(
         `<button type="button" class="sw-ctl ghost mark-btn" data-mark-threat="${esc(ownerId)}" data-threat-name="${esc(ownerWords(rec))}" aria-pressed="${threatOn ? "true" : "false"}">` +
-        `<span class="sw-ctl-name">${threatOn ? "Clear threat" : "Mark as threat"}</span></button>`,
+        `<span class="sw-ctl-name">${threatOn ? "Clear threat" : "Mark threat"}</span></button>`,
         `<button type="button" class="sw-ctl ghost mark-btn" data-mark-takeover="${esc(p.id)}" aria-pressed="${planned ? "true" : "false"}">` +
-        `<span class="sw-ctl-name">${planned ? "Drop takeover" : "Plan takeover"}</span></button>`
+        `<span class="sw-ctl-name">${planned ? "Drop takeover" : (cta.takeover || "Plan takeover")}</span></button>`
       );
     }
     bits.push(`</div>`);
@@ -198,21 +391,22 @@
     return who + " " + coin + " from visits when someone else backs (10% of what they put in).";
   }
 
-  /** Pay is the gated button. Label is Pay / Bid to overturn. Disabled unless GPS and dist <= 80. */
+  /** Claim / Bid gated button. Disabled unless GPS and dist <= 80. */
   function payHtml(p, rec, ok, playerKey, counts) {
+    const cta = (V() && V().CTA) || {};
     if (!R().isOwnable(p)) {
       return `<button type="button" class="claim" disabled>Cannot be owned</button>`;
     }
     if (!ok) {
-      return `<button type="button" class="claim" data-pay="1" disabled>Pay</button>` +
-        `<p class="note pay-wait">Walk within 80 m to pay.</p>`;
+      return `<button type="button" class="claim" data-walk-closer="${esc(p.id)}">${cta.track || "Track"}</button>` +
+        `<p class="note pay-wait">Approaching claim zone — walk within 80 m, then Claim.</p>`;
     }
     const need = minNeed(p, rec, playerKey, counts);
-    const label = need.overturn ? "Bid to overturn" : "Pay";
+    const label = need.overturn ? (cta.bid || "Bid") : (cta.claim || "Claim");
     const bits = [`<form class="visit-form" data-place="${esc(p.id)}" data-kind="stake">`];
     if (need.overturn) {
       const coin = R().ncn ? R().ncn(need.min) : (need.min + " NCN");
-      bits.push(`<p class="note">Deposit at least ${coin} so your stake beats ${esc(ownerWords(rec))} (${need.ownerStake} NCN).</p>`);
+      bits.push(`<p class="note">Bid at least ${coin} to beat ${esc(ownerWords(rec))} (${need.ownerStake} NCN).</p>`);
     }
     if (need.needPhoto) {
       bits.push(`<input type="file" accept="image/*" capture="environment" class="photo-in" name="photo" />`);
@@ -228,14 +422,75 @@
     return bits.join("");
   }
 
-  function missionCta(p, rec, ok, playerKey, counts) {
+  function missionActsHtml(p, rec, ok, playerKey, counts, tracking) {
     if (!R().isOwnable(p)) {
       return `<button type="button" class="claim" disabled>Cannot be owned</button>`;
     }
-    if (!ok) {
-      return `<button type="button" class="claim" data-walk-closer="${esc(p.id)}">Walk closer</button>`;
+    const cost = missionCostBits(p, rec, playerKey, counts);
+    const buyLabel = cost.yours ? "Top up" : (cost.overturn ? "Bid" : "Buy");
+    const bits = [`<div class="mission-acts">`];
+    bits.push(
+      `<button type="button" class="claim mission-buy" data-mission-buy="${esc(p.id)}">${esc(buyLabel)}</button>`
+    );
+    if (!tracking) {
+      bits.push(
+        `<button type="button" class="claim ghost mission-track" data-mission-track="${esc(p.id)}">Start tracking</button>`
+      );
+    } else {
+      bits.push(
+        `<button type="button" class="claim ghost mission-track" data-mission-track="${esc(p.id)}" aria-pressed="true">Tracking</button>`
+      );
     }
-    return payHtml(p, rec, true, playerKey, counts);
+    bits.push(`</div>`);
+    if (!ok) {
+      bits.push(`<p class="note pay-wait">Out of range — Start tracking for the green walk line, then Buy inside 80 m.</p>`);
+    }
+    return bits.join("");
+  }
+
+  function missionCta(p, rec, ok, playerKey, counts) {
+    return missionActsHtml(p, rec, ok, playerKey, counts, false);
+  }
+
+  function missionBriefHtml(p, rec, dist, ok, userPos, playerKey, counts, opts) {
+    const rules = R();
+    const title = rules.placeTitle(p);
+    const tracking = Boolean(opts && opts.tracking);
+    const ownable = rules.isOwnable(p);
+    const cost = missionCostBits(p, rec, playerKey, counts);
+    const fac = missionFactionStats(playerKey, opts);
+    const rank = missionRankLine(playerKey, opts);
+    const distTxt = userPos && Number.isFinite(dist) && dist !== Infinity
+      ? (formatDist(dist) + " · ~" + walkEtaFor(p, dist, opts).replace(/ walk$/i, " walk"))
+      : "Need GPS";
+    const activeTxt = fac.activeCount
+      ? (fac.activeCount + (fac.activeList.length && fac.activeList.length <= 3
+        ? " · " + fac.activeList.join(", ")
+        : " active"))
+      : "None yet";
+    const bits = [
+      `<div class="mission-brief">`,
+      `<p class="mission-kicker">Property Asset sighted !!!</p>`,
+      `<p class="row-label">Name</p>`,
+      `<p class="row-value mission-name" title="${esc(title)}">${esc(title)}</p>`,
+      `<p class="row-label">Distance</p>`,
+      `<p class="row-value">${esc(distTxt)}</p>`,
+      `<p class="row-label">Cost of Property</p>`,
+      `<p class="row-value">${esc(ownable ? cost.label : "Cannot be owned")}</p>`,
+      missionActsHtml(p, rec, ok, playerKey, counts, tracking),
+      `<button type="button" class="mission-stat" data-mission-faction="${esc(fac.factionId || "")}">`,
+      `<div class="mission-row"><span class="row-label">No of Properties in Faction</span><span class="row-value">${fac.inFaction}</span></div>`,
+      `<div class="mission-row"><span class="row-label">Owned in Faction regions</span><span class="row-value">${fac.ownedIn}</span></div>`,
+      `<div class="mission-row"><span class="row-label">Owned outside Faction regions</span><span class="row-value">${fac.ownedOut}</span></div>`,
+      `<div class="mission-row"><span class="row-label">Active Factions</span><span class="row-value">${esc(activeTxt)}</span></div>`,
+      `</button>`,
+      `<button type="button" class="mission-stat mission-rank" data-mission-rank="1">`,
+      `<div class="mission-row"><span class="row-label">Current rank</span><span class="row-value">${esc(rank.text)}</span></div>`,
+      `</button>`,
+      `<p class="note mission-tip">${esc(missionCopy(p, rec, dist, ok, userPos, playerKey))}</p>`,
+      `</div>`,
+    ];
+    return bits.join("");
   }
 
   function tabsHtml(tab, visible) {
@@ -298,56 +553,76 @@
       `<div class="dossier-pages">`,
     ];
 
+    const voice = V();
     if (!visible || visible.place !== false) {
+      const pb = (voice && voice.placeBrief()) || { head: "Place file", status: "", how: "" };
       bits.push(
         `<section class="${pageClass("place", tab)}" data-page="place" role="tabpanel">`,
+        voice ? voice.briefHead(pb.head, pb.status) : "",
         photoBlock(p, rec, opts),
         `<p class="row-label">Name</p><p class="row-value">${esc(title)}</p>`,
         `<p class="row-label">Type</p><p class="row-value">${esc(type)}</p>`,
         `<p class="row-label">Quality</p><p class="row-value">${esc(rules.qualityWords(p.quality))}</p>`,
+        voice && pb.how ? voice.howWorks(pb.how) : "",
         `</section>`
       );
     }
     if (!visible || visible.mission !== false) {
+      /* Sibling Mission remodel — keep briefing intact; shared voice lives in LvfeVoice. */
       bits.push(
         `<section class="${pageClass("mission", tab)}" data-page="mission" role="tabpanel">`,
-        `<p class="note">${esc(missionCopy(p, rec, dist, ok, userPos, opts && opts.playerKey))}</p>`,
-        missionCta(p, rec, ok, playerKey, counts),
+        missionBriefHtml(p, rec, dist, ok, userPos, playerKey, counts, opts),
         `</section>`
       );
     }
     if (!visible || visible.land !== false) {
+      const lb = (voice && voice.landBrief()) || { head: "Land hold", status: "", how: "" };
       bits.push(
         `<section class="${pageClass("land", tab)}" data-page="land" role="tabpanel">`,
+        voice ? voice.briefHead(lb.head, lb.status) : "",
         `<p class="row-label">Neighbourhood</p><p class="row-value">${esc(rules.wordOr(rules.areaLabel(p), "Unclaimed"))}</p>`,
         `<p class="row-label">Side</p><p class="row-value">${esc(landSide(rec))}</p>`,
         `<p class="row-label">Who owns it</p><p class="row-value">${esc(ownerWords(rec))}</p>`,
         `<p class="row-label">Status</p><p class="row-value">${esc(conqueredText(rec))}</p>`,
         marksActionsHtml(p, rec, playerKey, opts),
+        voice && lb.how ? voice.howWorks(lb.how) : "",
         `</section>`
       );
     }
     if (!visible || visible.money !== false) {
+      const mb = (voice && voice.moneyBrief(ownable)) || { head: "Money desk", status: "", how: "" };
       bits.push(`<section class="${pageClass("money", tab)}" data-page="money" role="tabpanel">`);
+      if (voice) bits.push(voice.briefHead(mb.head, mb.status));
       if (ownable) {
         bits.push(
-          `<p class="row-label">Cost to back</p><p class="row-value">${esc(cost)}</p>`,
+          `<p class="row-label">Cost to Claim</p><p class="row-value">${esc(cost)}</p>`,
           `<p class="row-label">Place value</p><p class="row-value">${esc(moneyValue(rec, p, counts))}</p>`,
           `<p class="note">${esc(moneyInterest(p, rec, playerKey, counts))}</p>`
         );
+        if (!ok) {
+          bits.push(
+            `<button type="button" class="claim" data-walk-closer="${esc(p.id)}">` +
+            `${(voice && voice.CTA && voice.CTA.track) || "Track"}</button>`
+          );
+        }
       } else {
         bits.push(`<p class="note">${esc(rules.farmMsg())}</p>`);
       }
+      if (voice && mb.how) bits.push(voice.howWorks(mb.how));
       bits.push(`</section>`);
     }
     if (!visible || visible.wallet !== false) {
+      const wb = (voice && voice.walletBrief()) || { head: "Field wallet", status: "", how: "" };
       bits.push(
         `<section class="${pageClass("wallet", tab)}" data-page="wallet" role="tabpanel">`,
+        voice ? voice.briefHead(wb.head, wb.status) : "",
         `<p class="row-label">Wallet</p><p class="row-value">${rules.ncn ? rules.ncn(wallet) : (wallet + " NCN")}</p>`,
         `<p class="row-label">This place</p><p class="row-value">${esc(title)}</p>`
       );
       if (walkLine) bits.push(`<p class="note">${esc(walkLine)}</p>`);
-      bits.push(payHtml(p, rec, ok, playerKey, counts), `</section>`);
+      bits.push(payHtml(p, rec, ok, playerKey, counts));
+      if (voice && wb.how) bits.push(voice.howWorks(wb.how));
+      bits.push(`</section>`);
     }
     bits.push(`</div></div>`);
     return bits.join("");
@@ -392,5 +667,9 @@
     distOk,
     ownerWords,
     payHtml,
+    missionFactionStats,
+    missionRankLine,
+    missionCostBits,
+    formatDist,
   };
 })(typeof window !== "undefined" ? window : globalThis);

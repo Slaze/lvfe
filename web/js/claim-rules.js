@@ -79,7 +79,21 @@
     const mins = Number.isFinite(minutes) ? Math.max(1, Math.round(minutes)) : walkMinutes(distM);
     if (mins < 1) return "Under a minute walk";
     if (mins === 1) return "1 min walk";
+    if (mins >= 60) {
+      const h = Math.floor(mins / 60);
+      const rem = mins % 60;
+      if (!rem) return h + (h === 1 ? " hr walk" : " hr walk");
+      return h + " hr " + rem + " min walk";
+    }
     return mins + " min walk";
+  }
+
+  /** Player-facing distance: "120 m" or "1.2 km". */
+  function formatDistM(distM) {
+    const n = Number(distM);
+    if (!Number.isFinite(n) || n < 0 || n === Infinity) return "—";
+    if (n >= 1000) return (Math.round(n / 100) / 10) + " km";
+    return Math.round(n) + " m";
   }
 
   /** Player-facing coin amount. Prefer "12 NCN" in UI; ledger keys stay NairaCoin. */
@@ -186,6 +200,7 @@
     noOwnerYet,
     walkMinutes,
     walkEtaText,
+    formatDistM,
     ncn,
     headingWords,
     typeLabel,

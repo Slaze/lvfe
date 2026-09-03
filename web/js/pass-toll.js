@@ -342,11 +342,11 @@
 
   function formulaCopy() {
     return {
-      short: "Pass-by toll = max(2 NCN, 5% of the owner’s stake), once per place per 60 min.",
+      short: "Toll levied near enemy pins: max(2 NCN, 5% of owner stake), once / place / 60 min.",
       escape:
-        "Escape the charge: pay 40% of what was taken (min 1 NCN) to get that toll refunded. Net cost = the escape fee.",
+        "Escape: pay 40% of what was taken (min 1 NCN) to refund the toll. Net cost = the escape fee.",
       empty:
-        "If your wallet is empty or short, we take what you have and flag the rest as debt on that place (soft fail).",
+        "Short wallet → we take what you have and flag the rest as debt on that place.",
       cooldown: "60 minutes per place after a toll (including escaped).",
     };
   }

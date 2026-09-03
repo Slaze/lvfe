@@ -5,7 +5,7 @@
   const WEB_CLIENT_ID = "730640559588-i03q4imeb8cl8lonr3j6iliaefmr1sa6.apps.googleusercontent.com";
   const ANDROID_PACKAGE = "com.lvfe.xperience";
   const BLOCKER_CODE = "oauth_not_configured";
-  const BLOCKER_TITLE = "Google sign-in is not wired yet.";
+  const BLOCKER_TITLE = "Sign in with Google isn’t available yet — try again later.";
   const BLOCKER_STEPS = [
     "Google Cloud Console → create or select a project (Identity / OAuth only — do not enable Maps SDK, Places, or Photorealistic 3D).",
     "APIs & Services → OAuth consent screen: External or Internal. App name Lvfe. Scopes: openid, email, profile only.",

@@ -624,13 +624,16 @@
     if (!target) return "";
     const w = walkParts();
     const title = target.name;
-    if (!global.lvfeUserPos) return title + " · tap GPS to guide · 80 m pay ring";
-    const how = w.source === "osrm" ? "walk" : "as the crow flies";
+    if (!global.lvfeUserPos) return title + " · tap GPS to guide · approaching claim zone at 80 m";
+    const how = w.source === "osrm" ? "walk" : "direct";
     let line = Math.round(w.routeDist) + " m · " + R().walkEtaText(w.routeDist, w.mins) +
       " (" + how + ")";
     if (w.carSec != null) line += " · Car " + fmtMins(w.carSec);
     if (w.alts > 1) line += " · tap muted path for alt";
-    return line + " · 80 m pay ring";
+    if (Number.isFinite(w.routeDist) && w.routeDist <= 80) line += " · inside claim zone — Claim";
+    else if (Number.isFinite(w.routeDist) && w.routeDist <= 150) line += " · approaching claim zone";
+    else line += " · 80 m claim ring";
+    return line;
   }
 
   function paintChip() {

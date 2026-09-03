@@ -908,7 +908,13 @@
     }
     .hub-bal { margin: 0; font-size: 28px; font-weight: 800; color: #ff7a1a; font-variant-numeric: tabular-nums; }
     .hub-meta, .hub-note { margin: 6px 0 12px; color: #9aa0a6; font-size: 13px; line-height: 1.4; }
-    .hub-empty { color: #9aa0a6; font-size: 13px; }
+    .hub-empty { color: #9aa0a6; font-size: 13px; line-height: 1.4; }
+    .hub-pane .brief-head {
+      margin: 0 0 4px; font-size: 16px; font-weight: 750; color: #ff7a1a; letter-spacing: 0.02em;
+    }
+    .hub-pane .brief-status {
+      margin: 0 0 14px; font-size: 13px; color: #c5c8ce; line-height: 1.35;
+    }
     .hub-cta {
       display: flex; align-items: center; gap: 10px; width: 100%;
       min-height: 48px; margin: 0 0 12px; padding: 0 14px;
@@ -976,7 +982,7 @@
     <video id="arCam" playsinline webkit-playsinline autoplay muted></video>
     <canvas id="arThree"></canvas>
     <div id="arPins"></div>
-    <p id="arHint" hidden>No places within 80 m</p>
+    <p id="arHint" hidden>No assets in view</p>
     <div id="arTrackHud" hidden>
       <strong id="arTrackM">Waiting for GPS</strong>
       <span id="arTrackHead">Walk toward the marked place</span>
@@ -1053,7 +1059,7 @@
         <div class="acct-seal" id="acctSeal" aria-hidden="true">+</div>
         <div>
           <h2 id="acctName">No name yet</h2>
-          <p id="acctMeta">Set a name to back places · <span class="coin" id="acctCoin">0</span> NCN</p>
+          <p id="acctMeta">Set a name to Claim · <span class="coin" id="acctCoin">0</span> NCN</p>
         </div>
       </div>
       <button type="button" class="google-btn" id="btnGoogleSignInSheet">Sign in with Google</button>
@@ -1106,7 +1112,7 @@
       </section>
       <section class="acct-sec" aria-labelledby="acctPhone">
         <h3 id="acctPhone">This phone</h3>
-        <p id="acctSyncNote" class="iou-note" style="margin:0 14px 10px">Cloud save off until SAVE_API_BASE is set.</p>
+        <p id="acctSyncNote" class="iou-note" style="margin:0 14px 10px">Cloud save needs Sign in with Google</p>
         <div class="save-pair">
           <button type="button" id="btnExportSave">Export save</button>
           <button type="button" id="btnImportSave">Import save</button>
@@ -1209,7 +1215,7 @@
       <img class="splash-seal" src="assets/brand/lvfe-mark-512.png" width="72" height="72" alt="" aria-hidden="true" />
       <p class="splash-brand">Lvfe</p>
       <p class="splash-tag">The Xperience</p>
-      <p class="splash-sub">Walk the real city. Photo. Back places with NCN.</p>
+      <p class="splash-sub">Scout the city. Track assets. Claim with NCN.</p>
     </div>
     <div id="menuStage" class="boot-stage" hidden>
       <div class="menu-panel">
@@ -1239,6 +1245,7 @@
   <script src="map-3d.js"></script>
   <script src="js/lvfe-assets.js"></script>
   <script src="js/claim-rules.js"></script>
+  <script src="js/game-voice.js"></script>
   <script src="js/conquest.js"></script>
   <script src="js/dossier.js"></script>
   <script src="js/place-thumb.js"></script>
@@ -1846,7 +1853,10 @@
             handleTollEscape(placeId);
             return;
           }
-          if (placeId) openPlaceFromHub(placeId, act === "bid");
+          if (placeId) openPlaceFromHub(placeId, act === "bid", {
+            track: act === "track",
+            mission: act === "open" || act === "track" || act === "mission",
+          });
         });
       }
       document.getElementById("btn3d").addEventListener("click", () => {
@@ -1898,9 +1908,16 @@
         });
       }
       if (window.LvfeTrack) window.LvfeTrack.bindChip();
-      window.lvfeOnTrackChange = function () {
+      window.lvfeOnTrackChange = function (target) {
         if (window.LvfeTrack) window.LvfeTrack.paintChip();
         refreshOpenDossier();
+        if (target && target.id) {
+          emitGameNotify({
+            type: window.LvfeGameNotify && window.LvfeGameNotify.TYPES.TRACKING_STARTED,
+            placeId: target.id,
+            placeName: target.name || target.id,
+          });
+        }
       };
     }
 
@@ -2209,7 +2226,7 @@
       if (syncNote && window.LvfeSaveSync) {
         syncNote.textContent = window.LvfeSaveSync.statusLine();
       } else if (syncNote) {
-        syncNote.textContent = "Cloud save off until SAVE_API_BASE is set.";
+        syncNote.textContent = "Cloud save needs Sign in with Google";
       }
       const wrap = document.getElementById("menuSwitch");
       const sel = document.getElementById("profileSelect");
@@ -2336,7 +2353,8 @@
         }
         doomed.forEach(function (k) { localStorage.removeItem(k); });
       } catch (err) {
-        toast("Restart failed: " + String(err && err.message ? err.message : err));
+        if (typeof lvfeDebugLog === "function") lvfeDebugLog("restart", err);
+        toast("Restart failed — try again.");
         return;
       }
       if (window.LvfePhotoStore && typeof window.LvfePhotoStore.clearAll === "function") {
@@ -2357,13 +2375,13 @@
       if (Sync && Sync.enabled()) {
         toast("Saving to cloud…");
         Sync.push(PLAYER_KEY, syncPackOpts()).then(function (p) {
-          toast(p && p.ok ? "Saved to cloud." : ("Save: " + ((p && p.error) || "failed")));
+          toast(p && p.ok ? "Saved to cloud." : (typeof lvfeCloudPlayerMsg === "function" ? lvfeCloudPlayerMsg(p) : "Cloud save failed — try again."));
           paintProfileMenu();
         });
         return;
       }
       downloadSave();
-      toast("Cloud off — exported a save file.");
+      toast("Exported a save file.");
     }
 
     function showMainMenu() {
@@ -2561,10 +2579,14 @@
     function showGoogleBlocker(err) {
       const el = document.getElementById("googleBlocker");
       if (!el) return;
+      const title = (err && (err.title || err.message)) || (window.LvfeGoogleAuthConfig && window.LvfeGoogleAuthConfig.BLOCKER_TITLE) || "Sign in with Google isn’t available yet — try again later.";
       const steps = (err && err.steps) || (window.LvfeGoogleAuthConfig && window.LvfeGoogleAuthConfig.BLOCKER_STEPS) || [];
-      const title = (err && (err.title || err.message)) || (window.LvfeGoogleAuthConfig && window.LvfeGoogleAuthConfig.BLOCKER_TITLE) || "Google sign-in is not wired yet.";
       el.hidden = false;
-      el.textContent = title + "\n\n" + steps.map((s, i) => (i + 1) + ". " + s).join("\n");
+      if (typeof lvfeDebug === "function" && lvfeDebug() && steps.length) {
+        el.textContent = title + "\n\n" + steps.map((s, i) => (i + 1) + ". " + s).join("\n");
+      } else {
+        el.textContent = title;
+      }
     }
 
     function hideGoogleBlocker() {
@@ -2605,8 +2627,8 @@
           const mig = runMigrate();
           return Sync.push(pk, packOpts()).then(function (p) {
             toast(p && p.ok
-              ? (mig && mig.migrated ? "Local progress linked to Google and uploaded." : "First cloud save uploaded.")
-              : ("Cloud save: " + ((p && p.error) || "push failed")));
+              ? (mig && mig.migrated ? "Progress linked to Google and saved." : "First cloud save uploaded.")
+              : (typeof lvfeCloudPlayerMsg === "function" ? lvfeCloudPlayerMsg(p) : "Cloud save failed — try again."));
             renderHud();
             paintProfileMenu();
             paintGoogleAuthUi();
@@ -2615,7 +2637,7 @@
         }
         if (!res || !res.ok) {
           if (localProg) runMigrate();
-          toast("Cloud save: " + ((res && res.error) || "failed — sign-in token or server auth."));
+          toast(typeof lvfeCloudPlayerMsg === "function" ? lvfeCloudPlayerMsg(res) : "Cloud save needs Sign in with Google");
           paintProfileMenu();
           return;
         }
@@ -2637,7 +2659,7 @@
         if (mergeLocal) {
           runMigrate();
           return Sync.push(pk, packOpts()).then(function (p) {
-            toast(p && p.ok ? "Merged local progress into Google cloud save." : ("Cloud save: " + ((p && p.error) || "push failed")));
+            toast(p && p.ok ? "Merged progress into cloud save." : (typeof lvfeCloudPlayerMsg === "function" ? lvfeCloudPlayerMsg(p) : "Cloud save failed — try again."));
             renderHud();
             paintProfileMenu();
             paintGoogleAuthUi();
@@ -2654,7 +2676,7 @@
     function applyGoogleAccount(result) {
       if (!result || !result.ok) {
         showGoogleBlocker(result);
-        toast((result && result.title) || (result && result.message) || "Google sign-in is not wired yet.");
+        toast((result && (result.title || result.message)) || "Sign in with Google isn’t available yet — try again later.");
         if (window.LvfeGoogleAuth && window.LvfeGoogleAuth.renderButtons) {
           window.LvfeGoogleAuth.renderButtons();
         }
@@ -2712,7 +2734,7 @@
     function requireGoogleForCloudSync() {
       const g = googleSignedState();
       if (g && g.sub && !g.mock) return true;
-      const msg = "Sign in with Google to sync the same save across phone APK and this PWA. Guest play stays on this device only.";
+      const msg = "Cloud save needs Sign in with Google";
       toast(msg);
       const note = document.getElementById("acctGoogleNote");
       if (note) {
@@ -2774,7 +2796,7 @@
           stampPlaceMarks();
           refreshPlaceSource();
           scheduleSavePush();
-          toast("Save imported. Playing as " + ((loadIdentity() && loadIdentity().playerName) || pack.playerKey) + ".");
+          toast("Save imported. Playing as " + ((loadIdentity() && loadIdentity().playerName) || "you") + ".");
         } catch (err) {
           toast("That file is not an Lvfe save.");
         }
@@ -2814,7 +2836,11 @@
         e.preventDefault();
         const Sync = window.LvfeSaveSync;
         if (!Sync || !Sync.enabled()) {
-          toast("Set ?saveApi=http://LAN:18787 or localStorage lvfe.saveApiBase first.");
+          if (typeof lvfeDebug === "function" && lvfeDebug()) {
+            toast("Set ?saveApi=… or localStorage lvfe.saveApiBase (debug).");
+          } else {
+            toast("Cloud save needs Sign in with Google");
+          }
           paintProfileMenu();
           return;
         }
@@ -2834,14 +2860,14 @@
             refreshNearby();
           },
         }).then(function (res) {
-          if (res && res.pulled) toast("Pulled cloud save.");
-          else if (res && res.pushedLocal) toast("Pushed local save (newer).");
+          if (res && res.pulled) toast("Cloud save loaded.");
+          else if (res && res.pushedLocal) toast("Uploaded this phone’s save.");
           else if (res && res.empty) {
             return Sync.push(pk, syncPackOpts()).then(function (p) {
-              toast(p && p.ok ? "Pushed first cloud save." : ("Sync: " + ((p && p.error) || "failed")));
+              toast(p && p.ok ? "First cloud save uploaded." : (typeof lvfeCloudPlayerMsg === "function" ? lvfeCloudPlayerMsg(p) : "Cloud save failed — try again."));
               paintProfileMenu();
             });
-          } else if (res && res.ok === false) toast("Sync: " + (res.error || "failed"));
+          } else if (res && res.ok === false) toast(typeof lvfeCloudPlayerMsg === "function" ? lvfeCloudPlayerMsg(res) : "Cloud save failed — try again.");
           else toast("Cloud save up to date.");
           paintProfileMenu();
         });
@@ -2852,7 +2878,7 @@
         hideGoogleBlocker();
         if (!window.LvfeGoogleAuth) {
           showGoogleBlocker(null);
-          toast("Google sign-in is not wired yet.");
+          toast("Sign in with Google isn’t available yet — try again later.");
           return;
         }
         window.LvfeGoogleAuth.signIn(applyGoogleAccount);
@@ -2864,16 +2890,16 @@
         if (!window.LvfeGoogleAuth) {
           if (note) {
             note.hidden = false;
-            note.textContent = "Google sign-in is not wired yet.";
+            note.textContent = "Sign in with Google isn’t available yet — try again later.";
           }
-          toast("Google sign-in is not wired yet.");
+          toast("Sign in with Google isn’t available yet — try again later.");
           return;
         }
         window.LvfeGoogleAuth.signIn(function (result) {
           if (!result || !result.ok) {
             if (note) {
               note.hidden = false;
-              note.textContent = (result && (result.title || result.message)) || "Google sign-in is not wired yet.";
+              note.textContent = (result && (result.title || result.message)) || "Sign in with Google isn’t available yet — try again later.";
             }
           }
           applyGoogleAccount(result);
@@ -2938,14 +2964,14 @@
       if (res.away && res.message && !fieldAwayTold) {
         fieldAwayTold = true;
         if (res.worldOk === false && res.worldError) {
-          toast("Overpass down — Unclaimed area hinterland still claimable.");
+          toast("Couldn't reach the map server — Unclaimed area is still claimable.");
         } else if (res.added && res.added.length) {
-          toast("Named places near you loaded from OpenStreetMap.");
+          toast("Named places near you are on the map.");
         } else {
-          toast("Outside Enugu catalog — Unclaimed area at your GPS is claimable.");
+          toast("Outside the city catalog — Unclaimed area here is claimable.");
         }
       } else if (res.away && res.worldOk === false && res.message) {
-        toast(res.message.slice(0, 120));
+        toast(String(res.message).slice(0, 120));
       }
       if (res.worldPromise && typeof res.worldPromise.then === "function") {
         res.worldPromise.then(function (worldRes) {
@@ -3032,9 +3058,9 @@
                 refreshNearby();
               },
             });
-            toast("Server had a newer save — merged (last-write-wins).");
+            toast("Cloud save updated from another device.");
           } else if (res && res.ok === false && res.code === "key_mismatch") {
-            toast("Cloud save: Google account key mismatch — sign in again.");
+            toast("Cloud save needs Sign in with Google");
           }
           paintProfileMenu();
         });
@@ -3079,12 +3105,8 @@
         },
       }).then(function (res) {
         if (res && res.pulled) toast("Cloud save loaded.");
-        else if (res && res.ok === false && res.code === "oauth_not_configured") {
-          toast("Cloud save: Google OAuth not configured on server.");
-        } else if (res && res.ok === false && res.code === "key_mismatch") {
-          toast("Cloud save: sign in again — player key must be g{sub}.");
-        } else if (res && res.ok === false && !res.skipped && !res.empty && !res.offline) {
-          toast("Cloud save: " + (res.error || "failed"));
+        else if (res && res.ok === false && !res.skipped && !res.empty) {
+          toast(typeof lvfeCloudPlayerMsg === "function" ? lvfeCloudPlayerMsg(res) : "Cloud save failed — try again.");
         }
         paintProfileMenu();
       });
@@ -3449,7 +3471,7 @@
       const Cfg = window.LvfeBuyNcnConfig;
       function start(amount) {
         if (!Buy) {
-          toast("Buy module missing.");
+          toast("Buy NCN isn’t available yet — try again later.");
           return;
         }
         if (!Cfg || !Cfg.isConfigured()) {
@@ -3458,7 +3480,7 @@
         }
         const g = googleSignedState();
         const email = (g && g.email) || "";
-        toast("Opening Paystack…");
+        toast("Opening checkout…");
         Buy.startCheckout({
           playerKey: PLAYER_KEY,
           email: email,
@@ -3482,10 +3504,14 @@
       function showBuyBlocker(err) {
         const el = document.getElementById("googleBlocker");
         const steps = (err && err.steps) || (Cfg && Cfg.BLOCKER_STEPS) || [];
-        const title = (err && (err.title || err.message)) || (Cfg && Cfg.BLOCKER_TITLE) || "Buy NCN is not wired yet.";
+        const title = (err && (err.title || err.message)) || (Cfg && Cfg.BLOCKER_TITLE) || "Buy NCN isn’t available yet — try again later.";
         if (el) {
           el.hidden = false;
-          el.textContent = title + "\n\n" + steps.map(function (s, i) { return (i + 1) + ". " + s; }).join("\n");
+          if (typeof lvfeDebug === "function" && lvfeDebug() && steps.length) {
+            el.textContent = title + "\n\n" + steps.map(function (s, i) { return (i + 1) + ". " + s; }).join("\n");
+          } else {
+            el.textContent = title;
+          }
         }
         toast(title);
       }
@@ -3517,6 +3543,7 @@
       const muteClaims = document.getElementById("hubMuteClaims");
       const muteNearby = document.getElementById("hubMuteNearby");
       const muteEnemy = document.getElementById("hubMuteEnemy");
+      const muteTrack = document.getElementById("hubMuteTrack");
       const muteToll = document.getElementById("hubMuteToll");
       const muteWatch = document.getElementById("hubMuteWatch");
       const muteThreat = document.getElementById("hubMuteThreat");
@@ -3528,6 +3555,7 @@
           allowClaims: !(muteClaims && muteClaims.checked),
           allowNearby: !(muteNearby && muteNearby.checked),
           allowEnemy: !(muteEnemy && muteEnemy.checked),
+          allowTrack: !(muteTrack && muteTrack.checked),
           allowToll: !(muteToll && muteToll.checked),
           allowWatch: !(muteWatch && muteWatch.checked),
           allowThreat: !(muteThreat && muteThreat.checked),
@@ -3537,6 +3565,7 @@
       if (muteClaims) muteClaims.addEventListener("change", save);
       if (muteNearby) muteNearby.addEventListener("change", save);
       if (muteEnemy) muteEnemy.addEventListener("change", save);
+      if (muteTrack) muteTrack.addEventListener("change", save);
       if (muteToll) muteToll.addEventListener("change", save);
       if (muteWatch) muteWatch.addEventListener("change", save);
       if (muteThreat) muteThreat.addEventListener("change", save);
@@ -3544,7 +3573,7 @@
         testBtn.addEventListener("click", function () {
           emitGameNotify({
             type: N.TYPES.TEST,
-            body: "Test notification — Outpay / Escape / Accept deep-links work from the system tray on Android.",
+            body: "Toll levied — Outpay / Escape / Accept",
             placeId: (placesFc.features[0] && placesFc.features[0].properties && placesFc.features[0].properties.id) || "",
             placeName: "Test place",
           }, { force: true });
@@ -3651,15 +3680,14 @@
       }
       scheduleSavePush();
       if (N) {
-        const body =
-          (result.reason === "debt_only"
-            ? "Wallet empty — " + result.calc.toll + " NCN debt at "
-            : result.reason === "partial"
-              ? "Took " + result.charged + " NCN (debt " + result.debt + ") at "
-              : "Charged " + result.charged + " NCN at ") +
-          (hit.placeName || hit.placeId) +
-          ". Formula: " + result.calc.formula +
-          ". Escape fee " + result.escapeFee + " NCN refunds this toll.";
+        const name = hit.placeName || "this place";
+        let body = "Toll levied — " + result.charged + " NCN at " + name + ". Outpay / Escape / Accept";
+        if (result.reason === "debt_only") {
+          body = "Wallet empty — " + result.calc.toll + " NCN debt at " + name + ". Outpay / Escape / Accept";
+        } else if (result.reason === "partial") {
+          body = "Toll levied — took " + result.charged + " NCN (debt " + result.debt + ") at " + name +
+            ". Outpay / Escape / Accept";
+        }
         emitGameNotify({
           type: N.TYPES.PASS_TOLL,
           placeId: hit.placeId,
@@ -3693,7 +3721,7 @@
     function simulatePassToll() {
       const Toll = window.LvfePassToll;
       if (!Toll) {
-        toast("Toll module missing");
+        toast("Toll isn’t ready — try again.");
         return;
       }
       /* Clear cooldown on first enemy place so debug always fires. */
@@ -3701,7 +3729,7 @@
         return r.ownerId && r.ownerId !== PLAYER_KEY;
       });
       if (!rows.length) {
-        toast("No enemy-owned place on ledger — stake a rival place first (or import save).");
+        toast("No rival place nearby to toll — claim or import a save first.");
         return;
       }
       const r = rows[0];
@@ -3795,7 +3823,7 @@
           placeId: ev.placeId,
           placeName: ev.placeName,
           threatName: ev.threatName,
-          body: (ev.threatName || "Threat") + " put +" + ev.delta + " NCN at " + (ev.placeName || ev.placeId),
+          body: (ev.threatName || "A rival") + " put +" + ev.delta + " NCN at " + (ev.placeName || "a watched place"),
         });
       } else {
         emitGameNotify({
@@ -3803,8 +3831,8 @@
           placeId: ev.placeId,
           placeName: ev.placeName,
           body: ev.kind === "watch_owner"
-            ? (ev.placeName + " owner: " + (ev.fromOwner || "open") + " → " + (ev.toOwner || "open"))
-            : (ev.placeName + " value: " + ev.from + " → " + ev.to + " NCN"),
+            ? ((ev.placeName || "A place") + " changed hands")
+            : ((ev.placeName || "A place") + " value shifted to " + ev.to + " NCN"),
         });
       }
     }
@@ -3847,6 +3875,24 @@
       if (pending) return;
       if (scan.enemy) emitGameNotify(scan.enemy);
       else if (scan.claimable) emitGameNotify(scan.claimable);
+      maybeNotifyApproaching();
+    }
+
+    function maybeNotifyApproaching() {
+      const N = window.LvfeGameNotify;
+      const T = window.LvfeTrack;
+      if (!N || !T || !userPos) return;
+      const target = T.get && T.get();
+      if (!target || !Number.isFinite(target.lat)) return;
+      const dist = haversineM(userPos.lat, userPos.lon, target.lat, target.lon);
+      const approachR = N.APPROACH_RADIUS_M || 120;
+      if (!(dist <= approachR) || dist <= CLAIM_RADIUS_M) return;
+      emitGameNotify({
+        type: N.TYPES.APPROACHING,
+        placeId: target.id,
+        placeName: target.name || target.id,
+        dist: dist,
+      });
     }
 
     function notifyOwnershipDiff(before, after) {
@@ -3869,14 +3915,16 @@
       runMarksDiff();
     }
 
-    function openPlaceFromHub(placeId, bid) {
+    function openPlaceFromHub(placeId, bid, opts) {
       closePlayHub();
       const feat = placeById(placeId);
       if (!feat) {
         toast("Place not on map yet.");
         return;
       }
+      const o = opts || {};
       if (bid) dossierTab = "wallet";
+      else if (o.mission) dossierTab = "mission";
       const coords = feat.geometry && feat.geometry.coordinates;
       if (map && coords) {
         ignorePan = true;
@@ -3884,6 +3932,11 @@
         map.once("moveend", function () { ignorePan = false; });
       }
       openPlacePopup(feat);
+      if (o.track && window.LvfeTrack) {
+        window.LvfeTrack.unlockAudio();
+        window.LvfeTrack.start(feat, { fit: true });
+        if (!userPos) askLocation();
+      }
       if (bid) {
         setTimeout(function () {
           setDossierTab("wallet");
@@ -3892,6 +3945,8 @@
             try { input.focus(); input.select(); } catch (err) { /* */ }
           }
         }, 80);
+      } else if (o.mission) {
+        setTimeout(function () { setDossierTab("mission"); }, 80);
       }
     }
 
@@ -3914,8 +3969,15 @@
         handleTollEscape(String(p.placeId));
         return;
       }
-      if (p.placeId) openPlaceFromHub(String(p.placeId), action === "bid");
-      else openPlayHub("wallet");
+      if (action === "track" && p.placeId) {
+        openPlaceFromHub(String(p.placeId), false, { track: true, mission: true });
+        return;
+      }
+      if (p.placeId) {
+        openPlaceFromHub(String(p.placeId), action === "bid", {
+          mission: action === "open",
+        });
+      } else openPlayHub("wallet");
     };
 
     function fillFactionSelect(list, chapter) {
@@ -4376,6 +4438,7 @@
       const rec = recomputeOwner(placeRec(p && p.id));
       const T = window.LvfeTrack;
       if (window.LvfeDossier) {
+        const idn = loadIdentity();
         return window.LvfeDossier.html({
           p: p,
           rec: rec,
@@ -4386,6 +4449,12 @@
           tab: dossierTab,
           playerKey: PLAYER_KEY,
           walkLine: T && T.isTracking(p && p.id) ? T.chipLine() : "",
+          features: placesFc,
+          places: loadPlaces(),
+          factionId: (idn && idn.factionId) || "",
+          factionNames: FACTION_NAMES,
+          identity: idn,
+          identities: hubIdentities(),
         });
       }
       return dossierFallbackHtml(p, dist);
@@ -4663,11 +4732,60 @@
         e.preventDefault();
         const feat = placeById(trackBtn.getAttribute("data-track"));
         if (feat && window.LvfeTrack) {
+          const wasOn = window.LvfeTrack.isTracking && window.LvfeTrack.isTracking(feat.properties && feat.properties.id);
           window.LvfeTrack.unlockAudio();
           window.LvfeTrack.toggle(feat);
+          /* Tracking started toast comes from lvfeOnTrackChange → emitGameNotify */
+          const nowOn = window.LvfeTrack.isTracking && window.LvfeTrack.isTracking(feat.properties && feat.properties.id);
+          if (wasOn && !nowOn) toast("Tracking stopped");
           if (!userPos) askLocation();
           if (dossierPlaceId) refreshOpenDossier();
         }
+        return;
+      }
+      const missionBuy = e.target.closest("[data-mission-buy]");
+      if (missionBuy) {
+        e.preventDefault();
+        setDossierTab("wallet");
+        setTimeout(function () {
+          const input = document.querySelector('#placeCard input[name="amount"]');
+          if (input) {
+            try { input.focus(); input.select(); } catch (err) { /* */ }
+          } else {
+            toast("Wallet — walk within 80 m to Pay.");
+          }
+        }, 40);
+        return;
+      }
+      const missionTrack = e.target.closest("[data-mission-track]");
+      if (missionTrack) {
+        e.preventDefault();
+        const feat = placeById(missionTrack.getAttribute("data-mission-track"));
+        if (feat && window.LvfeTrack) {
+          window.LvfeTrack.unlockAudio();
+          const id = feat.properties && feat.properties.id;
+          if (!window.LvfeTrack.isTracking(id)) {
+            window.LvfeTrack.start(feat, { fit: true });
+            toast("Tracking — green walk line on.");
+          } else {
+            window.LvfeTrack.toggle(feat);
+            toast("Tracking stopped");
+          }
+          if (!userPos) askLocation();
+          if (dossierPlaceId) refreshOpenDossier();
+        }
+        return;
+      }
+      const missionRank = e.target.closest("[data-mission-rank]");
+      if (missionRank) {
+        e.preventDefault();
+        openPlayHub("rankings");
+        return;
+      }
+      const missionFac = e.target.closest("[data-mission-faction]");
+      if (missionFac) {
+        e.preventDefault();
+        openPlayHub("analytics");
         return;
       }
       const markWatch = e.target.closest("[data-mark-watch]");

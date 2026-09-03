@@ -752,13 +752,13 @@ class MainActivity : AppCompatActivity() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val mgr = getSystemService(NotificationManager::class.java) ?: return
         val channels = listOf(
-            NotificationChannel(CHANNEL_CLAIMS, "Claims", NotificationManager.IMPORTANCE_DEFAULT),
-            NotificationChannel(CHANNEL_NEARBY, "Nearby places", NotificationManager.IMPORTANCE_DEFAULT),
-            NotificationChannel(CHANNEL_ENEMY, "Enemy assets", NotificationManager.IMPORTANCE_HIGH),
-            NotificationChannel(CHANNEL_GAME, "Game", NotificationManager.IMPORTANCE_LOW),
+            NotificationChannel(CHANNEL_CLAIMS, "Your claims", NotificationManager.IMPORTANCE_DEFAULT),
+            NotificationChannel(CHANNEL_NEARBY, "Nearby assets", NotificationManager.IMPORTANCE_DEFAULT),
+            NotificationChannel(CHANNEL_ENEMY, "Rival alerts", NotificationManager.IMPORTANCE_HIGH),
+            NotificationChannel(CHANNEL_GAME, "Lvfe", NotificationManager.IMPORTANCE_LOW),
         )
         channels.forEach { ch ->
-            ch.description = "Lvfe: The Xperience"
+            ch.description = "Game alerts for Lvfe"
             mgr.createNotificationChannel(ch)
         }
     }

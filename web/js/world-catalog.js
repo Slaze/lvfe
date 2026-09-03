@@ -327,11 +327,12 @@
         cell: ck,
         features: features,
         message: features.length
-          ? ("Loaded " + features.length + " named places near you from OpenStreetMap.")
-          : "No named POIs in this viewport — hinterland Unclaimed area still works.",
+          ? ("Named places near you are on the map.")
+          : "No named places here — Unclaimed area is still claimable.",
       };
     }).catch(function (err) {
       lastError = String(err && err.message || err);
+      if (typeof global.lvfeDebugLog === "function") global.lvfeDebugLog("world-catalog", lastError);
       const stale = lsGet(CACHE_KEY, {})[ck];
       if (stale && Array.isArray(stale.features) && stale.features.length) {
         return {
@@ -340,7 +341,7 @@
           cell: ck,
           features: stale.features,
           error: lastError,
-          message: "Overpass is down (" + lastError + "). Showing cached pins; hinterland still claimable.",
+          message: "Couldn't reach the map server — showing saved pins nearby.",
         };
       }
       return {
@@ -348,7 +349,7 @@
         cell: ck,
         features: [],
         error: lastError,
-        message: "Overpass is down (" + lastError + "). Falling back to Unclaimed area hinterland.",
+        message: "Couldn't reach the map server — Unclaimed area is still claimable.",
       };
     }).finally(function () {
       inFlight = null;

@@ -48,8 +48,11 @@
       code: C.BLOCKER_CODE,
       title: C.BLOCKER_TITLE,
       steps: C.BLOCKER_STEPS.slice(),
-      message: C.blockerMessage(),
+      message: C.BLOCKER_TITLE,
     }, extra || {});
+    if (typeof global.lvfeDebugLog === "function" && (err.code || err.message)) {
+      global.lvfeDebugLog("google-auth", err.code || "", err.message || "");
+    }
     if (typeof cb === "function") cb(err);
     return err;
   }
@@ -61,7 +64,7 @@
       return {
         ok: false,
         code: "no_sub",
-        message: "Google returned no account id. Try again or use Export save.",
+        message: "Sign in with Google failed — try again.",
       };
     }
     const photoUrl = String((data && (data.photoUrl || data.picture)) || "").trim();
@@ -104,7 +107,7 @@
     inflight = false;
     pendingCb = null;
     const payload = decodeJwt(resp && resp.credential);
-    if (!payload) return fail(cb, { code: "bad_token", message: "Google token did not parse." });
+    if (!payload) return fail(cb, { code: "bad_token", message: "Sign in with Google failed — try again." });
     const done = typeof cb === "function" ? cb : function () {};
     done(okPayload({
       sub: payload.sub,
@@ -119,7 +122,7 @@
     if (!gisReady || !global.google || !global.google.accounts || !global.google.accounts.id) {
       return fail(cb, {
         code: "gis_unavailable",
-        message: "Google sign-in script did not load. Check the network, confirm this origin is listed under Authorized JavaScript origins in Google Cloud Console, then retry.",
+        message: "Couldn't reach Google sign-in — try again.",
       });
     }
     try {
@@ -134,7 +137,7 @@
       });
       return true;
     } catch (err) {
-      fail(cb, { code: "gis_error", message: String(err && err.message ? err.message : err) });
+      fail(cb, { code: "gis_error", message: "Sign in with Google failed — try again." });
       return false;
     }
   }
@@ -189,13 +192,13 @@
           renderButtons();
           fail(cb, {
             code: "gis_prompt_blocked",
-            message: "One Tap was blocked. Use the Google button below (or check Authorized JavaScript origins includes this site’s HTTPS origin).",
+            message: "Tap Sign in with Google below to continue.",
           });
         }
       });
     } catch (err) {
       inflight = false;
-      fail(cb, { code: "gis_error", message: String(err && err.message ? err.message : err) });
+      fail(cb, { code: "gis_error", message: "Sign in with Google failed — try again." });
     }
   }
 
@@ -210,7 +213,7 @@
         if (raw && raw.code === C.BLOCKER_CODE) return fail(done, raw);
         return fail(done, {
           code: (raw && raw.code) || "native_fail",
-          message: (raw && raw.message) || C.blockerMessage(),
+          message: "Sign in with Google failed — try again.",
           steps: (raw && raw.steps) || C.BLOCKER_STEPS.slice(),
         });
       }
@@ -222,7 +225,7 @@
         return;
       } catch (err) {
         inflight = false;
-        return fail(done, { code: "native_throw", message: String(err && err.message ? err.message : err) });
+        return fail(done, { code: "native_throw", message: "Sign in with Google failed — try again." });
       }
     }
     inflight = false;

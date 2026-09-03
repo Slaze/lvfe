@@ -173,6 +173,64 @@ button.ghost { background: var(--line); color: var(--ink); }
 .dossier-page .row-label:first-child { margin-top: 0; }
 .dossier-page .row-value { margin: 0; font-size: 15px; color: #1f1a14; overflow-wrap: anywhere; word-break: break-word; }
 .dossier-page .note { margin: 10px 0 0; font-size: 14px; color: #4a4338; overflow-wrap: anywhere; word-break: break-word; }
+.brief-head {
+  margin: 0 0 4px; font-size: 15px; font-weight: 750; letter-spacing: 0.02em;
+  color: #b35a00; overflow-wrap: anywhere;
+}
+.brief-status {
+  margin: 0 0 12px; font-size: 13px; line-height: 1.35; color: #6d6250; overflow-wrap: anywhere;
+}
+.brief-how {
+  margin: 14px 0 0; font-size: 13px; color: #4a4338;
+}
+.brief-how summary {
+  cursor: pointer; color: #b35a00; font-weight: 650; margin-bottom: 6px;
+}
+.brief-how p { margin: 0; line-height: 1.4; }
+.mission-brief { min-width: 0; }
+.mission-kicker {
+  margin: 0 0 10px; font-size: 15px; font-weight: 750; letter-spacing: 0.02em;
+  color: #b35a00; overflow-wrap: anywhere;
+}
+.mission-name {
+  overflow: hidden; text-overflow: ellipsis;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+}
+.mission-acts {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px;
+}
+.mission-acts .claim { margin-top: 0; min-height: 44px; width: auto; }
+.dossier-page .mission-acts button.claim.ghost {
+  background: #2a2a2e; color: #f5f5f7;
+}
+.dossier-page .mission-acts button.claim.ghost[aria-pressed="true"] {
+  background: #1a3d28; color: #34c759; border: 1px solid rgba(52, 199, 89, 0.7);
+}
+.mission-stat {
+  display: flex; flex-direction: column; gap: 8px; width: 100%;
+  margin-top: 12px; padding: 10px 12px; text-align: left; cursor: pointer;
+  border: 1px solid #d8cbb4; border-radius: 10px; background: #f3ead8;
+  color: #1f1a14; font: inherit; box-sizing: border-box;
+}
+.mission-row {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;
+  min-width: 0; width: 100%;
+}
+.mission-row .row-label {
+  margin: 0 !important; flex: 1 1 auto; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.mission-row .row-value {
+  margin: 0 !important; flex: 0 1 auto; max-width: 48%; text-align: right;
+  font-variant-numeric: tabular-nums; overflow-wrap: anywhere; word-break: break-word;
+}
+.mission-rank .mission-row { flex-direction: column; align-items: stretch; gap: 2px; }
+.mission-rank .row-value {
+  max-width: 100%; text-align: left; font-size: 13px; line-height: 1.35;
+  overflow: hidden; text-overflow: ellipsis;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+}
+.mission-tip { margin-top: 12px; }
 .dossier-photo {
   display: flex; align-items: center; justify-content: center;
   position: relative; overflow: hidden;

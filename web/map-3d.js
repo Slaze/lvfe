@@ -26,7 +26,7 @@
   const DEM_TILES = "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png";
   const TERRAIN_EXAGGERATION = 1.0;
   const DEM_WATCH_MS = 8000;
-  const FAIL_MSG = "Terrain couldn’t load";
+  const FAIL_MSG = "Couldn't load hills — map stays flat";
   const PIN_CIRCLES = ["places-circles", "places-nearby", "you-dot", "places-hit"];
   const RAISE_IDS = [
     "places-hit", "places-circles", "places-x", "places-x-unknown", "places-nearby",

@@ -279,7 +279,7 @@
     hud.hidden = false;
     if (!pos || !R) {
       if (mEl) mEl.textContent = "Waiting for GPS";
-      if (hEl) hEl.textContent = "Turn on location";
+      if (hEl) hEl.textContent = "Turn on location to scout";
       return;
     }
     const dist = R.haversineM(pos.lat, pos.lon, t.lat, t.lon);
@@ -316,7 +316,7 @@
       htmlIds = "";
       if (hint && !marked) {
         hint.hidden = false;
-        hint.textContent = "Turn on GPS to see nearby places.";
+        hint.textContent = "GPS off — turn on location to paint nearby assets.";
       } else if (hint) hint.hidden = true;
       return;
     }
@@ -325,7 +325,7 @@
       htmlIds = "";
       if (hint) {
         hint.hidden = false;
-        hint.textContent = "No places within " + AR_RANGE_M + " m";
+        hint.textContent = "No assets in view — walk closer or Track a pin on the map.";
       }
       return;
     }

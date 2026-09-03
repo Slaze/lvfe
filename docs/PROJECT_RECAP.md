@@ -37,9 +37,11 @@ Location-based territorial game. World data from OpenStreetMap (no paid Google M
 - `web/js/satellite.js` — Esri World Imagery overlay; SAT switch; never billed Google tiles; never `setStyle`. Source `maxzoom` **18** (Enugu z19 is Esri empty plate); raster **layer** `maxzoom` 24 so street zoom overscales last rooftops. `map.resize()` after style load and SAT toggle.
 - `web/rules.html` — player How to play (walk, photo, NairaCoin, 80 m, highest backer owns, faction, neighbourhood value bonus, Pay gate, beep/track, AR, catalog, banks, world Overpass).
 - `web/assets.html` + `web/js/assets.js` — owned/backed places, visit interest (10%), gap vs next backer; dossier-style section toggles.
-- `web/js/dossier.js` — place-file HTML; Land mark actions (watch / threat / takeover); **Bid to overturn** via `LvfeWalletEarn.bidToOwn`. Flex head row; 2-line title clamp.
+- `web/js/dossier.js` — place-file HTML; **Mission tab briefing** (Property Asset sighted, distance/ETA, NCN cost, Buy / Start tracking, faction counts, rank line); Land mark actions; Bid to overturn. Flex head + 2-line title clamp.
 - `web/js/place-thumb.js` — dossier thumbs: visit photo → OSM `image`/`wikimedia_commons`/`mapillary`/`wikipedia` → Wikimedia/Wikipedia ground photo → optional Mapillary token → placeholder. **Never** Esri SAT / map canvas / Google photo SKUs.
-- `web/js/game-notify.js` — notifications (`claim_self` / `claim_rival` / `nearby_claimable` / `enemy_nearby` / `pass_toll` / `toll_owner` / `watch_change` / `threat_act` / `test`); prefs; Android `LvfeNative.showGameNotification` else `#gameBanner`.
+- `web/js/lvfe-assets.js` — URL helper + `lvfeDebug` / `lvfeDebugLog` / `lvfeCloudPlayerMsg` (player cloud errors; tech dumps only when `?debug=1` or `localStorage.lvfe.debug=1`).
+- `web/js/game-voice.js` — shared player briefs / CTAs / EMPTY strings for dossier + hubs (Mission sibling uses without owning Mission HTML).
+- `web/js/game-notify.js` — notifications (`claim_self` / `claim_rival` / `nearby_claimable` / `asset_sighted` / `enemy_nearby` / `tracking_started` / `approaching_claim` / `pass_toll` / `toll_owner` / `watch_change` / `threat_act` / `test`); player titles/bodies; Android `LvfeNative.showGameNotification` else `#gameBanner`.
 - `web/js/pass-toll.js` — pass-by toll ≤80 m enemy-owned: `max(2, floor(ownerStake×5%))`, 60 min/place, partial+debt, Escape refund fee, owner inbox.
 - `web/js/game-marks.js` — watchlist / threats / takeover plans (`lvfe.marks.v1` + save pack); ledger diff notifies.
 - `web/js/rankings.js` — live leaders from stakes / owned / faction score; faction who’s who.
@@ -128,8 +130,108 @@ Location-based territorial game. World data from OpenStreetMap (no paid Google M
 - 2026-09-03: **Username permanent** (Google-bound on save API) + **location-based factions** (OSM local build outside Enugu; Enugu four canonical); SW **`lvfe-shell-v5`**.
 - 2026-09-03: **P0 Google APK↔PWA sync** verified: cold-start `g{sub}` restore + migrate; PHP Google `key_mismatch`; Nord CDP + cloud pack **Slaze** / `g1064…`.
 - 2026-09-03: **P0 place thumbs** — remove Esri SAT from dossier/catalog thumbs; bake OSM media into catalog/geojson; redeploy PWA + Nord.
+- 2026-09-03: **Gameplay voice pass** — shared `LvfeVoice` briefings/CTAs/empties across Place/Land/Money/Wallet + hubs; notify titles aligned to Asset sighted / Approaching claim zone / Toll levied; Mission sibling briefing kept.
+- 2026-09-03: **Kill tech notifications** — player-only toast/banner/native channel copy; raw Overpass/OAuth/Paystack/LWW/`g{sub}`/`SAVE_API` gated behind `?debug=1` / `localStorage.lvfe.debug=1`.
 
 ## Sessions
+
+### 2026-09-03 — Remove technical notifications (player voice only)
+
+**Goal:** Kill or rewrite every player-facing tech/debug notification across Lvfe. Keep fail-loud with game wording. Coordinate with Mission (`3ac62284`) + engagement voice (`adf3968c`) — do not revert Mission briefing. Nord `bea6919f` + PWA `https://iconiaglobal.com/lvfe/`. Commit/push.
+
+**Removed / rewritten (player-facing):**
+| Before (tech leak) | After (game voice) |
+|---|---|
+| `SAVE_API_BASE` / `?saveApi=` / `Pulled`/`Pushed` / LWW / `g{sub}` / `key_mismatch` / OAuth / Bearer / raw `res.error` | “Cloud save needs Sign in with Google” / “Cloud save loaded.” / “Couldn't reach cloud save — try again” / “Cloud save updated from another device.” |
+| `Overpass is down (HTTP…)` / OpenStreetMap load toasts | “Couldn't reach the map server — …” / “Named places near you are on the map.” |
+| Paystack / `pk_test_` / setup steps / docs/BUY_NCN in hub | “Opening checkout…” / “Buy NCN isn’t available yet…”; setup steps only if debug |
+| GIS Console / Authorized origins / token dump toasts | “Sign in with Google failed — try again.”; blocker steps debug-only |
+| Toll body with `Formula:` / ledger jargon | “Toll levied — N NCN at X. Outpay / Escape / Accept” |
+| DEM “Terrain couldn’t load” | “Couldn't load hills — map stays flat” |
+| Android channels Claims / Nearby places / Enemy assets / Game | Your claims / Nearby assets / Rival alerts / Lvfe |
+| Test notify deep-link essay | “Toll levied — Outpay / Escape / Accept” |
+
+**Also:** `lvfeDebug` / `lvfeCloudPlayerMsg` in `lvfe-assets.js`; SW **`lvfe-shell-v6`**; notify titles locked to You’re in the claim zone / Asset sighted nearby / Tracking started / Toll levied (kept sibling Mission types/actions).
+
+**How verified:**
+- Grep: no Overpass/SAVE_API/`g{sub}`/Paystack/LWW leaks in toast/message paths (comments/config steps OK).
+- `node` smoke: claim-zone + toll body player copy.
+- Nord `bea6919f` install **`lastUpdateTime=2026-09-03 12:02:11`** (then voice sibling reinstalls may bump).
+- PWA deploy via Iconia FTP `iconicxy` (not donmaseratte FTP); live `game-notify.js` / `world-catalog.js` / `lvfe-assets.js` / `sw.js` v6 confirmed.
+
+**Current state:** Player notifications are game voice. Mission briefing + `LvfeVoice` kept. Dev blockers remain behind debug.
+
+**Next steps:** Hard-refresh PWA once if CF served stale JS; optional purge CF for `/lvfe/js/*`.
+
+**Blockers / risks:** Wrong FTP host (`donmaseratte`) also has a `public_html/lvfe/` copy — always deploy with Iconia `iconicxy` @ `198.54.120.95`.
+
+### 2026-09-03 — Mission tab briefing + engagement notifies
+
+**Goal:** Remodel place-file **Mission** tab into a game briefing; wire fun throttled notifications + deep-link CTAs. Nord `bea6919f` + PWA.
+
+**What changed:**
+- `web/js/dossier.js` — Mission briefing: Property Asset sighted !!!, Name, Distance + walk ETA, Cost (NCN), Buy / Start tracking, faction property counts, Active Factions, Current rank (sigil tier · hierarchy/game/faction #). Deep-link attrs `data-mission-buy|track|rank|faction`.
+- `web/css/lvfe.css` — mission-brief / mission-acts / mission-row layout (clamp long titles; no label/value overlap).
+- `web/js/game-notify.js` — types `asset_sighted`, `tracking_started`, `approaching_claim`; punchy titles/bodies; scan nearby emits asset_sighted; Track/Mission actions on banners.
+- `web/index.html` — pass features/places/faction into dossier; Mission CTA handlers; tracking + approaching notifies; deep link `track` action.
+- `web/js/claim-rules.js` — `formatDistM` + longer walk ETA (hr).
+- `web/js/catalog.js` — same Mission context opts.
+- `scripts/test_mission_brief.js` — briefing + notify smoke.
+
+**Why:** Mission was a single note + Walk closer; players need actionable briefing + engagement without spam.
+
+**How verified:** `node scripts/test_mission_brief.js` + `test_game_economy.js` ok; Nord APK reinstall; CDP open pin → Mission shows kicker + Buy/Track; screencap `_state/mission-tab-nord.png`; PWA FTP patch to `iconiaglobal.com/lvfe/` (dossier/notify/css live).
+
+**Current state:** Mission briefing live on Nord + PWA. SAT/3D/username/g{sub}/toll/thumbs untouched by this change set.
+
+**Next steps:** Optional — default pin open to Mission tab; tighten empty-ledger rank line (Banner Lord when sole player).
+
+**Blockers / risks:** None.
+
+
+### 2026-09-03 — Crosscheck Lvfe gameplay voice (smart verbosity)
+
+**Goal:** Audit splash/menu, account, dossier tabs, Wallet/Earn/Rankings/Analytics hubs, track, toll/contest notifies, AR, rules/catalog, factions/ranks/sigils, Buy NCN, pass-by, watchlist. Make copy punchy + clear + actionable without wall-of-text. Do not fight sibling Mission remodel (`3ac62284` / Property Asset sighted briefing). Nord + PWA; screencaps; commit/push.
+
+**Audit → change (surface → what we did):**
+
+| Surface | Clarity / fun / next / verbosity (pre) | Change |
+|---|---|---|
+| Splash / menu | Clear but flat | Tagline → “Scout the city. Track assets. Claim with NCN.” |
+| Account sheet | Functional | Meta → “Set a name to Claim”; hubs open as before |
+| Place tab | Dry fields | Brief head + status + expandable How it works |
+| Mission tab | Sibling owns | Left briefing; shared CTA verbs Track/Bid/Claim; voice seed in `LvfeVoice` |
+| Land tab | Labels only | “Land hold” brief + Watch/threat/takeover verbs + How it works |
+| Money tab | Cost/value only | “Money desk” + Cost to Claim + Track CTA out of range + How it works |
+| Wallet (dossier) | Pay gate dry | “Field wallet” + Claim/Bid + approaching-claim wait copy |
+| Wallet / Earn / Rank / Analytics hubs | Sparse empties | Hub brief heads; engaging empties; ranks How-it-works; mute track |
+| Track chip | “80 m pay ring” | Approaching / inside claim zone status |
+| Notifies | Soft titles | Asset sighted / Approaching claim zone / Toll levied / Tracking locked (types from sibling kept) |
+| Rules / catalog / My places / AR | Walls or blank | Punchier rules; scout empties; AR empty = no assets in view |
+| Buy NCN / pass-toll / watchlist | Tech prose | Fuel-for-Claim framing; toll “levied” one-liners; Watch empties |
+
+**Voice guidelines (one paragraph):** Write like a field briefing: one punchy header, one status line that answers “what is this?”, then scannable facts; primary verb is always Track / Bid / Claim / Sync / Buy NCN / Watch; coin is always **NCN**; ranks use named sigils (Initiate→Sovereign) and faction roles (Banner Lord / Vanguard / Kin); put flavor in expandable How it works, not the default scroll; empties tell the player the next scout action, never a blank void.
+
+**What changed (files):**
+- New `web/js/game-voice.js` — shared briefs, CTAs, EMPTY strings.
+- `web/js/dossier.js` — Place/Land/Money/Wallet briefs; Claim/Bid/Track pay copy; Mission sibling briefing untouched.
+- `web/js/play-hub.js`, `wallet-earn.js`, `pass-toll.js`, `game-notify.js` (titles/bodies), `track-guide.js`, `assets.js`, `catalog.js`, `ar-overlay.js`.
+- `web/rules.html`, splash sub, CSS `.brief-*` + hub brief styles; `index.html` / `catalog.html` load `game-voice.js`; mute-track prefs wired.
+- SW already **`lvfe-shell-v6`** (sibling).
+
+**How verified:**
+- `node scripts/test_game_economy.js`, `test_pass_toll_marks.js`, `test_track_layers.js` ok.
+- Dossier smoke: Place file / Money desk / Field wallet / Property Asset sighted present.
+- Nord `bea6919f` reinstall **`lastUpdateTime=2026-09-03 12:05:48`**; CDP screencaps `_state/voice-audit/01-place-tab.png`, `02-money-tab.png`, `03-wallet-hub.png`.
+- PWA FTP deploy; live `game-notify.js` “Asset sighted”; `sw.js` CACHE v6.
+
+**Current state:** Voice pass live on Nord + PWA. Mission briefing coexists with sibling work. Map/sync/thumbs/username lock untouched intentionally.
+
+**Next steps:** Sibling may deepen Mission deep-links/notifies — keep using `LvfeVoice`. Optional: punchier Money empty (“no backers yet — be first Claim”).
+
+**Blockers / risks:** Concurrent Mission agent edits; CF may briefly stale JS until network-first.
+
+---
 
 ### 2026-09-03 — P0: dossier thumbs must be real place photos (not SAT)
 
@@ -156,7 +258,7 @@ Location-based territorial game. World data from OpenStreetMap (no paid Google M
 - Live `https://iconiaglobal.com/lvfe/js/place-thumb.js` — ground-photo header; no SAT template; catalog media **162**.
 - Nord `bea6919f`: `assembleDebug` + `install -r`; **`lastUpdateTime=2026-09-03 11:32:31`**.
 
-**Current state:** Fix live on PWA + Nord APK. Map SAT overlay unchanged. Many Enugu OSM `image=` URLs point at legacy `enugupoi.appspot.com` (may 404 → fall through to wiki/placeholder).
+**Current state:** Fix live on PWA + Nord APK. Commit **`dc86b62`** on `Slaze/lvfe` `main`. Map SAT overlay unchanged. Many Enugu OSM `image=` URLs point at legacy `enugupoi.appspot.com` (may 404 → fall through to wiki/placeholder).
 
 **Next steps:** On-device: open a pin with OSM image or wiki hit; confirm no aerial tile; Pay visit photo still wins. Optional Mapillary token if free key available.
 

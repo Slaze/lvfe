@@ -249,12 +249,17 @@
   }
 
   function statusLine() {
-    if (!enabled()) return "Cloud save off — set SAVE_API_BASE or ?saveApi=";
+    if (!enabled()) return "Cloud save needs Sign in with Google";
     const last = lastSync();
     const q = queueState();
     if (q.pending) return "Cloud save pending…";
-    if (last && last.at) return "Cloud save · " + last.dir + " " + String(last.at).slice(0, 19);
-    return "Cloud save · " + base();
+    if (last && last.at) {
+      const when = String(last.at).slice(0, 16).replace("T", " ");
+      if (last.dir === "pull") return "Cloud save loaded · " + when;
+      if (last.dir === "push") return "Cloud save uploaded · " + when;
+      return "Cloud save · " + when;
+    }
+    return "Cloud save ready";
   }
 
   const api = {

@@ -21,6 +21,22 @@
     return (d / 1000).toFixed(1) + " km";
   }
 
+  function V() {
+    return global.LvfeVoice;
+  }
+
+  function empty(key, fallback) {
+    const e = V() && V().EMPTY;
+    return (e && e[key]) || fallback;
+  }
+
+  function hubHead(which) {
+    const voice = V();
+    if (!voice || !voice.hubBrief) return "";
+    const b = voice.hubBrief(which);
+    return voice.briefHead(b.head, b.status);
+  }
+
   function walletHtml(ctx) {
     const c = ctx || {};
     const bal = Number(c.balance) || 0;
@@ -35,6 +51,7 @@
     const takeovers = Array.isArray(c.takeovers) ? c.takeovers : [];
     const bits = [
       `<div class="hub-pane" data-hub="wallet">`,
+      hubHead("wallet"),
       `<p class="hub-bal">${ncn(bal)}</p>`,
       `<p class="hub-meta">Stakes out ${ncn(so.total)} · ${so.owned} owned · ${so.backed} backed</p>`,
       `<p class="hub-note">${esc(copy.short)}</p>`,
@@ -45,13 +62,17 @@
     bits.push(
       `<div class="hub-buy">`,
       `<h4>Buy NCN</h4>`,
-      `<p class="hub-meta">1 NCN = USD $1 · Paystack Checkout</p>`,
+      `<p class="hub-meta">1 NCN = USD $1 · fuel for Claim / Bid</p>`,
     );
     if (!buyReady) {
       bits.push(
-        `<p class="hub-empty">Sandbox / live keys not set yet. See docs/BUY_NCN.md.</p>`,
-        `<button type="button" class="hub-cta ghost" id="hubBuyBlocker"><span class="mark">!</span> Show setup steps</button>`
+        `<p class="hub-empty">${esc(empty("buyKeys", "Buy NCN isn’t available yet — try again later."))}</p>`
       );
+      if (typeof global.lvfeDebug === "function" && global.lvfeDebug()) {
+        bits.push(
+          `<button type="button" class="hub-cta ghost" id="hubBuyBlocker"><span class="mark">!</span> Show setup steps</button>`
+        );
+      }
     } else {
       bits.push(`<div class="hub-buy-row">`);
       presets.forEach(function (p) {
@@ -60,20 +81,20 @@
       bits.push(
         `</div>`,
         `<label class="hub-buy-custom">Custom <input type="number" id="hubBuyCustom" min="1" max="500" step="1" value="10" inputmode="numeric" /></label>`,
-        `<button type="button" class="hub-cta" id="hubBuyGo"><span class="mark">◎</span> Buy with Paystack</button>`
+        `<button type="button" class="hub-cta" id="hubBuyGo"><span class="mark">◎</span> Buy NCN</button>`
       );
-      if (buyCfg.isTestKey && buyCfg.isTestKey()) {
-        bits.push(`<p class="hub-meta">Test mode (pk_test_)</p>`);
+      if (buyCfg.isTestKey && buyCfg.isTestKey() && typeof global.lvfeDebug === "function" && global.lvfeDebug()) {
+        bits.push(`<p class="hub-meta">Test checkout</p>`);
       }
     }
     bits.push(
       `</div>`,
       `<button type="button" class="hub-cta" data-hub-tab="earn"><span class="mark">◎</span> Earn more</button>`,
-      `<details class="hub-details"><summary>How the system works</summary><p>${esc(copy.long)}</p></details>`,
+      `<details class="hub-details"><summary>How it works</summary><p>${esc(copy.long)}</p></details>`,
       `<h4>Recent activity</h4>`
     );
     if (!activity.length) {
-      bits.push(`<p class="hub-empty">No stakes yet on this phone.</p>`);
+      bits.push(`<p class="hub-empty">${esc(empty("noStakes", "No stakes yet — scout the map."))}</p>`);
     } else {
       bits.push(`<ul class="hub-list">`);
       activity.slice(0, 12).forEach(function (a) {
@@ -88,7 +109,7 @@
     }
     bits.push(`<h4>Watchlist</h4>`);
     if (!watch.length) {
-      bits.push(`<p class="hub-empty">Mark places from a dossier to watch value / owner.</p>`);
+      bits.push(`<p class="hub-empty">${esc(empty("noWatch", "No assets marked — Watch from a place file."))}</p>`);
     } else {
       bits.push(`<ul class="hub-list">`);
       watch.slice(0, 10).forEach(function (w) {
@@ -105,14 +126,14 @@
     }
     bits.push(`<h4>Takeover plan</h4>`);
     if (!takeovers.length) {
-      bits.push(`<p class="hub-empty">Plan a takeover from an enemy dossier.</p>`);
+      bits.push(`<p class="hub-empty">${esc(empty("noTakeover", "No takeover planned — Mark an enemy pin."))}</p>`);
     } else {
       bits.push(`<ul class="hub-list">`);
       takeovers.slice(0, 10).forEach(function (t) {
         bits.push(
           `<li><button type="button" class="hub-mission" data-open-place="${esc(t.placeId)}" data-bid="1">` +
           `<strong>${esc(t.name || t.placeId)}</strong>` +
-          `<span>${distLabel(t.dist)} · Bid CTA` +
+          `<span>${distLabel(t.dist)} · Bid` +
           (t.ownerName ? ` · ${esc(t.ownerName)}` : "") +
           `</span></button></li>`
         );
@@ -127,15 +148,22 @@
     const list = Array.isArray(missions) ? missions : [];
     const bits = [
       `<div class="hub-pane" data-hub="earn">`,
-      `<p class="hub-note">Claimable and contestable places near you. Estimated visit yield uses the 10% owner rule.</p>`,
+      hubHead("earn"),
+      `<p class="hub-note">Open assets and enemy holds near you. Visit yield ≈ 10% to the owner.</p>`,
       `<button type="button" class="hub-cta ghost" data-hub-tab="wallet"><span class="mark">←</span> Back to Wallet</button>`,
     ];
     if (!list.length) {
-      bits.push(`<p class="hub-empty">${(ctx && ctx.noGps) ? "Turn on GPS to list missions near you." : "No ownable places in range."}</p>`);
+      bits.push(
+        `<p class="hub-empty">${esc(
+          (ctx && ctx.noGps)
+            ? empty("noMissionsGps", "GPS off — turn it on to list missions.")
+            : empty("noMissions", "No ownable assets in range — keep walking.")
+        )}</p>`
+      );
     } else {
       bits.push(`<ul class="hub-list hub-missions">`);
       list.slice(0, 20).forEach(function (m) {
-        const tag = m.overturn ? "Bid to overturn" : "Claim";
+        const tag = m.overturn ? "Bid" : "Claim";
         bits.push(
           `<li>` +
           `<button type="button" class="hub-mission" data-open-place="${esc(m.placeId)}" data-bid="${m.overturn ? "1" : "0"}">` +
@@ -159,10 +187,11 @@
     const Sig = global.LvfeRankSigils;
     const bits = [
       `<div class="hub-pane" data-hub="rankings">`,
+      hubHead("rankings"),
       `<h4>Leaders by NCN staked</h4>`,
     ];
     if (!globalRows.length) {
-      bits.push(`<p class="hub-empty">No stakes on the ledger yet.</p>`);
+      bits.push(`<p class="hub-empty">${esc(empty("noLeaders", "Ledger quiet — first Claims write the rankings."))}</p>`);
     } else {
       bits.push(`<ol class="hub-rank">`);
       globalRows.slice(0, 15).forEach(function (r) {
@@ -180,7 +209,7 @@
     }
     bits.push(`<h4>Faction score</h4>`);
     if (!factions.length) {
-      bits.push(`<p class="hub-empty">No faction pools yet.</p>`);
+      bits.push(`<p class="hub-empty">${esc(empty("noFactions", "No faction pools yet — Claim under a colour."))}</p>`);
     } else {
       bits.push(`<ol class="hub-rank">`);
       factions.forEach(function (f) {
@@ -195,7 +224,7 @@
     if (who && who.leader) {
       bits.push(
         `<h4>Your faction who’s who</h4>`,
-        `<p class="hub-note">Leader <strong>${esc(who.leader.playerName)}</strong> · ${who.leader.points} pts</p>`,
+        `<p class="hub-note">Banner Lord <strong>${esc(who.leader.playerName)}</strong> · ${who.leader.points} pts · roles: Banner Lord / Vanguard / Kin</p>`,
         `<ol class="hub-rank">`
       );
       who.members.slice(0, 12).forEach(function (m) {
@@ -211,7 +240,11 @@
       });
       bits.push(`</ol>`);
     }
-    bits.push(`</div>`);
+    bits.push(
+      `<details class="hub-details"><summary>How ranks work</summary>` +
+      `<p>Sigils: Initiate → Scout → Pathfinder → Warden → Marshal → Sovereign. Points = NCN staked + owned pins × 10. Faction roles: Banner Lord (#1), Vanguard (#2–3), Kin.</p></details>`,
+      `</div>`
+    );
     return bits.join("");
   }
 
@@ -227,10 +260,11 @@
     const tollCopy = (global.LvfePassToll && global.LvfePassToll.formulaCopy()) || null;
     const bits = [
       `<div class="hub-pane" data-hub="analytics">`,
+      hubHead("analytics"),
       `<h4>Territory control</h4>`,
     ];
     if (!terr.length) {
-      bits.push(`<p class="hub-empty">No neighbourhood stats yet.</p>`);
+      bits.push(`<p class="hub-empty">${esc(empty("noTerritory", "No neighbourhood stats yet — Claim to paint."))}</p>`);
     } else {
       bits.push(`<ul class="hub-list">`);
       terr.filter(function (t) { return t.territoryId !== "unclaimed"; }).slice(0, 12).forEach(function (t) {
@@ -244,7 +278,7 @@
     }
     bits.push(`<h4>Your claims</h4>`);
     if (!claims.length) {
-      bits.push(`<p class="hub-empty">None yet.</p>`);
+      bits.push(`<p class="hub-empty">${esc(empty("noClaims", "No assets marked as yours — scout & Claim."))}</p>`);
     } else {
       bits.push(`<ul class="hub-list">`);
       claims.slice(0, 15).forEach(function (r) {
@@ -258,7 +292,7 @@
     }
     bits.push(`<h4>Watchlist</h4>`);
     if (!watch.length) {
-      bits.push(`<p class="hub-empty">No watched places.</p>`);
+      bits.push(`<p class="hub-empty">${esc(empty("noWatch", "No assets marked — Watch from a place file."))}</p>`);
     } else {
       bits.push(`<ul class="hub-list">`);
       watch.slice(0, 12).forEach(function (w) {
@@ -272,7 +306,7 @@
     }
     bits.push(`<h4>Threats</h4>`);
     if (!threats.length) {
-      bits.push(`<p class="hub-empty">Mark rival owners as threats from a dossier.</p>`);
+      bits.push(`<p class="hub-empty">${esc(empty("noThreats", "No threats tagged — Mark rivals from Land."))}</p>`);
     } else {
       bits.push(`<ul class="hub-list">`);
       threats.slice(0, 12).forEach(function (t) {
@@ -285,7 +319,7 @@
     }
     bits.push(`<h4>Takeover plan</h4>`);
     if (!takeovers.length) {
-      bits.push(`<p class="hub-empty">None planned.</p>`);
+      bits.push(`<p class="hub-empty">${esc(empty("noTakeover", "None planned — Plan takeover on an enemy pin."))}</p>`);
     } else {
       bits.push(`<ul class="hub-list">`);
       takeovers.slice(0, 12).forEach(function (t) {
@@ -299,7 +333,13 @@
     }
     bits.push(`<h4>Rival pressure nearby</h4>`);
     if (!rivals.length) {
-      bits.push(`<p class="hub-empty">${(c.noGps) ? "GPS off." : "No rival-owned places nearby."}</p>`);
+      bits.push(
+        `<p class="hub-empty">${esc(
+          (c.noGps)
+            ? empty("noRivalsGps", "GPS off — rivals only show on the street.")
+            : empty("noRivals", "No rival-held assets nearby — keep scouting.")
+        )}</p>`
+      );
     } else {
       bits.push(`<ul class="hub-list">`);
       rivals.slice(0, 12).forEach(function (r) {
@@ -314,15 +354,18 @@
     if (tollCopy) {
       bits.push(
         `<h4>Pass-by toll</h4>`,
-        `<p class="hub-note">${esc(tollCopy.short)} ${esc(tollCopy.escape)} ${esc(tollCopy.empty)}</p>`
+        `<p class="hub-note">${esc(tollCopy.short)}</p>`,
+        `<details class="hub-details"><summary>How tolls work</summary>` +
+        `<p>${esc(tollCopy.escape)} ${esc(tollCopy.empty)}</p></details>`
       );
     }
     bits.push(
       `<h4>Notifications</h4>`,
       `<label class="hub-check"><input type="checkbox" id="hubMuteAll" ${prefs.muted ? "checked" : ""}/> Mute all</label>`,
       `<label class="hub-check"><input type="checkbox" id="hubMuteClaims" ${prefs.allowClaims === false ? "checked" : ""}/> Mute claims</label>`,
-      `<label class="hub-check"><input type="checkbox" id="hubMuteNearby" ${prefs.allowNearby === false ? "checked" : ""}/> Mute nearby opens</label>`,
+      `<label class="hub-check"><input type="checkbox" id="hubMuteNearby" ${prefs.allowNearby === false ? "checked" : ""}/> Mute asset sightings</label>`,
       `<label class="hub-check"><input type="checkbox" id="hubMuteEnemy" ${prefs.allowEnemy === false ? "checked" : ""}/> Mute enemy assets</label>`,
+      `<label class="hub-check"><input type="checkbox" id="hubMuteTrack" ${prefs.allowTrack === false ? "checked" : ""}/> Mute track / approach</label>`,
       `<label class="hub-check"><input type="checkbox" id="hubMuteToll" ${prefs.allowToll === false ? "checked" : ""}/> Mute pass-by tolls</label>`,
       `<label class="hub-check"><input type="checkbox" id="hubMuteWatch" ${prefs.allowWatch === false ? "checked" : ""}/> Mute watchlist</label>`,
       `<label class="hub-check"><input type="checkbox" id="hubMuteThreat" ${prefs.allowThreat === false ? "checked" : ""}/> Mute threats</label>`,

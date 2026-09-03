@@ -205,11 +205,12 @@
       city: "Enugu",
       canonical: true,
       factions: ENUGU_FACTIONS.slice(),
-      message: "Enugu canonical factions.",
+      message: "Enugu neighbourhoods ready.",
     };
   }
 
   function softFallback(lat, lon, errMsg) {
+    if (typeof global.lvfeDebugLog === "function" && errMsg) global.lvfeDebugLog("local-factions", errMsg);
     const city = "Near " + Number(lat).toFixed(2) + "," + Number(lon).toFixed(2);
     return {
       ok: false,
@@ -220,7 +221,7 @@
         return Object.assign({}, g, { city: city, source: "fallback" });
       }),
       error: errMsg || "",
-      message: "Sparse OSM map — using generic local quarters. Hinterland Unclaimed area still claimable.",
+      message: "Local map is thin here — pick a quarter. Unclaimed area is still claimable.",
     };
   }
 
@@ -397,7 +398,7 @@
         city: cityHint || ("Near " + Number(lat).toFixed(2) + "," + Number(lon).toFixed(2)),
         canonical: false,
         factions: factions.slice(0, MAX_F),
-        message: "Local factions from OpenStreetMap neighbourhoods.",
+        message: "Neighbourhoods near you are ready.",
       };
       cacheSet(ck, result);
       return result;
@@ -435,7 +436,7 @@
       city: cityHint,
       canonical: false,
       factions: rowsToFactions(rows, cityHint).slice(0, MAX_F),
-      message: "Local factions from OpenStreetMap neighbourhoods.",
+      message: "Neighbourhoods near you are ready.",
     };
   }
 

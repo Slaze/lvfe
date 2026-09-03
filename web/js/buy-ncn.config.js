@@ -17,7 +17,7 @@
   const PRESETS = [5, 10, 25, 50];
 
   const BLOCKER_CODE = "paystack_not_configured";
-  const BLOCKER_TITLE = "Buy NCN is not wired yet (sandbox or live keys missing).";
+  const BLOCKER_TITLE = "Buy NCN isn’t available yet — try again later.";
   const BLOCKER_STEPS = [
     "Create a Paystack account (https://dashboard.paystack.com) — Nigeria-friendly, Checkout/Popup.",
     "Copy the Test Public Key (pk_test_…) into web/js/buy-ncn.config.js → PAYSTACK_PUBLIC_KEY.",
