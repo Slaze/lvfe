@@ -15,6 +15,7 @@ hosting/lvfe-save/config.local.php
 hosting/lvfe-save/data/saves/
 hosting/lvfe-save/data/payments/
 .netlify/
+dist/
 scripts/__pycache__/
 __pycache__/
 *.pyc

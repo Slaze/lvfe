@@ -47,7 +47,10 @@ Location-based territorial game. World data from OpenStreetMap (no paid Google M
 - `web/ar-overlay.js` — map-page AR (not `ar.html`). **Nord/Android:** CameraX `PreviewView` under a transparent WebView (`LvfeNative.startArCamera`); no getUserMedia (rear WebView stream is #000). `#arThree` hidden. HTML pin glyphs (red X / black unknown / claimed circles) within **~120 m**, FOV + compass (native heading preferred). Marked-pin HUD (`#arTrackHud`) live metres + heading every tick. Debug: `?arMock=1` or `localStorage.lvfe.arMock=1` places a mock pin ~45 m north. Empty-range / GPS-off copy, × → map. **Desktop:** visible `<video id="arCam">`. Pin labels do **not** touch `LvfeCatalogWallet` (`W`). `web/ar.html` leftover.
 - `web/map-3d.js` / `web/map-3d.css` — **one** `#btn3d` switch (green only when live 3D: pitch ~52 + terrain). Tap 3D from idle 12.2 → pitch 52 **and zoom ≥ 14.2**. Every OSM footprint is a box (tagged height/levels; untagged **OMT 5 m**; cap 80). **SAT-off opacity 1** (solid box city). **SAT+3D opacity 0.35** (ghost walls so draped Esri roofs read). SAT restacks above Liberty beige, under extrusion, under pins. 2D `building` fill hidden while extruded. No skip-filter. Terrain **1.0×** + sky; DEM fail → banner, switch off, stay flat. Labels `text-pitch-alignment: viewport`. Pins billboard (X/circle); no −16 px; no chimney poles. NavigationControl `visualizePitch` off. No Google 3D SKU. No Three.js.
 - `data/places.geojson` — typed pins. Place value/owner live in `lvfe.places.v1`.
-- `web/js/lvfe-assets.js` — URL helper so `/data` and `/geojson` work from the python server **and** the APK (`https://appassets.androidplatform.net/assets/www/`).
+- `web/js/lvfe-assets.js` — URL helper for repo-root python (`/data`), APK `appassets…/www/`, and HTTPS PWA under `/lvfe/`.
+- `web/manifest.webmanifest` + `web/sw.js` + `web/js/pwa-register.js` — installable PWA (Nord dark theme, standalone). SW caches shell; network-first for `lvfe-save` / tiles / GIS. **SW skipped** when `LvfeNative` or appassets WebView.
+- `hosting/lvfe/` + `scripts/stage_pwa.sh` / `deploy_pwa.sh` — deploy tree to **`https://iconiaglobal.com/lvfe/`** (FTP Iconia). Apex `.htaccess` pass-through includes `lvfe`. Docs: `docs/PWA.md`.
+- `docs/OAUTH_CONSENT.md` — consent + **Authorized JavaScript origins** for GIS (`https://iconiaglobal.com`, …).
 - `android/` — debug WebView APK (`com.lvfe.xperience`, minSdk 24). `sync-www.sh` bundles `web/` + `data/places.geojson` + `data/catalog.json` + `geojson/enugu-factions.geojson` + MapLibre JS/CSS. OpenFreeMap tiles still need the network. No Google Maps SDK. Not the Don Maseratte shop.
 
 ## Inception → now timeline
@@ -113,9 +116,32 @@ Location-based territorial game. World data from OpenStreetMap (no paid Google M
 - 2026-09-03: Overlay/layout audit — `box-sizing:border-box`, menu clip, dossier peek/expand px heights, FAB/toast chrome bottom; Nord CDP + screencaps.
 - 2026-09-03: Iconia CMS Terms filled (Lvfe + NCN + Google Identity; live `/pages/terms-and-conditions`).
 - 2026-09-03: Buy NCN (Paystack) + rank sigils + Google profile FAB; PHP buy routes on Iconia.
-- 2026-09-03: Pass-by toll + contest notify (Outpay/Escape/Accept) + mark watch/threat/takeover (`dc5eba5`).
+- 2026-09-03: Pass-by toll + contest notify (Outpay/Escape/Accept) + mark watch/threat/takeover (`dc5eba5`); co-landed PWA shell in same commit.
+- 2026-09-03: PWA deployed live to **`https://iconiaglobal.com/lvfe/`** (FTP; apex `lvfe` pass-through; GIS origins documented).
 
 ## Sessions
+
+### 2026-09-03 — Deploy PWA to Iconia HTTPS
+
+**Goal:** Ship installable PWA so any device can Sign in with Google (GIS) and share cloud save with the APK; HTTPS host; document JS origins; commit+push.
+
+**What changed:**
+- Code already on `main` in **`dc5eba5`** (co-landed with pass-toll): manifest, SW, pwa-register (skip `LvfeNative`/appassets), GIS button hosts, guest-local / Google-required Sync now, `/lvfe/` asset base, `docs/PWA.md`, OAUTH origins, stage/deploy scripts.
+- This session: FTP upload `dist/pwa` → `public_html/lvfe/`; patched apex `.htaccess` pass-through `lvfe`; recap + `.gitignore` `dist/`.
+
+**Why:** GIS + installability need a public HTTPS origin; APK WebView must not register the SW.
+
+**How verified:**
+- `curl -sI https://iconiaglobal.com/lvfe/` → **200**, `Permissions-Policy: geolocation=(self),…`
+- `curl -sI https://iconiaglobal.com/lvfe/manifest.webmanifest` → **200** `application/manifest+json`
+- `sw.js`, `data/places.geojson` → 200; `lvfe-save/health` → `googleConfigured:true`
+- Live HTML includes `data-gis-btn`, `pwa-register.js`, `requireGoogleForCloudSync`
+
+**Current state:** PWA public. Human must confirm Google Console **Authorized JavaScript origins** include `https://iconiaglobal.com`.
+
+**Next steps:** Add origins if missing; Install on Android Chrome / desktop; Gmail on PWA ↔ Nord APK Sync now; then `LVFE_ALLOW_DEV_AUTH=0`.
+
+**Blockers / risks:** Console origins are human-only. CF may cache `sw.js`. Dev auth still on public save API. Paystack still unconfigured.
 
 ### 2026-09-03 — Pass-by toll + marks / threats / takeover (P0)
 
