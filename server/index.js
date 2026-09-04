@@ -55,7 +55,7 @@ function loadEnv(file) {
 function cors(res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, PUT, POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type, X-Lvfe-Player-Key, X-Lvfe-Account-Key, X-Paystack-Signature");
+  res.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type, X-Lvfe-Player-Key, X-Lvfe-Account-Key, X-Paystack-Signature, verif-hash");
 }
 
 function send(res, code, obj) {
@@ -247,16 +247,18 @@ async function handle(req, res) {
       conflict: "last-write-wins by updatedAt",
       photoCap: { maxPhotos: MAX_PHOTOS, metaOnlyOverBytes: PHOTO_META_ONLY_OVER, maxBodyBytes: MAX_BODY },
       buyNcn: {
-        provider: "paystack",
+        provider: buy.provider,
         configured: buy.configured,
         sandbox: buy.sandbox,
         ncnPerUsd: 1,
+        paystack: buy.paystack,
+        flutterwave: buy.flutterwave,
       },
     });
     return;
   }
 
-  // POST /v1/buy/init|verify|webhook
+  // POST /v1/buy/init|verify|webhook|flw-webhook
   if (parts[0] === "v1" && parts[1] === "buy" && parts[2] && req.method === "POST") {
     let raw;
     try {
@@ -275,6 +277,10 @@ async function handle(req, res) {
     }
     if (parts[2] === "webhook") {
       await buyHandlers.handleWebhook(req, res, send, raw);
+      return;
+    }
+    if (parts[2] === "flw-webhook") {
+      await buyHandlers.handleFlwWebhook(req, res, send, raw);
       return;
     }
   }

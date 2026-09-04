@@ -46,6 +46,9 @@
     const tollCopy = (global.LvfePassToll && global.LvfePassToll.formulaCopy()) || null;
     const buyCfg = global.LvfeBuyNcnConfig;
     const buyReady = Boolean(global.LvfeBuyNcn && buyCfg && buyCfg.isConfigured && buyCfg.isConfigured());
+    const psReady = Boolean(buyCfg && buyCfg.isPaystackConfigured && buyCfg.isPaystackConfigured());
+    const flwReady = Boolean(buyCfg && buyCfg.isFlutterwaveConfigured && buyCfg.isFlutterwaveConfigured());
+    const defaultProvider = psReady ? "paystack" : (flwReady ? "flutterwave" : "paystack");
     const presets = (buyCfg && buyCfg.PRESETS) || [5, 10, 25, 50];
     const watch = Array.isArray(c.watchList) ? c.watchList : [];
     const takeovers = Array.isArray(c.takeovers) ? c.takeovers : [];
@@ -74,6 +77,24 @@
         );
       }
     } else {
+      if (psReady || flwReady) {
+        bits.push(`<div class="hub-buy-providers" role="radiogroup" aria-label="Checkout provider">`);
+        if (psReady) {
+          bits.push(
+            `<label class="hub-buy-provider"><input type="radio" name="hubBuyProvider" value="paystack"` +
+            (defaultProvider === "paystack" ? " checked" : "") +
+            ` /> Paystack</label>`
+          );
+        }
+        if (flwReady) {
+          bits.push(
+            `<label class="hub-buy-provider"><input type="radio" name="hubBuyProvider" value="flutterwave"` +
+            (defaultProvider === "flutterwave" ? " checked" : "") +
+            ` /> Flutterwave</label>`
+          );
+        }
+        bits.push(`</div>`);
+      }
       bits.push(`<div class="hub-buy-row">`);
       presets.forEach(function (p) {
         bits.push(`<button type="button" class="hub-cta ghost hub-buy-amt" data-buy-ncn="${p}">${p} NCN</button>`);
@@ -83,7 +104,7 @@
         `<label class="hub-buy-custom">Custom <input type="number" id="hubBuyCustom" min="1" max="500" step="1" value="10" inputmode="numeric" /></label>`,
         `<button type="button" class="hub-cta" id="hubBuyGo"><span class="mark">◎</span> Buy NCN</button>`
       );
-      if (buyCfg.isTestKey && buyCfg.isTestKey() && typeof global.lvfeDebug === "function" && global.lvfeDebug()) {
+      if (buyCfg.isTestKey && buyCfg.isTestKey(defaultProvider) && typeof global.lvfeDebug === "function" && global.lvfeDebug()) {
         bits.push(`<p class="hub-meta">Test checkout</p>`);
       }
     }

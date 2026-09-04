@@ -16,9 +16,9 @@ Location-based territorial game. World data from OpenStreetMap (no paid Google M
 - `scripts/export_catalog.py` — sqlite/geojson → `data/catalog.json` + `data/catalog.csv` (ownable **min stake**; bank/atm **0**).
 - `web/css/nord-shell.css` + **`web/css/nord-shell-v2.css`** — Nord dark-glass design system (splash/menu + secondary page chrome; orange `#ff7a1a`). Live PWA links **`nord-shell-v2.css`** to bypass Cloudflare’s 30-day immutable cache on the old CSS URL.
 - `web/assets/brand/` — **Lvfe brand mark** (gold seal + green `#34c759` map pin + gold geometric L). Primary PNGs: `lvfe-mark-512.png`, `lvfe-logo-wide.png`; SVG sources `lvfe-mark.svg` / `lvfe-logo-wide.svg`. Immediate Google OAuth uploads: `exports/brand/GOOGLE-OAUTH-*.png`.
-- `web/js/buy-ncn.config.js` / `buy-ncn.js` — **Buy NCN** via Paystack Checkout (1 NCN = USD $1). Public key only in client; init/verify against save host; clear sandbox blocker if keys missing. Docs: `docs/BUY_NCN.md`.
+- `web/js/buy-ncn.config.js` / `buy-ncn.js` — **Buy NCN** via Paystack (primary) + Flutterwave (alternate). 1 NCN = USD $1. Public keys only in client; init/verify against save host; clear sandbox blocker if keys missing. Docs: `docs/BUY_NCN.md`.
+- `hosting/lvfe-save/buy.php` + Node `server/buy.js` — `POST /v1/buy/init|verify|webhook` (+ `flw-webhook`); credits IOU in save pack after provider verify (idempotent `purchases[ref]` + `receipts[ref]`).
 - `web/js/rank-sigils.js` — rank **sigils/emblems** (Initiate→Sovereign tiers + Banner Lord / Vanguard / Kin faction roles). Used in Rankings hub + under profile FAB.
-- `hosting/lvfe-save/buy.php` + Node `server/buy.js` — `POST /v1/buy/init|verify|webhook`; credits IOU in save pack after Paystack verify (idempotent `purchases[ref]`).
 - `web/index.html` — Cold start **splash → main menu** (Play Now / Save / Restart / Check Catalog / Rules / My places / Account; splash/menu seals use `assets/brand/lvfe-mark-512.png`), then MapLibre + OpenFreeMap **GMaps-style chrome**: full-bleed map, top search pill with **magnifier** (`#btnSearch`), **bottom-left profile FAB** (`#btnMore` / `layoutFabs`): Google photo circle when signed in (else letter/mark fallback) + rank sigil + points under it; opens account/main-menu sheet. CSS bottom sheet (**hidden until pin tap**). **SAT / 3D / AR** are LTR/RTL slide switches on-map (`role="switch"`, green `#34c759` on / gray `#9aa0a6` off). **GPS is a locate action**, not a switch. `ensureLayers` uses valid `addLy({` (seven `addLy({)` SyntaxErrors fixed). `window.lvfeFitMap` → `map.resize()` after style/load, SAT toggle, `visualViewport`/`orientationchange`/`window.resize`, and delayed boot (WebView). Esri World Imagery `{z}/{y}/{x}` overlay (no `setStyle`). **Unclaimed named pins = red X** (`places-x`, `#ff3b30`); **unknown (quality D / civic_unknown / unmapped) = black X** (`places-x-unknown`, `#111111`); **owned pins = circle** (`places-circles`, self `#1d8cff` vs other/faction color). Invisible `places-hit` keeps taps at z12.2. Pins / green walk + dashed alts / 80 m ring / bus stops / you-dot re-attach via `reattachOverlays`; hybrid OSM labels in account **Map pins**; fail banner **Satellite couldn’t load**. Pin tap opens a **paper file / dossier** (`.sheet.doc` compact peek **34vh**, expand `.sheet.doc-exp` **70vh**) with **Place / Mission / Land / Money / Wallet** tabs (44px). Wallet **Pay** is `disabled` unless GPS and `dist <= 80`. Track chip + green OSRM walk line + muted dashed alts + in-line Walk/Car labels + 80 m pay ring. Player coin copy prefers **NCN**. ▴ / handle expands; × + swipe-down close fully. Idle map still auto-hides (`display:none`). Profile stamp → **grouped account sheet** (`#accountSheet`: You / Play [How to play, Catalog, My places, **Wallet** (Buy NCN), **Earn more**, **Rankings**, **Analytics**] / Map pins / This phone + Google signed-in chip / Sign out / Main menu + export/import + **Sync now**). **`#playHub`** Nord sheet for Wallet balance/Buy NCN/stakes/activity, Earn missions, Rankings (sigils), Analytics (territory / claims / rival pressure / mute prefs / Test notification). Catalog/rules/assets use Nord pill nav (not old flat chrome). No left `.panel`, no always-on `#hud`, no MapLibre Popup, no OSM/Esri wordmark on the map (About only). Default pitch **0**. 80 m GPS; photo + NairaCoin. **localStorage cache + optional cloud save** (`SAVE_API_BASE` / `?saveApi=`). Reinstall still wipes unless Export save **or** cloud sync. **Sign in with Google** uses Web client ID via native Credential Manager (Identity OAuth only — no Maps SKUs); photo URL cached from Credential Manager / JWT `picture`; when `googleSub` is present the Sign-in CTA is **hidden** and email is shown. Android OAuth client + SHA-1 still required in Console for fresh native sign-in on new devices.
 - `server/` — zero-dep Node save API (`PORT` default **18787**). `GET/PUT /v1/save/:playerKey`. Conflict: **last-write-wins** by `pack.updatedAt`. Auth: `Bearer lvfe-dev:<playerKey>` when `LVFE_ALLOW_DEV_AUTH=1`; `SAVE_SECRET`; `google:<id_token>` when `GOOGLE_WEB_CLIENT_ID` set (else production Gmail fails loud). Photos: max 8, dataURL >~400KB → meta-only; body ≤2.5 MiB. Env: see `server/.env.example` + `server/README.md`. Optional Netlify: `netlify.toml` + `netlify/functions/save.js`.
 - `hosting/lvfe-save/` — **public HTTPS save API** (PHP on Iconia Namecheap/cPanel). Live base **`https://iconiaglobal.com/lvfe-save`**. Same routes/auth as Node. Secrets in host-only `config.local.php` (gitignored). Preferred branded host `lvfe-save.iconiaglobal.com` needs Cloudflare DNS + cPanel subdomain (human).
@@ -55,11 +55,13 @@ Location-based territorial game. World data from OpenStreetMap (no paid Google M
 - `web/ar-overlay.js` — map-page AR (not `ar.html`). **Nord/Android:** CameraX `PreviewView` under a transparent WebView (`LvfeNative.startArCamera`); no getUserMedia (rear WebView stream is #000). `#arThree` hidden. HTML pin glyphs (red X / black unknown / claimed circles) within **~120 m**, FOV + compass (native heading preferred). Marked-pin HUD (`#arTrackHud`) live metres + heading every tick. Debug: `?arMock=1` or `localStorage.lvfe.arMock=1` places a mock pin ~45 m north. Empty-range / GPS-off copy, × → map. **Desktop:** visible `<video id="arCam">`. Pin labels do **not** touch `LvfeCatalogWallet` (`W`). `web/ar.html` leftover.
 - `web/map-3d.js` / `web/map-3d.css` — **one** `#btn3d` switch (green only when live 3D: pitch ~52 + terrain). Tap 3D from idle 12.2 → pitch 52 **and zoom ≥ 14.2**. Every OSM footprint is a box (tagged height/levels; untagged **OMT 5 m**; cap 80). **SAT-off opacity 1** (solid box city). **SAT+3D opacity 0.35** (ghost walls so draped Esri roofs read). SAT restacks above Liberty beige, under extrusion, under pins. 2D `building` fill hidden while extruded. No skip-filter. Terrain **1.0×** + sky; DEM fail → banner, switch off, stay flat. Labels `text-pitch-alignment: viewport`. Pins billboard (X/circle); no −16 px; no chimney poles. NavigationControl `visualizePitch` off. No Google 3D SKU. No Three.js.
 - `data/places.geojson` — typed pins. Place value/owner live in `lvfe.places.v1`.
-- `web/manifest.webmanifest` + `web/sw.js` + `web/js/pwa-register.js` + `web/js/pwa-install.js` + `web/install.html` — installable PWA (Nord dark theme, standalone). In-app install banner (Chromium `beforeinstallprompt` / iOS Share guide); SW caches shell; network-first for HTML/CSS/JS + `lvfe-save` / tiles / GIS. **SW skipped** when `LvfeNative` or appassets WebView. Cache id **`lvfe-shell-v7`**. Theme CSS: `web/css/nord-shell-v2.css` (cache-bust rename).
+- `web/manifest.webmanifest` + `web/sw.js` + `web/js/pwa-register.js` + `web/js/pwa-install.js` + `web/install.html` — installable PWA (Nord dark theme, standalone). In-app install banner (Chromium `beforeinstallprompt` / iOS Share guide); SW caches shell; network-first for HTML/CSS/JS + `lvfe-save` / tiles / GIS. **SW skipped** when `LvfeNative` or appassets WebView. Cache id **`lvfe-shell-v8`**. Theme CSS: `web/css/nord-shell-v2.css` (cache-bust rename).
 - `hosting/lvfe/` + `scripts/stage_pwa.sh` / `deploy_pwa.sh` — deploy tree to **`https://iconiaglobal.com/lvfe/`** (FTP Iconia). Apex `.htaccess` pass-through includes `lvfe`. Docs: `docs/PWA.md`.
 - `android/` — debug WebView APK (`com.lvfe.xperience`, minSdk 24). `sync-www.sh` bundles `web/` + `data/places.geojson` + `data/catalog.json` + `geojson/enugu-factions.geojson` + MapLibre JS/CSS. OpenFreeMap tiles still need the network. No Google Maps SDK. Not the Don Maseratte shop.
 
 ## Inception → now timeline
+
+- 2026-09-04: **Buy NCN dual-provider** — Paystack + Flutterwave; hub radios; save-pack purchases/receipts; Node parity; SW v8.
 
 - 2026-09-03: **Wallet 1e9 / OPay+P2P / Travel / 1-naira brand / hub P0 / BigInt ledger / Asabana.**
 
@@ -136,6 +138,27 @@ Location-based territorial game. World data from OpenStreetMap (no paid Google M
 
 ## Sessions
 
+### 2026-09-04 — Complete Buy NCN dual-provider (Paystack + Flutterwave)
+
+**Goal:** Finish in-progress Buy NCN work — Flutterwave alternate beside Paystack, hub provider picker, save-pack purchases/receipts, Node parity — then commit.
+
+**What changed:**
+- PHP `hosting/lvfe-save/buy.php` + `.htaccess` / `index.php`: Flutterwave init/verify/`flw-webhook`; receipts + mail BCC; health exposes `paystack`/`flutterwave`.
+- Client `buy-ncn.config.js` / `buy-ncn.js`: dual public keys, provider-aware checkout (Paystack Inline + Flutterwave Checkout).
+- Wallet hub: Paystack/Flutterwave radios when keys present; SW cache **`lvfe-shell-v8`**.
+- `account.js` packSave/unpackSave syncs `purchases` + `receipts`.
+- Node `server/buy.js` + `index.js` + `.env.example` parity with PHP.
+- Docs: `docs/BUY_NCN.md` updated.
+
+**Why:** Uncommitted Buy NCN diff was incomplete (hub had no provider UI; Node still Paystack-only; purchases not in save pack). OPay stays soft-fail / deprioritized.
+
+**How verified:** `php -l` on buy.php + index.php; `node --check` on buy.js / buy-ncn.js / play-hub.js / account.js; smoke require `createBuyHandlers` + `keysStatus` empty keys → configured:false; `scripts/test_buy_ncn_sigils.js` ok.
+
+**Current state:** Code path complete; **sandbox/live keys still empty** (soft-fail blocker until human pastes). Not deployed to Iconia in this session.
+
+**Next steps:** Paste Paystack (and optional FLW) sandbox keys into `config.local.php` + client config; webhook URLs; FTP deploy PHP + PWA; sandbox card buy → credit; then live keys. `LVFE_ALLOW_DEV_AUTH→0` after Google proven.
+
+**Blockers / risks:** No merchant keys in repo. Deploy must use Iconia FTP `iconicxy` @ `198.54.120.95`.
 
 ### 2026-09-03 — Multi-ask A–I (wallet 1e9, OPay, P2P, UI, Travel, brand, catalog, hubs)
 

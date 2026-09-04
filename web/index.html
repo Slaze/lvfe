@@ -169,6 +169,8 @@
     }
     .hub-buy { margin: 12px 0 16px; padding: 12px; border-radius: 12px; background: rgba(255,122,26,.08); border: 1px solid rgba(255,122,26,.25); }
     .hub-buy h4 { margin: 0 0 6px; }
+    .hub-buy-providers { display: flex; flex-wrap: wrap; gap: 12px; margin: 8px 0 4px; font-size: 13px; color: #c5c8ce; }
+    .hub-buy-provider { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
     .hub-buy-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
     .hub-buy-row .hub-cta { flex: 1 1 40%; min-width: 88px; }
     .hub-buy-custom { display: flex; align-items: center; gap: 8px; margin: 8px 0; font-size: 13px; color: #c5c8ce; }
@@ -3600,12 +3602,19 @@
     function bindHubBuy() {
       const Buy = window.LvfeBuyNcn;
       const Cfg = window.LvfeBuyNcnConfig;
+      function selectedProvider() {
+        const el = document.querySelector('input[name="hubBuyProvider"]:checked');
+        const v = el && el.value;
+        if (v === "flutterwave") return "flutterwave";
+        return "paystack";
+      }
       function start(amount) {
         if (!Buy) {
           toast("Buy NCN isn’t available yet — try again later.");
           return;
         }
-        if (!Cfg || !Cfg.isConfigured()) {
+        const provider = selectedProvider();
+        if (!Cfg || !Cfg.isProviderConfigured(provider)) {
           showBuyBlocker(Buy.failLoud());
           return;
         }
@@ -3616,9 +3625,15 @@
           playerKey: PLAYER_KEY,
           email: email,
           ncnAmount: amount,
+          provider: provider,
         }, function (res) {
           if (!res || !res.ok) {
-            if (res && (res.code === "paystack_not_configured" || res.code === "live_keys_missing" || res.code === "opay_not_configured")) {
+            if (res && (
+              res.code === "paystack_not_configured"
+              || res.code === "live_keys_missing"
+              || res.code === "flutterwave_not_configured"
+              || res.code === "flutterwave_live_keys_missing"
+            )) {
               showBuyBlocker(res);
             } else if (res && res.code !== "closed") {
               toast((res && res.message) || "Purchase failed.");

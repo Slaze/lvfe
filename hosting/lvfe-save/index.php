@@ -5,7 +5,8 @@
  *   GET  /health
  *   GET  /v1/save/:playerKey
  *   PUT  /v1/save/:playerKey
- *   POST /v1/buy/init|verify|webhook  (Paystack; 1 NCN = USD $1)
+ *   POST /v1/buy/init|verify|webhook  (Paystack primary; 1 NCN = USD $1)
+ *   POST /v1/buy/flw-webhook          (Flutterwave alternate)
  *
  * Auth: Bearer lvfe-dev:<playerKey> (when LVFE_ALLOW_DEV_AUTH=1),
  *       Bearer <SAVE_SECRET>,
@@ -22,7 +23,7 @@ const MAX_BODY = 2621440;
 
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, PUT, POST, OPTIONS');
-header('Access-Control-Allow-Headers: Authorization, Content-Type, X-Lvfe-Player-Key, X-Lvfe-Account-Key, X-Paystack-Signature');
+header('Access-Control-Allow-Headers: Authorization, Content-Type, X-Lvfe-Player-Key, X-Lvfe-Account-Key, X-Paystack-Signature, verif-hash');
 header('Cache-Control: no-store');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -57,23 +58,26 @@ if ($path === 'health' || $path === '') {
                 'devAuth' => ($cfg['LVFE_ALLOW_DEV_AUTH'] ?? '0') !== '0',
                 'googleConfigured' => ($cfg['GOOGLE_WEB_CLIENT_ID'] ?? '') !== '',
                 'buyNcn' => [
-                    'provider' => 'paystack',
+                    'provider' => $buy['provider'],
                     'configured' => $buy['configured'],
                     'sandbox' => $buy['sandbox'],
                     'ncnPerUsd' => 1,
+                    'paystack' => $buy['paystack'],
+                    'flutterwave' => $buy['flutterwave'],
                 ],
                 'opayNcn' => [
                     'provider' => 'opay',
                     'configured' => $opay['configured'],
                     'sandbox' => $opay['sandbox'],
                     'ncnPerUsd' => 1,
+                    'note' => 'deprioritized — use Paystack/Flutterwave',
                 ],
             ]);
         }
     }
 }
 
-/* Buy NCN (Paystack) — before save-key gate */
+/* Buy NCN (Paystack primary / Flutterwave alternate) — before save-key gate */
 if ($path === 'v1/buy/init' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     buy_handle_init($cfg, $saveDir);
 }
@@ -82,6 +86,9 @@ if ($path === 'v1/buy/verify' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 if ($path === 'v1/buy/webhook' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     buy_handle_webhook($cfg, $saveDir);
+}
+if ($path === 'v1/buy/flw-webhook' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    buy_handle_flw_webhook($cfg, $saveDir);
 }
 
 /* OPay Buy NCN */
@@ -119,16 +126,19 @@ if ($key === null) {
             'devAuth' => ($cfg['LVFE_ALLOW_DEV_AUTH'] ?? '0') !== '0',
             'googleConfigured' => ($cfg['GOOGLE_WEB_CLIENT_ID'] ?? '') !== '',
             'buyNcn' => [
-                'provider' => 'paystack',
+                'provider' => $buy['provider'],
                 'configured' => $buy['configured'],
                 'sandbox' => $buy['sandbox'],
                 'ncnPerUsd' => 1,
+                'paystack' => $buy['paystack'],
+                'flutterwave' => $buy['flutterwave'],
             ],
             'opayNcn' => [
                 'provider' => 'opay',
                 'configured' => $opay['configured'],
                 'sandbox' => $opay['sandbox'],
                 'ncnPerUsd' => 1,
+                'note' => 'deprioritized — use Paystack/Flutterwave',
             ],
         ]);
     }
