@@ -34,6 +34,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 require_once __DIR__ . '/buy.php';
 require_once __DIR__ . '/opay.php';
 require_once __DIR__ . '/p2p.php';
+require_once __DIR__ . '/admin_lib.php';
+require_once __DIR__ . '/progression.php';
 
 $cfg = load_config();
 $path = isset($_GET['_path']) ? (string)$_GET['_path'] : '';
@@ -41,6 +43,11 @@ $path = trim($path, '/');
 $saveDir = __DIR__ . '/data/saves';
 if (!is_dir($saveDir)) {
     mkdir($saveDir, 0750, true);
+}
+
+/* Admin CMS + public game-config — before save-key gate */
+if (admin_handle_request($cfg, $saveDir, $path)) {
+    exit;
 }
 
 if ($path === 'health' || $path === '') {
@@ -105,6 +112,11 @@ if ($path === 'v1/opay/webhook' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 /* P2P NCN */
 if ($path === 'v1/p2p/transfer' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     p2p_handle_transfer($cfg, $saveDir);
+}
+
+/* Check-in / ratings / location stats (SQLite) */
+if (prog_handle_request($cfg, $path)) {
+    exit;
 }
 
 $key = isset($_GET['key']) ? safe_key((string)$_GET['key']) : null;
@@ -239,6 +251,21 @@ function load_config(): array
         'PAYSTACK_WEBHOOK_SECRET' => '',
         'PAYSTACK_CURRENCY' => 'NGN',
         'NGN_PER_USD' => '1500',
+        'FLW_PUBLIC_KEY' => '',
+        'FLW_SECRET_KEY' => '',
+        'FLW_SECRET_HASH' => '',
+        'FLW_CURRENCY' => 'NGN',
+        'BUY_MERCHANT_EMAIL' => '',
+        'OPAY_MERCHANT_ID' => '',
+        'OPAY_PUBLIC_KEY' => '',
+        'OPAY_SECRET_KEY' => '',
+        'OPAY_SANDBOX' => '1',
+        'OPAY_CURRENCY' => 'NGN',
+        'OPAY_PAYOUT_ACCOUNT' => '',
+        'OPAY_PAYOUT_NAME' => '',
+        'OPAY_MERCHANT_EMAIL' => '',
+        'ADMIN_EMAIL' => '',
+        'ADMIN_PASSWORD_HASH' => '',
     ];
     $local = __DIR__ . '/config.local.php';
     if (is_file($local)) {

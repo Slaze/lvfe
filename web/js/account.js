@@ -14,6 +14,8 @@
   const ACTIVITY_KEY = "lvfe.activity.v1";
   const PURCHASES_KEY = "lvfe.purchases.v1";
   const RECEIPTS_KEY = "lvfe.receipts.v1";
+  const PROGRESSION_KEY = "lvfe.progression.v1";
+  const RATINGS_KEY = "lvfe.ratings.v1";
   const PACK_KIND = "lvfe.save.v1";
 
   function storage() {
@@ -415,6 +417,8 @@
       activity: lsGet(ACTIVITY_KEY, { items: [] }),
       purchases: lsGet(PURCHASES_KEY, {}),
       receipts: lsGet(RECEIPTS_KEY, {}),
+      progression: lsGet(PROGRESSION_KEY, null),
+      ratings: lsGet(RATINGS_KEY, null),
       photos: Array.isArray(o.photos) ? o.photos : [],
       note: "Lvfe save pack. Prefer cloud sync when SAVE_API_BASE is set; Export/Import remains the offline backup. Photos may be meta-only if over ~400KB.",
     };
@@ -439,6 +443,8 @@
     if (pack.activity && typeof pack.activity === "object") lsSet(ACTIVITY_KEY, pack.activity);
     if (pack.purchases && typeof pack.purchases === "object") lsSet(PURCHASES_KEY, pack.purchases);
     if (pack.receipts && typeof pack.receipts === "object") lsSet(RECEIPTS_KEY, pack.receipts);
+    if (pack.progression && typeof pack.progression === "object") lsSet(PROGRESSION_KEY, pack.progression);
+    if (pack.ratings && typeof pack.ratings === "object") lsSet(RATINGS_KEY, pack.ratings);
     const wallets = pack.wallets && typeof pack.wallets === "object" ? pack.wallets : {};
     Object.keys(wallets).forEach(function (k) {
       if (k.indexOf("lvfe.nc.iou.v1.") !== 0 && k.indexOf("lvfe.nairacoin.") !== 0) return;

@@ -5,7 +5,9 @@ const C = global.LvfeConquest;
 const assert = (cond, msg) => { if (!cond) throw new Error(msg); };
 
 assert(C, "LvfeConquest");
-assert(C.MAX_BONUS === 0.5, "winner bonus is +50%");
+assert(C.MAX_BONUS === 0, "zero-sum neighbourhood bonus off");
+C.applyConfig({ maxBonus: 0.5 });
+assert(C.MAX_BONUS === 0.5, "math fixture +50%");
 assert(C.isHinterland("unclaimed") && C.isHinterland(""), "hinterland ids");
 assert(!C.isHinterland("independence_layout"), "named neighbourhood is not hinterland");
 

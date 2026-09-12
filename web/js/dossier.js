@@ -43,10 +43,10 @@
 
   function conqueredText(rec) {
     if (rec && rec.ownerId && rec.factionId && FACTION_NAMES[rec.factionId]) {
-      return "Conquered by " + FACTION_NAMES[rec.factionId];
+      return "Held by " + FACTION_NAMES[rec.factionId];
     }
-    if (rec && rec.ownerId) return "Owned · not conquered";
-    return "Not conquered";
+    if (rec && rec.ownerId) return "Owned";
+    return "No holder yet";
   }
 
   function photoLine(p, rec) {
@@ -362,7 +362,17 @@
     const Toll = global.LvfePassToll;
     if (Toll && Toll.formulaCopy && ownerId && ownerId !== playerKey) {
       const copy = Toll.formulaCopy();
-      bits.push(`<p class="note">${esc(copy.short)}</p>`);
+      if (copy && copy.short) bits.push(`<p class="note">${esc(copy.short)}</p>`);
+    }
+    const Unlock = global.LvfeUnlocks;
+    const score = (opts && opts.rankScore) != null ? opts.rankScore : 0;
+    if (Unlock) {
+      const bookOn = Unlock.isBookmarked(playerKey, p.id);
+      const canBook = Unlock.canUse("bookmark", score);
+      bits.push(
+        `<button type="button" class="sw-ctl ghost mark-btn" data-bookmark="${esc(p.id)}" ${canBook.ok ? "" : "disabled "}` +
+        `aria-pressed="${bookOn ? "true" : "false"}"><span class="sw-ctl-name">${bookOn ? "Bookmarked" : "Bookmark"}</span></button>`
+      );
     }
     return bits.join("");
   }
@@ -379,16 +389,16 @@
 
   function moneyInterest(p, rec, playerKey, counts) {
     if (!R().isOwnable(p)) return "";
-    const W = global.LvfeCatalogWallet;
-    const L = global.LvfePlaceLedger;
-    const pts = p && (p.claim_points != null ? p.claim_points : p.claim_nairacoin);
-    let min = W ? W.minStake(pts, p.catalog_type) : 5;
-    const C = global.LvfeConquest;
-    if (C && min > 0) min = C.costToBack(min, p, counts);
-    const n = L ? L.yieldFromIncoming(min) : Math.max(1, Math.round(min * 0.1));
+    const Prog = global.LvfeProgression;
+    const loc = Prog ? (Prog.load().locations[p.id] || { visitCount: 0 }) : { visitCount: 0 };
+    const xp = Prog ? Prog.visitXp(loc) : { visitorXp: 10, ownerXp: 2 };
+    const Rate = global.LvfeRatings;
+    const avg = Rate ? Rate.average(p.id) : { avg: null, count: 0 };
+    const stars = Rate ? Rate.starsHtml(avg.avg, avg.count) : "";
     const who = rec && rec.ownerId === playerKey ? "You earn" : "Owner earns";
-    const coin = R().ncn ? R().ncn(n) : (n + " NCN");
-    return who + " " + coin + " from visits when someone else backs (10% of what they put in).";
+    return "Check-in XP: you +" + xp.visitorXp + " · " + who + " +" + xp.ownerXp + " referral" +
+      (stars ? " · " + stars : "") +
+      ". One check-in per 24 h. No NCN cut from visits.";
   }
 
   /** Claim / Bid gated button. Disabled unless GPS and dist <= 80. */
@@ -563,6 +573,20 @@
         `<p class="row-label">Name</p><p class="row-value">${esc(title)}</p>`,
         `<p class="row-label">Type</p><p class="row-value">${esc(type)}</p>`,
         `<p class="row-label">Quality</p><p class="row-value">${esc(rules.qualityWords(p.quality))}</p>`,
+        (function () {
+          const Rate = global.LvfeRatings;
+          const Prog = global.LvfeProgression;
+          const avg = Rate ? Rate.average(p.id) : { avg: null, count: 0 };
+          const loc = Prog ? (Prog.load().locations[p.id] || {}) : {};
+          const tier = Prog ? Prog.locationTier(loc) : { label: "New" };
+          const feat = global.LvfeSponsorship && global.LvfeSponsorship.isFeatured(p.id);
+          const bits2 = [
+            `<p class="row-label">Rating</p><p class="row-value">${esc(Rate ? Rate.starsHtml(avg.avg, avg.count) : "—")}</p>`,
+            `<p class="row-label">Place tier</p><p class="row-value">${esc(tier.label)}${feat ? " · Featured" : ""}</p>`,
+          ];
+          if (loc.insight) bits2.push(`<p class="row-label">Insight</p><p class="row-value">${esc(loc.insight)}</p>`);
+          return bits2.join("");
+        })(),
         voice && pb.how ? voice.howWorks(pb.how) : "",
         `</section>`
       );
@@ -621,6 +645,23 @@
       );
       if (walkLine) bits.push(`<p class="note">${esc(walkLine)}</p>`);
       bits.push(payHtml(p, rec, ok, playerKey, counts));
+      if (ok) {
+        const Prog = global.LvfeProgression;
+        const gate = Prog ? Prog.canCheckIn({ playerId: playerKey, locationId: p.id }) : { ok: true };
+        bits.push(
+          `<button type="button" class="claim" data-checkin="${esc(p.id)}" ${gate.ok ? "" : "disabled"}>` +
+          (gate.ok ? "Check in (XP)" : "Checked in today") + `</button>`
+        );
+        bits.push(
+          `<label class="row-label">Rate this visit</label>`,
+          `<div class="rate-row">`,
+          `<select data-rate-stars="${esc(p.id)}" aria-label="Stars">`,
+          `<option value="5">5 ★</option><option value="4">4 ★</option><option value="3">3 ★</option><option value="2">2 ★</option><option value="1">1 ★</option>`,
+          `</select>`,
+          `<button type="button" class="sw-ctl ghost" data-rate="${esc(p.id)}">Save rating</button>`,
+          `</div>`
+        );
+      }
       if (voice && wb.how) bits.push(voice.howWorks(wb.how));
       bits.push(`</section>`);
     }

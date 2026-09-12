@@ -3,8 +3,8 @@ Options -Indexes
 RewriteEngine On
 RewriteBase /lvfe-save/
 
-# Deny direct access to secrets + save files
-RewriteRule ^(?:config\.local\.php|data)(?:/|$) - [F,L]
+# Deny direct access to secrets + save files (+ admin lib)
+RewriteRule ^(?:config\.local\.php|admin_lib\.php|data)(?:/|$) - [F,L]
 
 RewriteCond %{REQUEST_FILENAME} -f [OR]
 RewriteCond %{REQUEST_FILENAME} -d
@@ -13,4 +13,9 @@ RewriteRule ^ - [L]
 RewriteRule ^health/?$ index.php?_path=health [L,QSA]
 RewriteRule ^v1/save/([^/]+)/?$ index.php?_path=v1/save/$1&key=$1 [L,QSA]
 RewriteRule ^v1/buy/(init|verify|webhook|flw-webhook)/?$ index.php?_path=v1/buy/$1 [L,QSA]
+RewriteRule ^v1/game-config/?$ index.php?_path=v1/game-config [L,QSA]
+RewriteRule ^v1/check-in/?$ index.php?_path=v1/check-in [L,QSA]
+RewriteRule ^v1/ratings/?$ index.php?_path=v1/ratings [L,QSA]
+RewriteRule ^v1/locations/?$ index.php?_path=v1/locations [L,QSA]
+RewriteRule ^v1/admin(?:/(.*))?/?$ index.php?_path=v1/admin/$1 [L,QSA]
 RewriteRule ^(.*)$ index.php?_path=$1 [L,QSA]

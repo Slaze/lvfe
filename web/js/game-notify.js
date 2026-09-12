@@ -38,8 +38,8 @@
   /** Same place + type not again for this long. */
   const PLACE_GAP_MS = 75 * 60 * 1000;
   const MAX_PER_DAY = 14;
-  const NEARBY_RADIUS_M = 400;
-  const APPROACH_RADIUS_M = 120;
+  let NEARBY_RADIUS_M = 400;
+  let APPROACH_RADIUS_M = 120;
 
   function storage() {
     if (typeof localStorage === "undefined") {
@@ -391,8 +391,8 @@ function titleFor(evt) {
     TYPE_GAP_MS,
     PLACE_GAP_MS,
     MAX_PER_DAY,
-    NEARBY_RADIUS_M,
-    APPROACH_RADIUS_M,
+    get NEARBY_RADIUS_M() { return NEARBY_RADIUS_M; },
+    get APPROACH_RADIUS_M() { return APPROACH_RADIUS_M; },
     loadPrefs,
     savePrefs,
     loadState,
@@ -406,6 +406,13 @@ function titleFor(evt) {
     scanNearby,
     rivalClaimsFromDiff,
     haversineM,
+    applyConfig: function (o) {
+      if (!o) return;
+      const n = Number(o.nearbyRadiusM);
+      const a = Number(o.approachRadiusM);
+      if (Number.isFinite(n) && n > 0) NEARBY_RADIUS_M = n;
+      if (Number.isFinite(a) && a > 0) APPROACH_RADIUS_M = a;
+    },
   };
 
   if (typeof module !== "undefined" && module.exports) {

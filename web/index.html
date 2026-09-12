@@ -1301,6 +1301,11 @@
   <script src="js/place-thumb.js"></script>
   <script src="js/game-notify.js"></script>
   <script src="js/pass-toll.js"></script>
+  <script src="js/progression.js"></script>
+  <script src="js/ratings.js"></script>
+  <script src="js/unlocks.js"></script>
+  <script src="js/sponsorship.js"></script>
+  <script src="js/progression-api.js"></script>
   <script src="js/game-marks.js"></script>
   <script src="js/rankings.js"></script>
   <script src="js/rank-sigils.js"></script>
@@ -1324,6 +1329,7 @@
   <script src="js/local-factions.js"></script>
   <script src="js/world-catalog.js"></script>
   <script src="js/save-api.config.js"></script>
+  <script src="js/remote-config.js"></script>
   <script src="js/save-sync.js"></script>
   <script src="js/pwa-register.js"></script>
   <script src="js/pwa-install.js"></script>
@@ -1626,19 +1632,22 @@
         return;
       }
       const hits = [];
+      const Prog = window.LvfeProgression;
       for (const f of placesFc.features) {
         const p = f.properties || {};
         const name = placeName(p);
         if (name.toLowerCase().indexOf(needle) === -1 && String(p.catalog_type || "").indexOf(needle) === -1) continue;
-        hits.push(f);
-        if (hits.length >= 8) break;
+        const boost = Prog ? Prog.searchBoost(p.id) : 0;
+        hits.push({ f: f, boost: boost });
       }
-      if (!hits.length) {
+      hits.sort(function (a, b) { return b.boost - a.boost; });
+      const top = hits.slice(0, 8).map(function (h) { return h.f; });
+      if (!top.length) {
         box.innerHTML = "<button type='button' disabled>No places</button>";
         box.hidden = false;
         return;
       }
-      box.innerHTML = hits.map((f) => {
+      box.innerHTML = top.map((f) => {
         const p = f.properties || {};
         return `<button type="button" data-jump="${esc(p.id)}"><strong>${esc(placeName(p))}</strong><span>${esc(placeType(p))}</span></button>`;
       }).join("");
@@ -2264,8 +2273,13 @@
       const meta = document.getElementById("acctMeta");
       if (meta) {
         const fac = idn && idn.factionId ? (FACTION_NAMES[idn.factionId] || idn.factionId) : "no neighbourhood";
+        const rr = playerRankRow();
+        const stats = rr
+          ? (rr.placesClaimed || 0) + " places · " + (rr.totalXp || rr.points || 0) + " XP · " + (rr.checkIns30d || 0) + " check-ins (30d)"
+          : "";
         meta.innerHTML = idn
-          ? esc(fac) + " · <span class=\"coin\" id=\"acctCoin\">" + whole + "</span> NCN"
+          ? esc(fac) + " · <span class=\"coin\" id=\"acctCoin\">" + whole + "</span> NCN" +
+            (stats ? "<br>" + esc(stats) : "")
           : "Sign in to Claim · <span class=\"coin\" id=\"acctCoin\">" + whole + "</span> NCN";
       } else {
         const coin = document.getElementById("acctCoin");
@@ -2302,9 +2316,20 @@
 
     function playerRankRow() {
       const Rank = window.LvfeRankings;
+      const Prog = window.LvfeProgression;
       const places = loadPlaces();
       const idn = loadIdentity() || {};
       const identities = hubIdentities();
+      if (Prog) {
+        const row = Prog.playerRankRow(PLAYER_KEY, places, {
+          playerName: idn.playerName,
+          identities: identities,
+        });
+        row.points = row.score;
+        row.owned = row.placesClaimed;
+        row.staked = 0;
+        return row;
+      }
       if (!Rank) {
         return { playerKey: PLAYER_KEY, playerName: idn.playerName || PLAYER_KEY, staked: 0, owned: 0, points: 0, rank: 0 };
       }
@@ -3477,9 +3502,12 @@
           : [];
         body.innerHTML = Hub.earnHtml(missions, { noGps: !userPos });
       } else if (hubTab === "rankings") {
-        const global = Rank
+        const Prog = window.LvfeProgression;
+        const global = Prog
+          ? Prog.rankPlayers(places, { identities: hubIdentities() })
+          : (Rank
           ? Rank.globalLeaders(places, { identities: hubIdentities(), metric: "staked", emptyDemo: true })
-          : [];
+          : []);
         const factions = Rank
           ? Rank.factionLeaders(places, pools, FACTION_NAMES, { identities: hubIdentities() })
           : [];
@@ -4537,10 +4565,10 @@
 
     function conqueredText(rec) {
       if (rec && rec.ownerId && rec.factionId && FACTION_NAMES[rec.factionId]) {
-        return "Conquered by " + FACTION_NAMES[rec.factionId];
+        return "Held by " + FACTION_NAMES[rec.factionId];
       }
-      if (rec && rec.ownerId) return "Owned · not conquered";
-      return "Not conquered";
+      if (rec && rec.ownerId) return "Owned";
+      return "No holder yet";
     }
 
     function missionCopy(p, rec, dist, distOk) {
@@ -4562,9 +4590,8 @@
 
     function moneyInterestText(p, rec) {
       if (!isOwnable(p)) return "";
-      const n = yieldOnStake(minStake(p));
       const who = rec && rec.ownerId === PLAYER_KEY ? "You earn" : "Owner earns";
-      return who + " " + n + " NCN from visits when someone else backs (10% of what they put in).";
+      return "Check-in XP: visitor +10 · " + who + " +2 referral. One visit per 24 h. No NCN cut.";
     }
 
     function dossierTabsHtml() {
@@ -4603,6 +4630,7 @@
           factionNames: FACTION_NAMES,
           identity: idn,
           identities: hubIdentities(),
+          rankScore: (playerRankRow() || {}).score || 0,
         });
       }
       return dossierFallbackHtml(p, dist);
@@ -4691,6 +4719,44 @@
       if (!dossierPlaceId) return;
       const feat = placeById(dossierPlaceId);
       if (feat) openPlacePopup(feat);
+    }
+
+    function doCheckIn(id, rec, p, opts) {
+      const Prog = window.LvfeProgression;
+      if (!Prog) return { ok: false, reason: "no_module" };
+      const idn = loadIdentity() || {};
+      const territoryId = (p && (p.territory_id || p.factionId)) || (rec && rec.factionId) || "";
+      const res = Prog.recordCheckIn({
+        placeId: id,
+        playerKey: PLAYER_KEY,
+        playerName: idn.playerName,
+        ownerId: rec && rec.ownerId,
+        ownerName: rec && rec.ownerName,
+        territoryId: territoryId,
+      });
+      if (res && res.ok) {
+        const hood = Prog.tryHoodAward({
+          playerKey: PLAYER_KEY,
+          territoryId: territoryId,
+          creditNcn: function (n) {
+            if (typeof creditWallet === "function") creditWallet(PLAYER_KEY, n);
+          },
+        });
+        if (hood && hood.ok && !(opts && opts.silent)) {
+          toast("Neighbourhood badge · +" + hood.ncn + " NCN");
+        }
+        if (window.LvfeProgressionApi && typeof window.LvfeProgressionApi.checkIn === "function") {
+          window.LvfeProgressionApi.checkIn({
+            placeId: id,
+            playerKey: PLAYER_KEY,
+            playerName: idn.playerName,
+            ownerId: rec && rec.ownerId,
+            ownerName: rec && rec.ownerName,
+            territoryId: territoryId,
+          });
+        }
+      }
+      return res;
     }
 
     function applyLocalQuality(feat, rec) {
@@ -4837,6 +4903,11 @@
         parts.push(`owner earns ${split.ownerPaid}`);
         if (split.factionPaid) parts.push(`${split.factionPaid} to neighbourhood`);
       }
+      const cin = doCheckIn(id, rec, p, { silent: true });
+      if (cin && cin.ok) {
+        parts.push("+" + cin.visitorXp + " XP");
+        if (cin.ownerXp) parts.push("owner +" + cin.ownerXp + " XP");
+      }
       if (promoted) parts.push("photo");
       toast(parts.join(" · ") + " · " + placeName(p));
       if (window.LvfeWalletEarn) {
@@ -4947,6 +5018,42 @@
       if (missionFac) {
         e.preventDefault();
         openPlayHub("analytics");
+        return;
+      }
+      const checkBtn = e.target.closest("[data-checkin]");
+      if (checkBtn) {
+        e.preventDefault();
+        const id = checkBtn.getAttribute("data-checkin");
+        const feat = placeById(id);
+        const rec = placeRec(id);
+        const p = feat ? feat.properties : { id: id };
+        const res = doCheckIn(id, rec, p, {});
+        if (res && res.ok) toast("Checked in · +" + res.visitorXp + " XP");
+        else if (res && res.reason === "cooldown_24h") toast("Already checked in here today");
+        else toast((res && res.reason) || "Check-in failed");
+        if (dossierPlaceId) refreshOpenDossier();
+        paintProfileMenu();
+        return;
+      }
+      const rateBtn = e.target.closest("[data-rate]");
+      if (rateBtn && window.LvfeRatings) {
+        e.preventDefault();
+        const id = rateBtn.getAttribute("data-rate");
+        const sel = document.querySelector("[data-rate-stars=\"" + id + "\"]");
+        const stars = sel ? Number(sel.value) : 5;
+        const res = window.LvfeRatings.rate({ locationId: id, playerKey: PLAYER_KEY, stars: stars });
+        toast(res.ok ? ("Rated " + stars + " ★") : (res.reason === "check_in_required" ? "Check in first" : "Rating failed"));
+        if (dossierPlaceId) refreshOpenDossier();
+        return;
+      }
+      const bookBtn = e.target.closest("[data-bookmark]");
+      if (bookBtn && window.LvfeUnlocks) {
+        e.preventDefault();
+        const id = bookBtn.getAttribute("data-bookmark");
+        const row = playerRankRow();
+        const res = window.LvfeUnlocks.bookmark(PLAYER_KEY, id, row.score || row.points || 0);
+        toast(res.ok ? (res.on ? "Bookmarked" : "Bookmark removed") : ("Need " + (res.need || "Scout") + " rank"));
+        if (dossierPlaceId) refreshOpenDossier();
         return;
       }
       const markWatch = e.target.closest("[data-mark-watch]");
@@ -5269,6 +5376,7 @@
       renderHud();
     }
 
+    if (window.LvfeRemoteConfig) window.LvfeRemoteConfig.load();
     bootstrapIdentity();
     bindChrome();
     startBootFlow();

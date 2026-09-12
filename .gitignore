@@ -14,6 +14,8 @@ server/data/
 hosting/lvfe-save/config.local.php
 hosting/lvfe-save/data/saves/
 hosting/lvfe-save/data/payments/
+hosting/lvfe-save/data/lvfe-game.sqlite
+hosting/lvfe-save/data/*.sqlite
 .netlify/
 dist/
 scripts/__pycache__/

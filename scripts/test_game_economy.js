@@ -80,8 +80,8 @@ assert(Wallet.bidToOwn({
 }, "me", 5).add === 11, "top-up to beat");
 
 const y = Wallet.visitYieldExample(50);
-assert(y.yieldPaid === Ledger.yieldFromIncoming(50), "yield matches ledger");
-assert(y.ownerPaid + y.factionPaid === y.yieldPaid, "yield split");
+assert(y.yieldPaid === 0 && Ledger.yieldFromIncoming(50) === 0, "visit NCN cut removed");
+assert(y.intoPlace === 50, "full stake on pin");
 
 /* —— Rankings —— */
 const places = {

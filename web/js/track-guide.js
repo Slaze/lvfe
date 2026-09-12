@@ -7,7 +7,7 @@
   const OSRM_WALK = "https://router.project-osrm.org/route/v1/walking/";
   const OSRM_DRIVE = "https://router.project-osrm.org/route/v1/driving/";
   const EMPTY = { type: "FeatureCollection", features: [] };
-  const WALK_KMH = 5;
+  let WALK_KMH = 5;
   const MAX_ALTS = 3;
 
   let target = null;
@@ -804,5 +804,10 @@
     selectRoute: selectRoute,
     OSRM_WALK: OSRM_WALK,
     OSRM_DRIVE: OSRM_DRIVE,
+    get WALK_KMH() { return WALK_KMH; },
+    applyConfig: function (o) {
+      const n = Number(o && o.walkKmh);
+      if (Number.isFinite(n) && n > 0) WALK_KMH = n;
+    },
   };
 })(typeof window !== "undefined" ? window : globalThis);

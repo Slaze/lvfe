@@ -11,6 +11,7 @@ global.__lvfeNotifyMem = {};
 const Toll = require("../web/js/pass-toll.js");
 const Marks = require("../web/js/game-marks.js");
 const Notify = require("../web/js/game-notify.js");
+Toll.applyConfig({ enabled: true });
 
 /* —— Formula —— */
 assert(Toll.computeToll({ ownerStake: 0 }).toll === 2, "floor 2 on empty stake");

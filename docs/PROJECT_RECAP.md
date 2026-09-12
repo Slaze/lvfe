@@ -21,7 +21,8 @@ Location-based territorial game. World data from OpenStreetMap (no paid Google M
 - `web/js/rank-sigils.js` — rank **sigils/emblems** (Initiate→Sovereign tiers + Banner Lord / Vanguard / Kin faction roles). Used in Rankings hub + under profile FAB.
 - `web/index.html` — Cold start **splash → main menu** (Play Now / Save / Restart / Check Catalog / Rules / My places / Account; splash/menu seals use `assets/brand/lvfe-mark-512.png`), then MapLibre + OpenFreeMap **GMaps-style chrome**: full-bleed map, top search pill with **magnifier** (`#btnSearch`), **bottom-left profile FAB** (`#btnMore` / `layoutFabs`): Google photo circle when signed in (else letter/mark fallback) + rank sigil + points under it; opens account/main-menu sheet. CSS bottom sheet (**hidden until pin tap**). **SAT / 3D / AR** are LTR/RTL slide switches on-map (`role="switch"`, green `#34c759` on / gray `#9aa0a6` off). **GPS is a locate action**, not a switch. `ensureLayers` uses valid `addLy({` (seven `addLy({)` SyntaxErrors fixed). `window.lvfeFitMap` → `map.resize()` after style/load, SAT toggle, `visualViewport`/`orientationchange`/`window.resize`, and delayed boot (WebView). Esri World Imagery `{z}/{y}/{x}` overlay (no `setStyle`). **Unclaimed named pins = red X** (`places-x`, `#ff3b30`); **unknown (quality D / civic_unknown / unmapped) = black X** (`places-x-unknown`, `#111111`); **owned pins = circle** (`places-circles`, self `#1d8cff` vs other/faction color). Invisible `places-hit` keeps taps at z12.2. Pins / green walk + dashed alts / 80 m ring / bus stops / you-dot re-attach via `reattachOverlays`; hybrid OSM labels in account **Map pins**; fail banner **Satellite couldn’t load**. Pin tap opens a **paper file / dossier** (`.sheet.doc` compact peek **34vh**, expand `.sheet.doc-exp` **70vh**) with **Place / Mission / Land / Money / Wallet** tabs (44px). Wallet **Pay** is `disabled` unless GPS and `dist <= 80`. Track chip + green OSRM walk line + muted dashed alts + in-line Walk/Car labels + 80 m pay ring. Player coin copy prefers **NCN**. ▴ / handle expands; × + swipe-down close fully. Idle map still auto-hides (`display:none`). Profile stamp → **grouped account sheet** (`#accountSheet`: You / Play [How to play, Catalog, My places, **Wallet** (Buy NCN), **Earn more**, **Rankings**, **Analytics**] / Map pins / This phone + Google signed-in chip / Sign out / Main menu + export/import + **Sync now**). **`#playHub`** Nord sheet for Wallet balance/Buy NCN/stakes/activity, Earn missions, Rankings (sigils), Analytics (territory / claims / rival pressure / mute prefs / Test notification). Catalog/rules/assets use Nord pill nav (not old flat chrome). No left `.panel`, no always-on `#hud`, no MapLibre Popup, no OSM/Esri wordmark on the map (About only). Default pitch **0**. 80 m GPS; photo + NairaCoin. **localStorage cache + optional cloud save** (`SAVE_API_BASE` / `?saveApi=`). Reinstall still wipes unless Export save **or** cloud sync. **Sign in with Google** uses Web client ID via native Credential Manager (Identity OAuth only — no Maps SKUs); photo URL cached from Credential Manager / JWT `picture`; when `googleSub` is present the Sign-in CTA is **hidden** and email is shown. Android OAuth client + SHA-1 still required in Console for fresh native sign-in on new devices.
 - `server/` — zero-dep Node save API (`PORT` default **18787**). `GET/PUT /v1/save/:playerKey`. Conflict: **last-write-wins** by `pack.updatedAt`. Auth: `Bearer lvfe-dev:<playerKey>` when `LVFE_ALLOW_DEV_AUTH=1`; `SAVE_SECRET`; `google:<id_token>` when `GOOGLE_WEB_CLIENT_ID` set (else production Gmail fails loud). Photos: max 8, dataURL >~400KB → meta-only; body ≤2.5 MiB. Env: see `server/.env.example` + `server/README.md`. Optional Netlify: `netlify.toml` + `netlify/functions/save.js`.
-- `hosting/lvfe-save/` — **public HTTPS save API** (PHP on Iconia Namecheap/cPanel). Live base **`https://iconiaglobal.com/lvfe-save`**. Same routes/auth as Node. Secrets in host-only `config.local.php` (gitignored). Preferred branded host `lvfe-save.iconiaglobal.com` needs Cloudflare DNS + cPanel subdomain (human).
+- `hosting/lvfe-save/` — **public HTTPS save API** (PHP on Iconia Namecheap/cPanel). Live base **`https://iconiaglobal.com/lvfe-save`**. Admin CMS at **`/lvfe-save/admin/`** (`admin/`, `admin_lib.php`). Public `GET /v1/game-config`. Secrets in host-only `config.local.php` (gitignored). Preferred branded host `lvfe-save.iconiaglobal.com` needs Cloudflare DNS + cPanel subdomain (human).
+- `docs/ADMIN.md` — admin login, tabs, deploy notes.
 - `docs/ICONIA_TERMS.md` + `hosting/iconia/terms-content.html` — Iconia ToS (live CMS `https://iconiaglobal.com/pages/terms-and-conditions`, September 2026). Privacy remains `https://iconiaglobal.com/privacy-policy`.
 - `web/js/save-api.config.js` / `save-sync.js` — client pull after boot, push on stake/identity (debounced), offline queue, Export/Import kept. Default `SAVE_API_BASE` = public Iconia URL (override `?saveApi=` / `localStorage`).
 - `web/js/google-auth.config.js` / `google-auth.js` / `account.js` — Web OAuth `WEB_CLIENT_ID` set (`730640559588-…apps.googleusercontent.com`); native `LvfeNative.signInWithGoogle` on Android; **username permanent once set** (`nameLocked`; bound to Google `sub` on save API); save pack `lvfe.save.v1` + `updatedAt`. Docs: `docs/ACCOUNT.md`.
@@ -55,12 +56,13 @@ Location-based territorial game. World data from OpenStreetMap (no paid Google M
 - `web/ar-overlay.js` — map-page AR (not `ar.html`). **Nord/Android:** CameraX `PreviewView` under a transparent WebView (`LvfeNative.startArCamera`); no getUserMedia (rear WebView stream is #000). `#arThree` hidden. HTML pin glyphs (red X / black unknown / claimed circles) within **~120 m**, FOV + compass (native heading preferred). Marked-pin HUD (`#arTrackHud`) live metres + heading every tick. Debug: `?arMock=1` or `localStorage.lvfe.arMock=1` places a mock pin ~45 m north. Empty-range / GPS-off copy, × → map. **Desktop:** visible `<video id="arCam">`. Pin labels do **not** touch `LvfeCatalogWallet` (`W`). `web/ar.html` leftover.
 - `web/map-3d.js` / `web/map-3d.css` — **one** `#btn3d` switch (green only when live 3D: pitch ~52 + terrain). Tap 3D from idle 12.2 → pitch 52 **and zoom ≥ 14.2**. Every OSM footprint is a box (tagged height/levels; untagged **OMT 5 m**; cap 80). **SAT-off opacity 1** (solid box city). **SAT+3D opacity 0.35** (ghost walls so draped Esri roofs read). SAT restacks above Liberty beige, under extrusion, under pins. 2D `building` fill hidden while extruded. No skip-filter. Terrain **1.0×** + sky; DEM fail → banner, switch off, stay flat. Labels `text-pitch-alignment: viewport`. Pins billboard (X/circle); no −16 px; no chimney poles. NavigationControl `visualizePitch` off. No Google 3D SKU. No Three.js.
 - `data/places.geojson` — typed pins. Place value/owner live in `lvfe.places.v1`.
-- `web/manifest.webmanifest` + `web/sw.js` + `web/js/pwa-register.js` + `web/js/pwa-install.js` + `web/install.html` — installable PWA (Nord dark theme, standalone). In-app install banner (Chromium `beforeinstallprompt` / iOS Share guide); SW caches shell; network-first for HTML/CSS/JS + `lvfe-save` / tiles / GIS. **SW skipped** when `LvfeNative` or appassets WebView. Cache id **`lvfe-shell-v8`**. Theme CSS: `web/css/nord-shell-v2.css` (cache-bust rename).
-- `hosting/lvfe/` + `scripts/stage_pwa.sh` / `deploy_pwa.sh` — deploy tree to **`https://iconiaglobal.com/lvfe/`** (FTP Iconia). Apex `.htaccess` pass-through includes `lvfe`. Docs: `docs/PWA.md`.
+- `web/manifest.webmanifest` + `web/sw.js` + `web/js/pwa-register.js` + `web/js/pwa-install.js` + `web/install.html` — installable PWA (Nord dark theme, standalone). In-app install banner (Chromium `beforeinstallprompt` / iOS Share guide); SW caches shell; network-first for HTML/CSS/JS + `lvfe-save` / tiles / GIS. **SW skipped** when `LvfeNative` or appassets WebView. Cache id **`lvfe-shell-v9`**. Theme CSS: `web/css/nord-shell-v2.css` (cache-bust rename).
+- `hosting/lvfe/` + `scripts/stage_pwa.sh` / `deploy_pwa.sh` / `deploy_save.sh` — deploy PWA to **`https://iconiaglobal.com/lvfe/`** and save/admin to **`…/lvfe-save/`** (FTP Iconia). Apex `.htaccess` pass-through includes `lvfe`. Docs: `docs/PWA.md`, `docs/ADMIN.md`.
 - `android/` — debug WebView APK (`com.lvfe.xperience`, minSdk 24). `sync-www.sh` bundles `web/` + `data/places.geojson` + `data/catalog.json` + `geojson/enugu-factions.geojson` + MapLibre JS/CSS. OpenFreeMap tiles still need the network. No Google Maps SDK. Not the Don Maseratte shop.
 
 ## Inception → now timeline
 
+- 2026-09-04: **Admin CMS** — tabbed dashboard on lvfe-save; public game-config; remote-config client apply; SW v9.
 - 2026-09-04: **Buy NCN dual-provider** — Paystack + Flutterwave; hub radios; save-pack purchases/receipts; Node parity; SW v8.
 
 - 2026-09-03: **Wallet 1e9 / OPay+P2P / Travel / 1-naira brand / hub P0 / BigInt ledger / Asabana.**
@@ -137,6 +139,100 @@ Location-based territorial game. World data from OpenStreetMap (no paid Google M
 - 2026-09-03: **Kill tech notifications** — player-only toast/banner/native channel copy; raw Overpass/OAuth/Paystack/LWW/`g{sub}`/`SAVE_API` gated behind `?debug=1` / `localStorage.lvfe.debug=1`.
 
 ## Sessions
+
+### 2026-09-12 — Visit XP / no-toll rewrite (A–I)
+
+**Goal:** Remove walk-through tolls and visit NCN extraction. Check-in XP (visitor 100%, owner 20%), 24h limit, 30-day composite rank, ratings, place tiers, hood completion, rank unlocks, sponsorship.
+
+**What changed:**
+- Toll default off (`pass-toll.js`, `features.passToll: false`).
+- Ledger `yieldRate: 0`. Conquest `maxBonus: 0`.
+- New: `web/js/progression.js`, `ratings.js`, `unlocks.js`, `sponsorship.js`, `progression-api.js`.
+- Save host: `hosting/lvfe-save/progression.php` + `schema/progression.sql` (`POST /v1/check-in`, `/v1/ratings`).
+- Profile + Rankings show places / XP / 30-day check-ins. Dossier: check-in, stars, bookmark.
+- Rules + player guide updated. Tests: `scripts/test_progression.js` plus endowment/conquest/toll/economy fixtures.
+
+**How verified:** `node scripts/test_progression.js` (A–I) + `test_endowment.js` + `test_conquest.js` + `test_pass_toll_marks.js` + `test_game_economy.js`; `php -l` progression.php + index.php.
+
+**Current state:** On disk. PWA/FTP not deployed. SQLite DB created on first live check-in.
+
+**Next steps:** Deploy save host + PWA. Field-test that no-toll increases walk distance. Paste live Paystack keys still separate.
+
+**Blockers / risks:** Rank `places×10` still snowballs idle veterans (documented in test). Server 24h needs deployed PHP; client gate works offline.
+
+### 2026-09-11 — Layman player guide
+
+**Goal:** Plain-language documentation of Lvfe: The Xperience for non-technical readers.
+
+**What changed:** Added `docs/PLAYER_GUIDE.md` from live player rules (`web/rules.html`, `LvfeVoice`, map marks, factions, ranks, toll, save). No builder jargon. No Architect / God Mode.
+
+**How verified:** Cross-checked against `web/rules.html` (80 m, photo, highest stake, 10% yield, pass-by toll, AR ≠ 3D, banks, Google sync) plus Enugu four factions and rank ladder in source.
+
+**Current state:** Guide on disk. In-game How to play unchanged.
+
+**Next steps:** Optional: link the guide from `web/rules.html` or About if operators want players to find it in-app.
+
+**Blockers / risks:** Buy NCN may still be unkeyed on live — guide says “when buying is available.”
+
+### 2026-09-06 — Fix admin login (email aliases + API base)
+
+**Goal:** Resolve “Wrong email or password” on live admin CMS.
+
+**What changed:** Accept `ugigentity@yahoo.com`, `ugidentity@yahoo.com`, `ugidentity@gmail.com`; trim password; absolute `/lvfe-save` API base in `admin.js`; HTTPS via `X-Forwarded-Proto`; reset password hash to `caesar`; redeployed save host.
+
+**How verified:** Live POST login True for all three emails; `admin.js?v=2` serves Absolute base.
+
+**Current state:** Admin login works on https://iconiaglobal.com/lvfe-save/admin/
+
+**Next steps:** Hard-refresh admin page; sign in with password `caesar`.
+
+**Blockers / risks:** None for login.
+
+
+### 2026-09-04 — Deploy admin CMS + PWA to Iconia
+
+**Goal:** Ship save-host admin CMS and PWA remote-config to production.
+
+**What changed:**
+- Added `scripts/deploy_save.sh` (mirrors `hosting/lvfe-save/` excluding `data/saves|payments|username-map`).
+- FTP Iconia `iconicxy@198.54.120.95`: deployed `lvfe-save` (incl. `admin/`, `admin_lib.php`, `config.local.php`, `game-config.json`) + staged PWA (`lvfe-shell-v9`, `remote-config.js`).
+
+**How verified:**
+- `GET /lvfe-save/health` → ok, googleConfigured true, buyNcn dual fields present.
+- `GET /lvfe-save/v1/game-config` → ok, claimRadius 80.
+- `GET /lvfe-save/admin/` → 200 Lvfe Admin shell.
+- `POST /lvfe-save/v1/admin/login` → ok for admin email + csrf.
+- `GET /lvfe/js/remote-config.js` 200; `sw.js` cache **v9**.
+
+**Current state:** Live admin at https://iconiaglobal.com/lvfe-save/admin/ ; PWA at https://iconiaglobal.com/lvfe/ . Buy keys still empty (configured:false).
+
+**Next steps:** Sign in to admin → paste Paystack sandbox keys; hard-refresh PWA once if CF cached old SW.
+
+**Blockers / risks:** Rotate admin password if chat transcript shared. Buy still soft-fails until keys.
+
+
+### 2026-09-04 — Admin CMS dashboard (tabbed)
+
+**Goal:** Build a CMS-style admin dashboard so host keys, economy, client flags, and player ops are editable without hand-editing PHP/JSON.
+
+**What changed:**
+- `hosting/lvfe-save/admin/` — Nord CMS UI (Overview / Host & Auth / Payments / Economy / Client & Map / Features / Players).
+- `admin_lib.php` + routes `v1/admin/*`, public `GET /v1/game-config`; ops NCN credit; session auth + CSRF.
+- `data/game-config.json` defaults; host secrets stay in `config.local.php` (masked in UI).
+- Client `web/js/remote-config.js` loads game-config on boot; modules gained `applyConfig` (rules, ledger, toll, conquest, buy, Google, track, notify, faucet, min stake).
+- Docs: `docs/ADMIN.md`. SW **`lvfe-shell-v9`**.
+- Admin login seeded on local `config.local.php` (gitignored): email `ugigentity@yahoo.com`, password hash only.
+
+**Why:** Operator asked for editable CMS tabs for all wired features/config.
+
+**How verified:** `php -l` admin_lib/index; `node --check` on touched JS; `admin_login` smoke ok / wrong password rejected; public game-config has no secret markers.
+
+**Current state:** Live on Iconia (admin + PWA). **Not yet FTP-deployed** was prior; now deployed 2026-09-04. Buy keys still empty until Payments tab.
+
+**Next steps:** Sign in at `/lvfe-save/admin/`; paste Paystack (and optional FLW) sandbox keys; hard-refresh PWA if CF served stale SW.
+
+**Blockers / risks:** Password was set in chat — rotate after first login if this transcript is shared. Never commit `config.local.php`.
+
 
 ### 2026-09-04 — Complete Buy NCN dual-provider (Paystack + Flutterwave)
 

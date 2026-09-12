@@ -376,3 +376,18 @@ div.splash-seal {
   font: 650 13px/1 system-ui, sans-serif;
   cursor: pointer;
 }
+
+.rate-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 8px 0 12px;
+}
+.rate-row select {
+  min-height: 44px;
+  border-radius: 10px;
+  background: rgba(255,255,255,.06);
+  color: inherit;
+  border: 1px solid var(--nord-line, #333);
+  padding: 0 10px;
+}

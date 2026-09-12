@@ -39,4 +39,8 @@ return [
     'OPAY_PAYOUT_ACCOUNT' => '7035474827',
     'OPAY_PAYOUT_NAME' => 'Okogeri Ugochukwu O',
     'OPAY_MERCHANT_EMAIL' => 'ugidentity@gmail.com',
+    // Admin CMS — https://iconiaglobal.com/lvfe-save/admin/
+    // Set ADMIN_PASSWORD via the dashboard (stored as ADMIN_PASSWORD_HASH only).
+    'ADMIN_EMAIL' => 'ugigentity@yahoo.com',
+    'ADMIN_PASSWORD_HASH' => '',
 ];

@@ -65,15 +65,15 @@ assert(rec.ownerId === "ada" && rec.factionId === "independence_layout", "ada ow
 assert(wallets.ada === 58, "ada faucet minus 42");
 
 const s2 = pay("chidi", 50, "2026-09-02T10:01:00.000Z");
-assert(s2.yieldPaid === 5 && s2.ownerPaid === 4 && s2.factionPaid === 1, "10% of 50, 20% of yield to faction");
-assert(s2.intoPlace === 45, "remainder endows pin");
-assert(rec.stakes.chidi.amount === 45 && rec.stakes.ada.amount === 42, "stakes recorded");
-assert(rec.value === 87, "value 87");
+assert(s2.yieldPaid === 0 && s2.ownerPaid === 0 && s2.factionPaid === 0, "no visit NCN cut");
+assert(s2.intoPlace === 50, "full stake endows pin");
+assert(rec.stakes.chidi.amount === 50 && rec.stakes.ada.amount === 42, "stakes recorded");
+assert(rec.value === 92, "value 92");
 assert(rec.value === Ledger.sumStakes(rec), "value === sum(stakes)");
 assert(rec.ownerId === "chidi", "chidi highest staker");
-assert(wallets.ada === 62, "ada +4 from stake, not minted");
+assert(wallets.ada === 58, "ada wallet unchanged by visit");
 assert(wallets.chidi === 50, "chidi paid 50");
-assert(faction.independence_layout === 1, "faction cut shown in pool");
+assert(faction.independence_layout === 0, "no faction cut");
 const conserved = wallets.ada + wallets.chidi + faction.independence_layout + rec.value;
 assert(conserved === 200, "two faucets conserved, got " + conserved);
 

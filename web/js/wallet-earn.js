@@ -152,9 +152,9 @@
   function howEarnCopy() {
     return {
       short:
-        "Claim with NCN. Highest stake owns. Visitors pay you ~10% yield when they back your pin.",
+        "Claim with NCN. Highest stake owns. Check in for XP — you get 100%, the owner gets 20% referral XP. No walk-through tolls.",
       long:
-        "Real map places. Banks/ATMs are landmarks only. Track → walk inside 80 m → photo (first time) → Claim / Bid. Highest NCN stake owns. ~10% of a visitor’s stake pays as yield (mostly to the owner, a cut to the neighbourhood). Dense ownership boosts neighbourhood value (up to +50%). Pass-by toll near enemy pins: max(2 NCN, 5% of owner stake), once per place per 60 min — Outpay, Escape, or Accept.",
+        "Real map places. Banks/ATMs are landmarks only. Track → walk inside 80 m → photo (first time) → Claim / Bid. Highest NCN stake owns. Check-in grants XP (visitor 100%, owner 20% referral). One check-in per place per 24 h. Neighbourhoods are exploration badges (20 unique pins), not a tax. Rank = places×10 + XP + check-ins last 30 days×5.",
     };
   }
 

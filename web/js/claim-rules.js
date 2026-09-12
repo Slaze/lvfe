@@ -1,7 +1,7 @@
 /* Shared GPS / catalog helpers. OSM + device GPS is the world.
    Banks/ATMs are not ownable. No extractive check-in payout. */
 (function (global) {
-  const CLAIM_RADIUS_M = 80;
+  const cfg = { claimRadiusM: 80 };
   const NO_FARM = { bank: true, atm: true };
 
   function esc(s) {
@@ -189,7 +189,7 @@
   }
 
   const api = {
-    CLAIM_RADIUS_M,
+    get CLAIM_RADIUS_M() { return cfg.claimRadiusM; },
     NO_FARM,
     esc,
     TYPE_LABELS,
@@ -212,6 +212,10 @@
     isOwnable,
     farmMsg,
     bearingDeg,
+    applyConfig: function (o) {
+      const n = Number(o && o.claimRadiusM);
+      if (Number.isFinite(n) && n > 0) cfg.claimRadiusM = n;
+    },
   };
 
   if (typeof module !== "undefined" && module.exports) {

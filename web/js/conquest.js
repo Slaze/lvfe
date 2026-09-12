@@ -5,15 +5,13 @@
    Unknown (quality D / civic_unknown / unmapped) is the top quality tier:
    black X, intrinsic base above A/B/C. rec.value stays sum(stakes). */
 (function (global) {
-  const MAX_BONUS = 0.5;
+  const cfg = { maxBonus: 0, unknownIntrinsic: 100 };
   const HINTERLAND_ID = "unclaimed";
   const STORE = "lvfe.places.v1";
   const SELF_COLOR = "#1d8cff";
   const OTHER_COLOR = "#c0392b";
   const X_COLOR = "#ff3b30";
   const UNKNOWN_COLOR = "#111111";
-  /** Display/cost floor for unknown. Above max baked named min-stake (75) and A 1.25. */
-  const UNKNOWN_INTRINSIC = 100;
 
   let cached = { byId: {}, max: 0 };
 
@@ -79,7 +77,7 @@
     if (isHinterland(territoryId)) return 0;
     if (!c || !(c.max > 0)) return 0;
     const n = (c.byId && c.byId[territoryId]) || 0;
-    return MAX_BONUS * (n / c.max);
+    return cfg.maxBonus * (n / c.max);
   }
 
   function scale(base, territoryId, counts) {
@@ -102,7 +100,7 @@
   function baseValue(rec, p) {
     const ledger = rec ? Number(rec.value) || 0 : 0;
     if (!isUnknownPlace(p)) return ledger;
-    return Math.max(ledger, UNKNOWN_INTRINSIC);
+    return Math.max(ledger, cfg.unknownIntrinsic);
   }
 
   function displayValue(rec, p, counts) {
@@ -111,7 +109,7 @@
 
   function costToBack(baseMin, p, counts) {
     let base = Math.max(0, Number(baseMin) || 0);
-    if (isUnknownPlace(p)) base = Math.max(base, UNKNOWN_INTRINSIC);
+    if (isUnknownPlace(p)) base = Math.max(base, cfg.unknownIntrinsic);
     if (!(base > 0)) return 0;
     const scaled = scale(base, p && p.territory_id, counts);
     return Math.max(1, scaled);
@@ -145,13 +143,13 @@
   }
 
   const api = {
-    MAX_BONUS,
+    get MAX_BONUS() { return cfg.maxBonus; },
     HINTERLAND_ID,
     SELF_COLOR,
     OTHER_COLOR,
     X_COLOR,
     UNKNOWN_COLOR,
-    UNKNOWN_INTRINSIC,
+    get UNKNOWN_INTRINSIC() { return cfg.unknownIntrinsic; },
     isUnknownPlace,
     isHinterland,
     ownedCounts,
@@ -165,6 +163,13 @@
     markKind,
     markColor,
     stampFeature,
+    applyConfig: function (o) {
+      if (!o) return;
+      const b = Number(o.maxBonus);
+      const u = Number(o.unknownFloor);
+      if (Number.isFinite(b) && b >= 0) cfg.maxBonus = b;
+      if (Number.isFinite(u) && u >= 0) cfg.unknownIntrinsic = u;
+    },
   };
 
   if (typeof module !== "undefined" && module.exports) {

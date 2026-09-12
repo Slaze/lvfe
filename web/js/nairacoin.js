@@ -4,7 +4,7 @@
    stay whole-coin for catalog HUD and min-stake UI. */
 (function (global) {
   const PLACES_KEY = "lvfe.places.v1";
-  const MIN_STAKE_FLOOR = 5;
+  const cfg = { minStakeFloor: 5 };
   const NO_FARM = { bank: true, atm: true };
 
   function nc() {
@@ -57,7 +57,7 @@
 
   function minStake(claimNaira, type) {
     if (type && NO_FARM[type]) return 0;
-    return Math.max(MIN_STAKE_FLOOR, Number(claimNaira) || MIN_STAKE_FLOOR);
+    return Math.max(cfg.minStakeFloor, Number(claimNaira) || cfg.minStakeFloor);
   }
 
   function getBalance(pk) {
@@ -100,7 +100,11 @@
     faucetNote,
     balanceLabel,
     NO_FARM,
-    MIN_STAKE_FLOOR,
+    get MIN_STAKE_FLOOR() { return cfg.minStakeFloor; },
     STORE_PREFIX: function () { return nc().STORE_PREFIX; },
+    applyConfig: function (o) {
+      const n = Number(o && o.minStakeFloor);
+      if (Number.isFinite(n) && n >= 0) cfg.minStakeFloor = n;
+    },
   };
 })(typeof window !== "undefined" ? window : globalThis);

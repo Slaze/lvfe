@@ -6,11 +6,14 @@
 (function (global) {
   const STATE_KEY = "lvfe.toll.state.v1";
   const INBOX_KEY = "lvfe.toll.inbox.v1";
-  const RADIUS_M = 80;
-  const COOLDOWN_MS = 60 * 60 * 1000; /* 60 min */
-  const FLOOR_NCN = 2;
-  const STAKE_PCT = 0.05;
-  const ESCAPE_PCT = 0.4;
+  const cfg = {
+    radiusM: 80,
+    cooldownMs: 60 * 60 * 1000,
+    floorNcn: 2,
+    stakePct: 0.05,
+    escapePct: 0.4,
+    enabled: false,
+  };
 
   function storage() {
     if (typeof localStorage === "undefined") {
@@ -69,12 +72,12 @@
   function computeToll(opts) {
     const o = opts || {};
     const ownerStake = Math.max(0, Math.floor(Number(o.ownerStake) || 0));
-    const fromStake = Math.floor(ownerStake * STAKE_PCT);
-    const toll = Math.max(FLOOR_NCN, fromStake);
+    const fromStake = Math.floor(ownerStake * cfg.stakePct);
+    const toll = Math.max(cfg.floorNcn, fromStake);
     return {
       toll: toll,
-      floor: FLOOR_NCN,
-      stakePct: STAKE_PCT,
+      floor: cfg.floorNcn,
+      stakePct: cfg.stakePct,
       ownerStake: ownerStake,
       displayValue: Math.max(0, Math.floor(Number(o.displayValue) || 0)),
       formula: "max(2, floor(ownerStake × 5%))",
@@ -84,7 +87,7 @@
   function escapeFeeFor(charged) {
     const c = Math.max(0, Math.floor(Number(charged) || 0));
     if (c <= 0) return 1;
-    return Math.max(1, Math.ceil(c * ESCAPE_PCT));
+    return Math.max(1, Math.ceil(c * cfg.escapePct));
   }
 
   function haversineM(lat1, lon1, lat2, lon2) {
@@ -107,7 +110,7 @@
     const st = o.state || loadState();
     const last = Number(st.lastByPlace[String(placeId)]) || 0;
     if (!last) return { cooled: false, remainingMs: 0 };
-    const rem = COOLDOWN_MS - (now - last);
+    const rem = cfg.cooldownMs - (now - last);
     if (rem > 0) return { cooled: true, remainingMs: rem, lastAt: last };
     return { cooled: false, remainingMs: 0, lastAt: last };
   }
@@ -127,6 +130,7 @@
    * creditOwnerFn(amount, meta) optional best-effort credit to owner on same device.
    */
   function applyToll(ctx, hooks) {
+    if (!cfg.enabled) return { ok: false, reason: "disabled" };
     const c = ctx || {};
     const h = hooks || {};
     const placeId = String(c.placeId || "");
@@ -309,10 +313,11 @@
    */
   function scanPass(rows, opts) {
     const o = opts || {};
+    if (!cfg.enabled) return [];
     const lat = Number(o.lat);
     const lon = Number(o.lon);
     const playerKey = String(o.playerKey || "");
-    const radius = Number(o.radiusM) > 0 ? Number(o.radiusM) : RADIUS_M;
+    const radius = Number(o.radiusM) > 0 ? Number(o.radiusM) : cfg.radiusM;
     if (!Number.isFinite(lat) || !Number.isFinite(lon) || !playerKey) return [];
 
     const hits = [];
@@ -341,6 +346,7 @@
   }
 
   function formulaCopy() {
+    if (!cfg.enabled) return null;
     return {
       short: "Toll levied near enemy pins: max(2 NCN, 5% of owner stake), once / place / 60 min.",
       escape:
@@ -370,11 +376,13 @@
   const api = {
     STATE_KEY,
     INBOX_KEY,
-    RADIUS_M,
-    COOLDOWN_MS,
-    FLOOR_NCN,
-    STAKE_PCT,
-    ESCAPE_PCT,
+    get RADIUS_M() { return cfg.radiusM; },
+    get COOLDOWN_MS() { return cfg.cooldownMs; },
+    get FLOOR_NCN() { return cfg.floorNcn; },
+    get STAKE_PCT() { return cfg.stakePct; },
+    get ESCAPE_PCT() { return cfg.escapePct; },
+    get ENABLED() { return cfg.enabled; },
+    isEnabled: function () { return cfg.enabled; },
     loadState,
     saveState,
     loadInbox,
@@ -392,6 +400,20 @@
     formulaCopy,
     takeOwnerInbox,
     haversineM,
+    applyConfig: function (o) {
+      if (!o) return;
+      const r = Number(o.radiusM);
+      const floor = Number(o.floorNcn);
+      const stake = Number(o.stakePct);
+      const esc = Number(o.escapePct);
+      const cd = Number(o.cooldownMin);
+      if (Number.isFinite(r) && r > 0) cfg.radiusM = r;
+      if (Number.isFinite(floor) && floor >= 0) cfg.floorNcn = floor;
+      if (Number.isFinite(stake) && stake >= 0) cfg.stakePct = stake;
+      if (Number.isFinite(esc) && esc >= 0) cfg.escapePct = esc;
+      if (Number.isFinite(cd) && cd > 0) cfg.cooldownMs = cd * 60 * 1000;
+      if (typeof o.enabled === "boolean") cfg.enabled = o.enabled;
+    },
   };
 
   if (typeof module !== "undefined" && module.exports) {

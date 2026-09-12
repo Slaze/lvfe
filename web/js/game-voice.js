@@ -46,9 +46,9 @@
   function landBrief() {
     return {
       head: "Land hold",
-      status: "Neighbourhood colour + who owns the pin. Marks keep pressure on rivals.",
+      status: "Neighbourhood colour + who owns the pin. Explore 20 unique pins for a badge.",
       how:
-        "Owning a pin under your faction flies their colour. More owned pins in a neighbourhood raise display value / cost-to-back (up to +50%). Watchlist, threats, and takeover plans live here.",
+        "Owning a pin under your faction flies their colour. Collect 20 unique pins in a neighbourhood for a cosmetic badge and a small NCN bonus. Watchlist, threats, and takeover plans live here.",
     };
   }
 
@@ -62,9 +62,9 @@
     }
     return {
       head: "Money desk",
-      status: "Cost to Claim · place value · visit yield (~10% to owner).",
+      status: "Cost to Claim · place value · check-in XP (you 100%, owner 20% referral).",
       how:
-        "Highest NCN stake owns. Visitors fund the pin; ~10% of their stake pays as yield (mostly to the owner, a cut to the neighbourhood). Enemy-held? Bid enough to beat their total.",
+        "Highest NCN stake owns. Check in once per 24 h for XP. The visitor gets the full visit XP; the owner gets 20% referral XP. Enemy-held? Bid enough to beat their total.",
     };
   }
 
@@ -103,7 +103,7 @@
     if (which === "rankings") {
       return {
         head: "Rankings",
-        status: "Leaders by NCN staked · faction score · named sigils.",
+        status: "Places claimed · total XP · check-ins last 30 days. Composite rank.",
       };
     }
     if (which === "analytics") {

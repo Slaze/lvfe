@@ -5,22 +5,22 @@
   const SaveCfg = global.LvfeSaveApiConfig;
 
   /** Paystack Dashboard → Settings → API Keys & Webhooks. Empty = soft-fail until set. */
-  const PAYSTACK_PUBLIC_KEY = "";
+  let PAYSTACK_PUBLIC_KEY = "";
 
   /** Flutterwave Dashboard → Settings → API Keys. Optional alternate. */
-  const FLW_PUBLIC_KEY = "";
+  let FLW_PUBLIC_KEY = "";
 
   /** Optional override; default = SAVE_API_BASE (Iconia lvfe-save). */
-  const BUY_API_BASE = "";
+  let BUY_API_BASE = "";
 
-  const DEFAULT_PROVIDER = "paystack";
-  const NCN_PER_USD = 1;
-  const MIN_NCN = 1;
-  const MAX_NCN = 500;
-  const PRESETS = [5, 10, 25, 50];
+  let DEFAULT_PROVIDER = "paystack";
+  let NCN_PER_USD = 1;
+  let MIN_NCN = 1;
+  let MAX_NCN = 500;
+  let PRESETS = [5, 10, 25, 50];
 
   const BLOCKER_CODE = "paystack_not_configured";
-  const BLOCKER_TITLE = "Buy NCN isn’t available yet — try again later.";
+  let BLOCKER_TITLE = "Buy NCN isn’t available yet — try again later.";
   const BLOCKER_STEPS = [
     "Paystack (primary): Dashboard → Settings → API Keys & Webhooks.",
     "Copy Test Public Key (pk_test_…) into web/js/buy-ncn.config.js → PAYSTACK_PUBLIC_KEY.",
@@ -79,17 +79,17 @@
   }
 
   const api = {
-    DEFAULT_PROVIDER,
-    PROVIDER: DEFAULT_PROVIDER,
-    PAYSTACK_PUBLIC_KEY,
-    FLW_PUBLIC_KEY,
-    BUY_API_BASE,
-    NCN_PER_USD,
-    MIN_NCN,
-    MAX_NCN,
-    PRESETS,
+    get DEFAULT_PROVIDER() { return DEFAULT_PROVIDER; },
+    get PROVIDER() { return DEFAULT_PROVIDER; },
+    get PAYSTACK_PUBLIC_KEY() { return PAYSTACK_PUBLIC_KEY; },
+    get FLW_PUBLIC_KEY() { return FLW_PUBLIC_KEY; },
+    get BUY_API_BASE() { return BUY_API_BASE; },
+    get NCN_PER_USD() { return NCN_PER_USD; },
+    get MIN_NCN() { return MIN_NCN; },
+    get MAX_NCN() { return MAX_NCN; },
+    get PRESETS() { return PRESETS; },
     BLOCKER_CODE,
-    BLOCKER_TITLE,
+    get BLOCKER_TITLE() { return BLOCKER_TITLE; },
     BLOCKER_STEPS,
     resolveBuyBase,
     isConfigured,
@@ -98,6 +98,26 @@
     isProviderConfigured,
     isTestKey,
     blockerMessage,
+    applyConfig: function (o) {
+      if (!o) return;
+      if (o.paystackPublicKey) PAYSTACK_PUBLIC_KEY = String(o.paystackPublicKey).trim();
+      if (o.flwPublicKey) FLW_PUBLIC_KEY = String(o.flwPublicKey).trim();
+      if (o.buyApiBase != null && String(o.buyApiBase).trim()) BUY_API_BASE = String(o.buyApiBase).trim();
+      if (o.defaultProvider) DEFAULT_PROVIDER = String(o.defaultProvider).toLowerCase() === "flutterwave" ? "flutterwave" : "paystack";
+      const min = Number(o.minNcn);
+      const max = Number(o.maxNcn);
+      const npu = Number(o.ncnPerUsd);
+      if (Number.isFinite(min) && min >= 1) MIN_NCN = Math.floor(min);
+      if (Number.isFinite(max) && max >= MIN_NCN) MAX_NCN = Math.floor(max);
+      if (Number.isFinite(npu) && npu > 0) NCN_PER_USD = npu;
+      if (Array.isArray(o.presets) && o.presets.length) {
+        PRESETS = o.presets.map(Number).filter(function (n) { return n > 0; });
+      }
+      if (o.blockerTitle) BLOCKER_TITLE = String(o.blockerTitle);
+      if (o.features && o.features.buyNcn === false) {
+        BLOCKER_TITLE = "Buy NCN is turned off right now.";
+      }
+    },
   };
 
   if (typeof module !== "undefined" && module.exports) {

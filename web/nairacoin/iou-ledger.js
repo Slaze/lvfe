@@ -13,9 +13,9 @@
 
   const STORE_PREFIX = "lvfe.nc.iou.v1.";
   const LEGACY_WHOLE_PREFIX = "lvfe.nairacoin.";
-  const FAUCET_WHOLE = 100;
-  const FAUCET_ATOMIC = FAUCET_WHOLE * P.ATOMIC_PER_COIN;
   const FAUCET_LABEL = "demo faucet";
+  let FAUCET_WHOLE = 100;
+  let FAUCET_ATOMIC = FAUCET_WHOLE * P.ATOMIC_PER_COIN;
   const mem = Object.create(null);
 
   function memoryStore() {
@@ -169,8 +169,8 @@
   const api = {
     STORE_PREFIX,
     LEGACY_WHOLE_PREFIX,
-    FAUCET_WHOLE,
-    FAUCET_ATOMIC,
+    get FAUCET_WHOLE() { return FAUCET_WHOLE; },
+    get FAUCET_ATOMIC() { return FAUCET_ATOMIC; },
     FAUCET_LABEL,
     ATOMIC_PER_COIN: P.ATOMIC_PER_COIN,
     protocol: P,
@@ -193,6 +193,13 @@
     formatWhole,
     formatAtomic,
     resetMemoryStore,
+    applyConfig: function (o) {
+      const n = Number(o && o.faucetWhole);
+      if (Number.isFinite(n) && n >= 0) {
+        FAUCET_WHOLE = Math.floor(n);
+        FAUCET_ATOMIC = FAUCET_WHOLE * P.ATOMIC_PER_COIN;
+      }
+    },
   };
 
   if (typeof module !== "undefined" && module.exports) {

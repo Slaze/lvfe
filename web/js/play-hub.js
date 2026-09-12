@@ -171,7 +171,7 @@
     const bits = [
       `<div class="hub-pane" data-hub="earn">`,
       hubHead("earn"),
-      `<p class="hub-note">Open assets and enemy holds near you. Visit yield ≈ 10% to the owner.</p>`,
+      `<p class="hub-note">Open assets and enemy holds near you. Check in for XP (you 100%, owner 20% referral).</p>`,
       `<button type="button" class="hub-cta ghost" data-hub-tab="wallet"><span class="mark">←</span> Back to Wallet</button>`,
     ];
     if (!list.length) {
@@ -210,7 +210,7 @@
     const bits = [
       `<div class="hub-pane" data-hub="rankings">`,
       hubHead("rankings"),
-      `<h4>Leaders by NCN staked</h4>`,
+      `<h4>Leaders (places × 10 + XP + 30-day check-ins × 5)</h4>`,
     ];
     if (!globalRows.length) {
       bits.push(`<p class="hub-empty">${esc(empty("noLeaders", "Ledger quiet — first Claims write the rankings."))}</p>`);
@@ -222,8 +222,8 @@
           `<li>` +
           (meta ? meta.html : `<span class="hub-pos">${r.rank}</span>`) +
           `<strong>${esc(r.playerName)}</strong>` +
-          `<span>${ncn(r.staked)} · ${r.owned} places` +
-          (meta ? ` · ${esc(meta.tierLabel)} · ${meta.points} pts` : "") +
+          `<span>${r.placesClaimed != null ? r.placesClaimed : r.owned} places · ${r.totalXp != null ? r.totalXp : r.points || 0} XP · ${r.checkIns30d != null ? r.checkIns30d : 0} check-ins (30d) · score ${r.score != null ? r.score : ncn(r.staked)}` +
+          (meta ? ` · ${esc(meta.tierLabel)}` : "") +
           `</span></li>`
         );
       });
@@ -264,7 +264,7 @@
     }
     bits.push(
       `<details class="hub-details"><summary>How ranks work</summary>` +
-      `<p>Sigils: Initiate → Scout → Pathfinder → Warden → Marshal → Sovereign. Points = NCN staked + owned pins × 10. Faction roles: Banner Lord (#1), Vanguard (#2–3), Kin.</p></details>`,
+      `<p>Rank score = places claimed × 10 + total XP + check-ins in the last 30 days × 5. Tie: most recent check-in. Sigils: Initiate → Scout → Pathfinder → Warden → Marshal → Sovereign. Unlocks: Scout bookmark, Pathfinder tips, Warden challenges, Marshal+ sponsorships. Faction roles: Banner Lord (#1), Vanguard (#2–3), Kin.</p></details>`,
       `</div>`
     );
     return bits.join("");
@@ -388,11 +388,12 @@
       `<label class="hub-check"><input type="checkbox" id="hubMuteNearby" ${prefs.allowNearby === false ? "checked" : ""}/> Mute asset sightings</label>`,
       `<label class="hub-check"><input type="checkbox" id="hubMuteEnemy" ${prefs.allowEnemy === false ? "checked" : ""}/> Mute enemy assets</label>`,
       `<label class="hub-check"><input type="checkbox" id="hubMuteTrack" ${prefs.allowTrack === false ? "checked" : ""}/> Mute track / approach</label>`,
-      `<label class="hub-check"><input type="checkbox" id="hubMuteToll" ${prefs.allowToll === false ? "checked" : ""}/> Mute pass-by tolls</label>`,
       `<label class="hub-check"><input type="checkbox" id="hubMuteWatch" ${prefs.allowWatch === false ? "checked" : ""}/> Mute watchlist</label>`,
       `<label class="hub-check"><input type="checkbox" id="hubMuteThreat" ${prefs.allowThreat === false ? "checked" : ""}/> Mute threats</label>`,
       `<button type="button" class="hub-cta ghost" id="hubTestNotify"><span class="mark">⌁</span> Test notification</button>`,
-      `<button type="button" class="hub-cta ghost" id="hubSimToll"><span class="mark">⌖</span> Simulate pass-by toll</button>`,
+      (global.LvfePassToll && global.LvfePassToll.isEnabled && global.LvfePassToll.isEnabled()
+        ? `<button type="button" class="hub-cta ghost" id="hubSimToll"><span class="mark">⌖</span> Simulate pass-by toll</button>`
+        : ""),
       `</div>`
     );
     return bits.join("");

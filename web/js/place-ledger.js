@@ -1,9 +1,8 @@
-/* Place endowment accounting. Owner yield is sliced from the incoming
-   stake (or would come from place.value). After every payout:
-   place.value === sum(stake.amount). No minting. */
+/* Place endowment accounting. Incoming NCN stays on the pin (no visit cut).
+   After every stake: place.value === sum(stake.amount). Visit XP is sibling
+   LvfeProgression, not this ledger. */
 (function (global) {
-  const YIELD_RATE = 0.1;
-  const FACTION_CUT = 0.2;
+  const cfg = { yieldRate: 0, factionCut: 0 };
 
   function sumStakes(rec) {
     let n = 0;
@@ -21,18 +20,14 @@
 
   function yieldFromIncoming(amount) {
     const a = Math.floor(Number(amount));
-    if (!(a > 0)) return 0;
-    const y = Math.max(1, Math.round(a * YIELD_RATE));
+    if (!(a > 0) || !(cfg.yieldRate > 0)) return 0;
+    const y = Math.max(1, Math.round(a * cfg.yieldRate));
     return Math.min(y, a);
   }
 
   /**
    * Split an incoming whole-coin stake.
-   * Visitor pays `amount` from wallet.
-   * If a different owner exists: yield = 10% of amount (from the stake).
-   *   20% of that yield → faction pool when the pin has a faction; rest → owner wallet.
-   * Remainder endows the pin as the visitor's stake.
-   * If no other owner: 100% of amount endows the pin.
+   * Default yieldRate 0: 100% of amount endows the pin. No owner NCN cut.
    */
   function splitIncomingStake(rec, visitorId, amount) {
     const a = Math.floor(Number(amount));
@@ -45,7 +40,7 @@
       yieldPaid = yieldFromIncoming(a);
       const fac = rec.factionId || "";
       if (fac) {
-        factionPaid = Math.round(yieldPaid * FACTION_CUT);
+        factionPaid = Math.round(yieldPaid * cfg.factionCut);
         ownerPaid = yieldPaid - factionPaid;
       } else {
         ownerPaid = yieldPaid;
@@ -79,13 +74,20 @@
   }
 
   const api = {
-    YIELD_RATE,
-    FACTION_CUT,
+    get YIELD_RATE() { return cfg.yieldRate; },
+    get FACTION_CUT() { return cfg.factionCut; },
     sumStakes,
     syncValue,
     yieldFromIncoming,
     splitIncomingStake,
     applyIncomingStake,
+    applyConfig: function (o) {
+      if (!o) return;
+      const y = Number(o.yieldRate);
+      const f = Number(o.factionCut);
+      if (Number.isFinite(y) && y >= 0) cfg.yieldRate = y;
+      if (Number.isFinite(f) && f >= 0) cfg.factionCut = f;
+    },
   };
 
   if (typeof module !== "undefined" && module.exports) {

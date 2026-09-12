@@ -92,9 +92,9 @@
 
   function earnCopy(owned) {
     if (owned) {
-      return "When someone else walks up and puts NCN in, you earn visit interest — about 10% of what they put in.";
+      return "When someone else checks in, you earn 20% referral XP. No NCN is taken from their visit.";
     }
-    return "You don’t earn visit interest here. The owner does — whoever has put the most NCN in.";
+    return "You don’t earn XP here unless you own it. Check in yourself for the full visit XP.";
   }
 
   function rowsFrom(placesFc, stored, pk) {

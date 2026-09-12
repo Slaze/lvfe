@@ -9,6 +9,10 @@ Same contract as `server/` (Node) and `netlify/functions/save.js`.
 - Pull: `GET /v1/save/:playerKey`
 - Push: `PUT /v1/save/:playerKey` with JSON `{ "pack": { "kind": "lvfe.save.v1", "updatedAt": "…", … } }`
 - Buy NCN: `POST /v1/buy/init`, `POST /v1/buy/verify`, `POST /v1/buy/webhook` — see `docs/BUY_NCN.md` (1 NCN = USD $1)
+- Check-in: `POST /v1/check-in` `{ locationId, playerKey }` — rolling 24h unique; visitor XP + owner referral XP
+- Ratings: `POST /v1/ratings` `{ locationId, playerKey, stars, text }` — requires a prior check-in
+- Location stats: `GET /v1/locations?locationId=`
+- SQLite: `data/lvfe-game.sqlite` (gitignored). Schema: `schema/progression.sql`
 
 ## Auth
 

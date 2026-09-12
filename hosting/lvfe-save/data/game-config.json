@@ -1,0 +1,63 @@
+{
+    "v": 1,
+    "updatedAt": "2026-09-04T14:19:56+00:00",
+    "economy": {
+        "claimRadiusM": 80,
+        "yieldRate": 0,
+        "factionCut": 0,
+        "minStakeFloor": 5,
+        "faucetWhole": 100,
+        "maxNeighbourhoodBonus": 0,
+        "baseVisitXp": 10,
+        "ownerReferralXp": 0.2,
+        "hoodPinGoal": 20,
+        "hoodNcnBonus": 5,
+        "unknownValueFloor": 100,
+        "tollFloorNcn": 2,
+        "tollStakePct": 0.05,
+        "tollEscapePct": 0.4,
+        "tollCooldownMin": 60,
+        "walkKmh": 5,
+        "nearbyNotifyRadiusM": 400,
+        "approachRadiusM": 120,
+        "arPinRangeM": 120,
+        "ncnPerUsd": 1,
+        "ngnPerUsd": 1500,
+        "buyMinNcn": 1,
+        "buyMaxNcn": 500,
+        "buyPresets": [
+            5,
+            10,
+            25,
+            50
+        ],
+        "defaultBuyProvider": "paystack",
+        "ownedPinPoints": 10
+    },
+    "client": {
+        "saveApiBase": "https://iconiaglobal.com/lvfe-save",
+        "googleWebClientId": "",
+        "paystackPublicKey": "",
+        "flwPublicKey": "",
+        "buyApiBase": "",
+        "satDefaultOn": true,
+        "mapStyleUrl": "https://tiles.openfreemap.org/styles/dark"
+    },
+    "copy": {
+        "buyBlockerTitle": "Buy NCN isn\u2019t available yet \u2014 try again later.",
+        "oauthBlockerTitle": "Sign in with Google isn\u2019t available yet \u2014 try again later."
+    },
+    "features": {
+        "buyNcn": true,
+        "flutterwave": true,
+        "opay": false,
+        "p2p": true,
+        "travelMode": true,
+        "passToll": false,
+        "visitXp": true,
+        "ratings": true,
+        "hoodChallenges": true,
+        "sponsorships": true,
+        "worldOverpass": true
+    }
+}

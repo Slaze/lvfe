@@ -2,10 +2,10 @@
    Leave WEB_CLIENT_ID empty until a human pastes a real Web client ID from
    Google Cloud Console. Do not invent secrets. */
 (function (global) {
-  const WEB_CLIENT_ID = "730640559588-i03q4imeb8cl8lonr3j6iliaefmr1sa6.apps.googleusercontent.com";
+  let WEB_CLIENT_ID = "730640559588-i03q4imeb8cl8lonr3j6iliaefmr1sa6.apps.googleusercontent.com";
   const ANDROID_PACKAGE = "com.lvfe.xperience";
   const BLOCKER_CODE = "oauth_not_configured";
-  const BLOCKER_TITLE = "Sign in with Google isn’t available yet — try again later.";
+  let BLOCKER_TITLE = "Sign in with Google isn’t available yet — try again later.";
   const BLOCKER_STEPS = [
     "Google Cloud Console → create or select a project (Identity / OAuth only — do not enable Maps SDK, Places, or Photorealistic 3D).",
     "APIs & Services → OAuth consent screen: External or Internal. App name Lvfe. Scopes: openid, email, profile only.",
@@ -28,13 +28,18 @@
   }
 
   const api = {
-    WEB_CLIENT_ID,
+    get WEB_CLIENT_ID() { return WEB_CLIENT_ID; },
     ANDROID_PACKAGE,
     BLOCKER_CODE,
-    BLOCKER_TITLE,
+    get BLOCKER_TITLE() { return BLOCKER_TITLE; },
     BLOCKER_STEPS,
     isConfigured,
     blockerMessage,
+    applyConfig: function (o) {
+      if (!o) return;
+      if (o.webClientId && isConfigured(o.webClientId)) WEB_CLIENT_ID = String(o.webClientId).trim();
+      if (o.blockerTitle) BLOCKER_TITLE = String(o.blockerTitle);
+    },
   };
 
   if (typeof module !== "undefined" && module.exports) {
