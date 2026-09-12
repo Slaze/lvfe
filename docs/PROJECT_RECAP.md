@@ -152,13 +152,13 @@ Location-based territorial game. World data from OpenStreetMap (no paid Google M
 - Profile + Rankings show places / XP / 30-day check-ins. Dossier: check-in, stars, bookmark.
 - Rules + player guide updated. Tests: `scripts/test_progression.js` plus endowment/conquest/toll/economy fixtures.
 
-**How verified:** `node scripts/test_progression.js` (A–I) + `test_endowment.js` + `test_conquest.js` + `test_pass_toll_marks.js` + `test_game_economy.js`; `php -l` progression.php + index.php.
+**How verified:** `node scripts/test_progression.js` (A–I) + endowment/conquest/toll/economy tests; `php -l`; live curl 2026-09-12: `sw.js` `lvfe-shell-v10`, `progression.js` 200, game-config `passToll:false` `yieldRate:0`, `POST /v1/check-in` 400 missing player key (route live, not 404).
 
-**Current state:** On disk. PWA/FTP not deployed. SQLite DB created on first live check-in.
+**Current state:** GitHub `main` `20135f9`. Live PWA https://iconiaglobal.com/lvfe/ and save host `/lvfe-save/`. Hard-refresh PWA to pick up SW v10.
 
-**Next steps:** Deploy save host + PWA. Field-test that no-toll increases walk distance. Paste live Paystack keys still separate.
+**Next steps:** Field-test walk distance with toll off. First live check-in creates SQLite on host. Paystack keys still separate.
 
-**Blockers / risks:** Rank `places×10` still snowballs idle veterans (documented in test). Server 24h needs deployed PHP; client gate works offline.
+**Blockers / risks:** Rank `places×10` still snowballs idle veterans (documented in test). Cloudflare may cache HTML until SW v10 takes over.
 
 ### 2026-09-11 — Layman player guide
 
